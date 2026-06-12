@@ -1,12 +1,21 @@
 # Implementation Plan - Tiny Tulip Coffee Console
 
+## Overview
+Build a barista-focused event management system with real-time drink counting. Primary feature is the drink counter (like your existing Lovable tracker), backed by Supabase for team visibility and historical analytics.
+
 ## Quick Start Timeline
-**Total Duration**: 4 weeks (can be accelerated)  
-**Phases**: Foundation → Core Features → Content & Logistics → Polish & Deploy
+**Total Duration**: 3-4 weeks  
+**Phases**: Foundation → Drink Counter Integration → Event Management → Supporting Features
+
+**Priority Order**:
+1. **Drink Counter** (barista primary interface) ⭐⭐⭐
+2. **Event Management** (creating/linking events)
+3. **Dashboard** (real-time sync visualization)
+4. **Supporting modules** (inventory, CMS, checklists)
 
 ---
 
-## Phase 1: Foundation & Setup (Days 1-5)
+## Phase 1: Foundation & Setup (Days 1-3)
 
 ### Step 1.1: Project Initialization
 - [ ] Initialize React + Vite project

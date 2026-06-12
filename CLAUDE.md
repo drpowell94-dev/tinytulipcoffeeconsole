@@ -1,7 +1,9 @@
 # Tiny Tulip Coffee Console - Complete System Design
 
 ## Project Overview
-Comprehensive web application for managing operations, marketing, and events at Tiny Tulip Coffee. Mobile-responsive dashboard with integrated modules for content management, event tracking, logistics, and inventory.
+A barista-focused event management and drink tracking system for Tiny Tulip Coffee. The primary focus is a mobile-first drink counter integrated with event management. Secondary features include inventory tracking, packing checklists, and content management.
+
+**Primary Use Case**: Baristas at pop-up events tap drink buttons to count prepaid orders and additional sales in real-time.
 
 ## Technology Stack
 - **Frontend**: React 18+ with TypeScript
@@ -11,15 +13,20 @@ Comprehensive web application for managing operations, marketing, and events at 
 - **Backend/Database**: Supabase (PostgreSQL)
 - **Authentication**: Supabase Auth
 - **Real-time**: Supabase Realtime subscriptions
+- **Offline Support**: localStorage fallback for drink counting
 - **Deployment**: Vercel or Netlify
 
-## Color Palette (Brand Theme)
-- Primary: Warm cream (`#F5F1E8`)
-- Accent: Tulip pink (`#D4736F`)
-- Secondary: Terracotta (`#E8A89B`)
-- Dark: Coffee brown (`#3E2723`)
-- Light: Soft white (`#FAFAF8`)
-- Alert Red: `#EF4444`
+## Color Palette (Actual Brand Theme)
+Sourced from tinytulipcoffee.com design system:
+
+- **Warm Charcoal** (Primary Dark): `#3d2013`
+- **Deep Espresso**: `#1a1410`
+- **Stone Taupe** (Light Brown): `#b8a89b`
+- **Cream** (Background): `#fffbf4`
+- **Main Taupe**: `#8b7355`
+- **Medium Brown**: `#6d412a`
+- **Accent Coral** (Warm accent): `#e45b3c`
+- **Alert Red**: `#ef4444`
 
 ## Project Structure
 ```
@@ -113,50 +120,52 @@ See `SCHEMA.md` for detailed schema design.
 
 ## Module Architecture
 
-### 1. Dashboard Overview
-- Welcome message with date
-- Upcoming events (next 7 days)
-- Inventory alerts (low stock)
-- Quick action buttons
-- Real-time status indicators
+### 1. Event Tracker + Drink Counter ⭐ PRIMARY
+The barista's main interface. Shows active event with large tap buttons for each drink type.
 
-### 2. Event Tracker
-- Calendar view + List view toggle
-- Event form with all required fields
-- Event status pipeline (Inquiry → Confirmed → Completed)
-- Client contact management
-- Revenue tracking & deposit status
-- Event type templates (Catering, Pop-up, Farmers Market)
+**Features:**
+- **Event Overview**: Name, date, pre-order count, location
+- **Drink Counter**: Large tap buttons (☕ Hot Coffee, 🧋 Iced Coffee, etc.)
+- **Session Progress**: Total drinks sold vs. pre-orders with progress bar
+- **Extra Sales Tracking**: Shows revenue from sales beyond pre-orders
+- **Order Log**: Timestamped list of all drinks sold
+- **Real-time Sync**: Syncs counts to Supabase in real-time
+- **Offline Mode**: Works without internet (syncs when reconnected)
+- **Celebration**: Confetti when pre-orders fulfilled
+- **Mobile-first**: Optimized for portrait orientation on small screens
 
-### 3. Content & Website CMS
+### 2. Event Management
+- Calendar + List view of upcoming events
+- Create/edit/delete events
+- Client contact information
+- Revenue estimates
+- Deposit tracking
+- Event history and past sales data
+
+### 3. Content & Website CMS (Secondary)
 - **Blog Generator**:
   - Pre-built templates (Coffee Origin, Seasonal Launch, Community Update)
   - Rich text editor
   - SEO fields (title, keywords, meta description)
-  - Tone selector (friendly, professional, casual)
+  - Tone selector
   - Auto-save drafts
   
 - **Website Updater**:
-  - Operating hours form
-  - Seasonal menu management
+  - Operating hours management
+  - Seasonal menu updates
   - Alert banner management
-  - Real-time preview
 
-### 4. Logistics & Packing Checklists
+### 4. Logistics & Packing Checklists (Secondary)
 - Auto-generate checklists based on event type
-- Dynamic item lists (e.g., Catering Setup vs Farmers Market)
-- Digital checkboxes with:
-  - Timestamp capture
-  - User attribution
-  - Offline-capable state
+- Catering Setup, Farmers Market, Pop-up templates
+- Digital sign-offs with timestamps
 - Checklist templates management
 
-### 5. Operations & Supplies Log
+### 5. Operations & Supplies Log (Secondary)
 - Real-time inventory tracker
-- Low-stock alerts (visual: turn red below threshold)
+- Low-stock alerts
 - Add/edit/delete items
 - Usage history per event
-- Reorder level management
 
 ## Authentication & Security
 - Supabase Auth (email/password)

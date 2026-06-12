@@ -1,0 +1,158 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Bagel+Fat+One&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Tiny Tulip Coffee Brand Colors */
+
+    /* Main Background & Text */
+    --background: 40 70% 97%;        /* Cream #fffbf4 */
+    --foreground: 10 45% 16%;        /* Warm Charcoal #3d2013 */
+
+    /* Cards & Popover */
+    --card: 40 70% 98%;              /* Off-white cream */
+    --card-foreground: 10 45% 16%;   /* Charcoal text */
+    --popover: 40 70% 98%;
+    --popover-foreground: 10 45% 16%;
+
+    /* Primary (Dark Brown) */
+    --primary: 10 45% 16%;           /* Warm Charcoal #3d2013 */
+    --primary-foreground: 40 70% 96%; /* Cream text */
+
+    /* Secondary (Medium Brown/Taupe) */
+    --secondary: 25 20% 53%;         /* Main Taupe #8b7355 */
+    --secondary-foreground: 40 70% 96%;
+
+    /* Muted (Light Brown) */
+    --muted: 25 20% 72%;             /* Stone Taupe #b8a89b */
+    --muted-foreground: 10 20% 38%;  /* Dark gray text */
+
+    /* Accent (Coral Red - Primary highlight) */
+    --accent: 10 65% 48%;            /* Accent Coral #e45b3c */
+    --accent-foreground: 40 70% 96%; /* Cream text */
+
+    /* Destructive (Alert Red) */
+    --destructive: 0 65% 55%;        /* Alert Red #ef4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    /* Border & Input */
+    --border: 25 20% 82%;            /* Light taupe border */
+    --input: 25 20% 82%;
+    --ring: 10 65% 48%;              /* Accent coral ring */
+
+    /* Radius */
+    --radius: 1.25rem;
+
+    /* Typography */
+    --font-display: 'Bagel Fat One', cursive;
+    --font-body: 'Quicksand', sans-serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    letter-spacing: 0.02em;
+    font-weight: 400;
+  }
+}
+
+@layer components {
+  /* Tap Ripple Effect */
+  .tap-ripple {
+    @apply relative overflow-hidden;
+  }
+
+  .tap-ripple::after {
+    content: '';
+    @apply absolute inset-0 rounded-[inherit] opacity-0;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.3) 0%, transparent 70%);
+  }
+
+  .tap-ripple.tapped::after {
+    animation: ripple-out 0.5s ease-out forwards;
+  }
+
+  /* Button Animations */
+  @keyframes ripple-out {
+    0% { opacity: 1; transform: scale(0.5); }
+    100% { opacity: 0; transform: scale(2); }
+  }
+
+  @keyframes bounce-in {
+    0% { transform: scale(1); }
+    40% { transform: scale(0.92); }
+    70% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes count-pop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  .animate-bounce-tap {
+    animation: bounce-in 0.3s ease-out;
+  }
+
+  .animate-count-pop {
+    animation: count-pop 0.25s ease-out;
+  }
+
+  /* Loading Pulse */
+  @keyframes pulse-sync {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  .animate-pulse-sync {
+    animation: pulse-sync 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  /* Common Button Styles */
+  .btn-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90 active:scale-95 transition-all rounded-lg font-semibold;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/90 active:scale-95 transition-all rounded-lg font-semibold;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-accent-foreground hover:bg-accent/90 active:scale-95 transition-all rounded-lg font-semibold;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent hover:bg-muted/50 active:scale-95 transition-all rounded-lg font-semibold;
+  }
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted) / 0.7);
+}
