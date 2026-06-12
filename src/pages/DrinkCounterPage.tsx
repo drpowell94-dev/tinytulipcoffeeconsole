@@ -125,86 +125,82 @@ export default function DrinkCounterPage() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col max-w-xl mx-auto">
-      <div className="bg-accent text-accent-foreground text-center text-xs font-body font-semibold py-1.5 px-4">
+      {/* Subtle top bar */}
+      <div className="bg-gradient-to-b from-accent/5 to-transparent text-center text-xs font-body text-muted-foreground py-2 px-4">
         Purely a pop-up. Where the people are.
       </div>
 
       {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-4 pb-3 gap-2">
-        <div className="flex items-center gap-2 min-w-0 flex-1">
+      <header className="flex items-center justify-between px-4 pt-6 pb-4 gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link
             to="/events"
-            className="p-1.5 rounded-full hover:bg-muted/40 text-muted-foreground shrink-0"
+            className="p-2 rounded-lg hover:bg-muted/30 text-foreground/60 shrink-0 transition-colors"
             aria-label="Back to events"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={20} strokeWidth={1.5} />
           </Link>
-          <span className="text-2xl">🌷</span>
           <div className="min-w-0">
-            <h1 className="font-display text-base sm:text-xl text-foreground truncate">{event.name}</h1>
-            <p className="text-[11px] text-muted-foreground font-body truncate">
+            <h1 className="font-display text-lg sm:text-2xl text-foreground truncate leading-tight">{event.name}</h1>
+            <p className="text-[11px] text-muted-foreground font-body mt-0.5">
               {event.location}
-              {isSupabaseEnabled ? " · syncing live" : " · local mode"}
+              {isSupabaseEnabled ? " • syncing" : " • local"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={handleReset}
-            className="rounded-full bg-muted/60 px-2.5 py-1.5 text-xs font-body font-semibold text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+            className="p-2 rounded-lg hover:bg-muted/30 text-foreground/60 transition-colors"
+            title="Reset counts"
           >
-            <RotateCcw size={14} className="inline" /> <span className="hidden sm:inline">Reset</span>
+            <RotateCcw size={18} strokeWidth={1.5} />
           </button>
           <button
             onClick={handleExport}
-            className="rounded-full bg-accent px-2.5 py-1.5 text-xs font-body font-semibold text-accent-foreground hover:bg-primary transition-colors"
+            className="p-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent transition-colors"
+            title="Export session"
           >
-            <ClipboardCopy size={14} className="inline" /> <span className="hidden sm:inline">Export</span>
+            <ClipboardCopy size={18} strokeWidth={1.5} />
           </button>
         </div>
       </header>
 
-      {/* Session stats */}
-      <div className="mx-4 mb-4 rounded-2xl bg-card border border-border p-5 shadow-sm">
-        <div className="flex items-end justify-between">
-          <div>
-            <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
-              Session Total
-            </p>
-            <p className="font-display text-4xl text-foreground mt-1">
-              {total}
-              {preOrders > 0 && <span className="text-2xl text-muted-foreground"> / {preOrders}</span>}
-            </p>
-            <p className="text-xs text-muted-foreground font-body">
-              drinks sold{preOrders > 0 && " of pre-orders"}
-            </p>
-            <p className="font-display text-lg text-accent mt-1">{formatCurrency(revenue)}</p>
-          </div>
-          {extra.units > 0 && (
-            <div className="text-right">
-              <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
-                Extra Sales
+      {/* Session stats - clean elevation design */}
+      <div className="mx-4 mb-6 rounded-lg bg-muted/15 p-6">
+        <div className="space-y-6">
+          <div className="flex items-baseline justify-between">
+            <div>
+              <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                Total
               </p>
-              <p className="font-display text-2xl text-foreground mt-1">~{formatCurrency(extra.revenue)}</p>
-              <p className="text-xs text-muted-foreground font-body">+{extra.units} drinks</p>
+              <div className="flex items-baseline gap-2">
+                <p className="font-display text-5xl text-foreground leading-none">{total}</p>
+                {preOrders > 0 && <p className="text-lg text-muted-foreground">/ {preOrders}</p>}
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-2xl text-foreground">{formatCurrency(revenue)}</p>
+              {extra.units > 0 && <p className="text-xs text-accent font-body mt-1">+{extra.units} extra</p>}
+            </div>
+          </div>
+
+          {preOrders > 0 && (
+            <div className="space-y-2">
+              <div className="w-full h-px rounded-full bg-muted/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <p className="text-right text-xs font-body text-muted-foreground">{pct}%</p>
             </div>
           )}
         </div>
-        {preOrders > 0 && (
-          <div className="mt-4">
-            <div className="w-full h-3 rounded-full bg-muted/50 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-accent transition-all duration-500 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="text-xs text-muted-foreground font-body mt-1.5 text-right">{pct}% fulfilled</p>
-          </div>
-        )}
       </div>
 
       {/* Tap buttons */}
-      <div className="px-4 mb-4 grid grid-cols-2 gap-3 [&>*:nth-child(5)]:col-span-2 [&>*:nth-child(5)]:justify-self-center [&>*:nth-child(5)]:w-1/2">
+      <div className="px-4 mb-6 grid grid-cols-2 gap-4 [&>*:nth-child(5)]:col-span-2 [&>*:nth-child(5)]:justify-self-center [&>*:nth-child(5)]:w-1/2">
         {DRINKS.map(product => (
           <TapButton
             key={product.id}
@@ -219,9 +215,9 @@ export default function DrinkCounterPage() {
       <div className="px-4 flex-1">
         <button
           onClick={() => setShowLog(!showLog)}
-          className="w-full text-center text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-3 hover:text-foreground transition-colors"
+          className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors mb-3"
         >
-          {showLog ? "▾ Hide Order Log" : "▸ Show Order Log"}
+          {showLog ? "▾ Hide log" : "▸ Show log"}
         </button>
         {showLog && <OrderLog orders={orders} />}
       </div>
@@ -230,9 +226,9 @@ export default function DrinkCounterPage() {
       <div className="p-4">
         <button
           onClick={handleEndSession}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl bg-primary text-primary-foreground font-body font-bold py-3.5 hover:opacity-90 active:scale-[0.98] transition-all"
+          className="w-full flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground font-body font-semibold py-4 hover-scale active:scale-95 transition-all"
         >
-          <CheckCircle2 size={18} />
+          <CheckCircle2 size={18} strokeWidth={1.5} />
           End Session & Save
         </button>
       </div>

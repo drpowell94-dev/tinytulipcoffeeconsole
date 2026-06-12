@@ -21,19 +21,21 @@ export function TapButton({ product, count, onTap }: TapButtonProps) {
     <button
       onClick={handleTap}
       className={cn(
-        "tap-ripple relative flex flex-col items-center justify-center gap-1 rounded-2xl bg-card border-2 border-border p-4 shadow-sm transition-all active:scale-95 select-none",
-        animating && "animate-bounce-tap tapped"
+        "tap-ripple relative flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/20 hover:bg-muted/35 p-5 shadow-sm-elevation transition-all active:scale-95 select-none hover-scale",
+        animating && "tapped"
       )}
-      style={{ minHeight: 120 }}
+      style={{ minHeight: 140 }}
     >
-      <span className="text-4xl">{product.emoji}</span>
-      <span className="font-body font-semibold text-sm text-foreground leading-tight text-center">
-        {product.name}
-      </span>
-      <span className="font-body font-bold text-xs text-accent">${product.price}</span>
+      <span className="text-5xl">{product.emoji}</span>
+      <div className="flex flex-col items-center gap-1">
+        <span className="font-body font-semibold text-sm text-foreground leading-tight text-center">
+          {product.name}
+        </span>
+        <span className="font-body text-xs text-accent font-bold">${product.price}</span>
+      </div>
       <span
         className={cn(
-          "absolute top-2 right-3 font-body font-bold text-xl text-primary",
+          "absolute top-3 right-3 font-display font-bold text-2xl text-accent/70",
           animating && "animate-count-pop"
         )}
       >

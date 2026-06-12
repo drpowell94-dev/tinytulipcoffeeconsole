@@ -30,23 +30,23 @@ export default function LogisticsPage() {
   const handlePrint = () => window.print();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="font-display text-3xl">Logistics</h1>
-        <p className="text-sm text-muted-foreground font-body">
-          Packing checklists — auto-generated when you create an event
+        <h1 className="font-display text-4xl text-foreground">Logistics</h1>
+        <p className="text-sm text-muted-foreground font-body mt-1">
+          Packing checklists auto-generated with each event
         </p>
       </div>
 
       {lists.length === 0 ? (
-        <div className="rounded-2xl bg-card border border-border p-10 text-center">
-          <span className="text-4xl">📋</span>
-          <p className="font-body text-muted-foreground mt-2">
-            No checklists yet. Create an event and its packing list appears here automatically.
+        <div className="rounded-lg bg-muted/20 p-12 text-center">
+          <span className="text-4xl block mb-3">📋</span>
+          <p className="font-body text-muted-foreground">
+            No checklists yet. Create an event and its packing list appears here.
           </p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[260px_1fr] gap-4">
+        <div className="grid lg:grid-cols-[240px_1fr] gap-6">
           {/* Checklist selector */}
           <div className="space-y-2">
             {lists.map(list => {
@@ -55,13 +55,13 @@ export default function LogisticsPage() {
                 <button
                   key={list.id}
                   onClick={() => setOpenId(list.id)}
-                  className={`w-full text-left rounded-xl border p-3 transition-colors ${
-                    openId === list.id ? "bg-primary text-primary-foreground border-primary" : "bg-card border-border hover:border-accent"
+                  className={`w-full text-left rounded-lg p-4 transition-colors ${
+                    openId === list.id ? "bg-accent text-accent-foreground" : "bg-muted/20 hover:bg-muted/35 text-foreground"
                   }`}
                 >
                   <p className="font-body font-semibold text-sm truncate">{list.eventName}</p>
-                  <p className={`text-xs font-body ${openId === list.id ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
-                    {EVENT_TYPE_LABELS[list.eventType]} · {done}/{list.items.length} packed
+                  <p className={`text-xs font-body mt-1 ${openId === list.id ? "text-accent-foreground/70" : "text-muted-foreground"}`}>
+                    {EVENT_TYPE_LABELS[list.eventType]} • {done}/{list.items.length}
                   </p>
                 </button>
               );
@@ -70,69 +70,73 @@ export default function LogisticsPage() {
 
           {/* Active checklist */}
           {open && (
-            <div className="rounded-2xl bg-card border border-border p-5 shadow-sm">
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="font-display text-xl">{open.eventName}</h2>
-                <div className="flex gap-1.5">
+            <div className="rounded-lg bg-muted/15 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-display text-2xl text-foreground">{open.eventName}</h2>
+                <div className="flex gap-2">
                   <button
                     onClick={handlePrint}
-                    className="p-2 rounded-xl text-muted-foreground hover:bg-muted/40 transition-colors"
+                    className="p-2 rounded-lg text-foreground/60 hover:bg-muted/30 transition-colors"
                     aria-label="Print checklist"
                   >
-                    <Printer size={16} />
+                    <Printer size={18} strokeWidth={1.5} />
                   </button>
                   <button
                     onClick={() => handleDelete(open)}
-                    className="p-2 rounded-xl text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    className="p-2 rounded-lg text-foreground/60 hover:bg-destructive/10 hover:text-destructive transition-colors"
                     aria-label="Delete checklist"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
 
-              {/* Progress */}
+              {/* Progress - Razor-thin */}
               <Progress checklist={open} />
 
               {/* Items grouped by category */}
-              {Array.from(new Set(open.items.map(i => i.category))).map(category => (
-                <div key={category} className="mt-5">
-                  <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-2">
-                    {category}
-                  </p>
-                  <div className="space-y-1.5">
-                    {open.items
-                      .filter(i => i.category === category)
-                      .map(item => (
-                        <label
-                          key={item.id}
-                          className={`flex items-center gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-colors ${
-                            item.checked ? "bg-accent/10" : "bg-muted/20 hover:bg-muted/30"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={item.checked}
-                            onChange={() => handleToggle(open.id, item.id)}
-                            className="accent-[#e45b3c] w-5 h-5 shrink-0"
-                          />
-                          <span
-                            className={`font-body text-sm flex-1 ${
-                              item.checked ? "line-through text-muted-foreground" : "text-foreground"
+              <div className="space-y-6">
+                {Array.from(new Set(open.items.map(i => i.category))).map(category => (
+                  <div key={category}>
+                    <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-3">
+                      {category}
+                    </p>
+                    <div className="space-y-2">
+                      {open.items
+                        .filter(i => i.category === category)
+                        .map(item => (
+                          <label
+                            key={item.id}
+                            className={`flex items-center gap-3 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+                              item.checked ? "bg-accent/10" : "bg-muted/20 hover:bg-muted/30"
                             }`}
                           >
-                            {item.name}
-                          </span>
-                          {item.checked && item.checkedAt && (
-                            <span className="text-[11px] font-body text-muted-foreground shrink-0">
-                              ✓ {item.checkedBy} · {formatTime(new Date(item.checkedAt))}
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              onChange={() => handleToggle(open.id, item.id)}
+                              className="accent-accent w-5 h-5 shrink-0"
+                            />
+                            <span
+                              className={`font-body text-sm flex-1 transition-all ${
+                                item.checked
+                                  ? "text-muted-foreground/60 opacity-60"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {item.name}
                             </span>
-                          )}
-                        </label>
-                      ))}
+                            {item.checked && item.checkedAt && (
+                              <span className="text-[10px] font-body text-muted-foreground/70 shrink-0 whitespace-nowrap">
+                                ✓ {item.checkedBy} · {formatTime(new Date(item.checkedAt))}
+                              </span>
+                            )}
+                          </label>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -145,16 +149,15 @@ function Progress({ checklist }: { checklist: Checklist }) {
   const done = checklist.items.filter(i => i.checked).length;
   const pct = checklist.items.length > 0 ? Math.round((done / checklist.items.length) * 100) : 0;
   return (
-    <div className="mt-3">
-      <div className="w-full h-2.5 rounded-full bg-muted/40 overflow-hidden">
+    <div className="mb-6">
+      <div className="w-full h-px rounded-full bg-muted/40 overflow-hidden">
         <div
           className="h-full rounded-full bg-accent transition-all duration-300"
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="text-xs font-body text-muted-foreground mt-1 text-right">
-        {done}/{checklist.items.length} packed ({pct}%)
-        {pct === 100 && " — truck's loaded! 🚚"}
+      <p className="text-xs font-body text-muted-foreground mt-2 text-right">
+        {done}/{checklist.items.length} packed {pct === 100 && "✓ complete"}
       </p>
     </div>
   );

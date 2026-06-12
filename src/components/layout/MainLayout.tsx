@@ -22,36 +22,36 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="min-h-screen bg-background flex">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex w-60 shrink-0 flex-col border-r border-border bg-card min-h-screen sticky top-0">
-        <div className="px-6 py-6 border-b border-border">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌷</span>
+      <aside className="hidden md:flex w-64 shrink-0 flex-col bg-background min-h-screen sticky top-0">
+        <div className="px-6 py-8">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🌷</span>
             <div>
-              <h1 className="font-display text-xl leading-tight">Tiny Tulip</h1>
-              <p className="text-xs text-muted-foreground font-body">Coffee Console</p>
+              <h1 className="font-display text-xl leading-tight text-foreground">Tiny Tulip</h1>
+              <p className="text-xs text-muted-foreground font-body mt-0.5">Coffee Console</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-3 space-y-1">
+        <nav className="flex-1 px-4 py-6 space-y-2">
           {NAV_ITEMS.map(item => (
             <NavLink
               key={item.to}
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex items-center gap-3 px-4 py-2.5 rounded-xl font-body font-semibold text-sm transition-colors",
+                  "flex items-center gap-3 px-4 py-3 rounded-lg font-body font-semibold text-sm transition-all duration-200",
                   isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-foreground hover:bg-muted/40"
+                    ? "bg-accent text-accent-foreground hover-scale"
+                    : "text-foreground hover:bg-muted/30 hover-scale"
                 )
               }
             >
-              <item.icon size={18} />
+              <item.icon size={18} strokeWidth={1.5} />
               {item.label}
             </NavLink>
           ))}
         </nav>
-        <div className="p-4 text-xs text-muted-foreground font-body border-t border-border">
+        <div className="px-4 py-6 text-xs text-muted-foreground font-body leading-relaxed">
           Purely a pop-up. Where the people are.
         </div>
       </aside>
@@ -59,31 +59,31 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-border bg-card sticky top-0 z-20">
-          <span className="text-xl">🌷</span>
+        <header className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
+          <span className="text-2xl">🌷</span>
           <h1 className="font-display text-lg">Tiny Tulip</h1>
         </header>
 
-        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-5xl w-full mx-auto">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
           {children}
         </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card border-t border-border flex justify-around py-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card/80 backdrop-blur-sm flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {NAV_ITEMS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] font-body font-semibold transition-colors",
+                "flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-body font-semibold transition-all duration-200",
                 isActive ? "text-accent" : "text-muted-foreground"
               )
             }
           >
-            <item.icon size={20} />
-            {item.label}
+            <item.icon size={20} strokeWidth={1.5} />
+            <span>{item.label}</span>
           </NavLink>
         ))}
       </nav>

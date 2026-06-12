@@ -74,37 +74,35 @@ export default function EventsPage() {
   };
 
   const input =
-    "w-full rounded-xl border border-input bg-background px-3 py-2 text-sm font-body focus:outline-none focus:ring-2 focus:ring-ring";
+    "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="font-display text-3xl">Events</h1>
-          <p className="text-sm text-muted-foreground font-body">
-            Pop-ups, farmers markets & catering — with live drink counting
+          <h1 className="font-display text-4xl text-foreground">Events</h1>
+          <p className="text-sm text-muted-foreground font-body mt-1">
+            Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 rounded-xl bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover:opacity-90 active:scale-95 transition-all"
+          className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0"
         >
-          <Plus size={16} /> New Event
+          <Plus size={16} strokeWidth={2} /> New
         </button>
       </div>
 
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="rounded-2xl bg-card border border-border p-5 space-y-3 shadow-sm">
-          <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
-            📌 New Event
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
               className={input}
               placeholder="Event name *"
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
+              autoFocus
             />
             <select
               className={input}
@@ -131,7 +129,7 @@ export default function EventsPage() {
               className={input}
               type="number"
               min={0}
-              placeholder="Pre-orders (prepaid drinks)"
+              placeholder="Pre-orders (drinks)"
               value={form.preOrders || ""}
               onChange={e => setForm({ ...form, preOrders: parseInt(e.target.value) || 0 })}
             />
@@ -145,13 +143,13 @@ export default function EventsPage() {
             />
             <input
               className={input}
-              placeholder="Client contact name"
+              placeholder="Contact name"
               value={form.contactName}
               onChange={e => setForm({ ...form, contactName: e.target.value })}
             />
             <input
               className={input}
-              placeholder="Client phone"
+              placeholder="Contact phone"
               value={form.contactPhone}
               onChange={e => setForm({ ...form, contactPhone: e.target.value })}
             />
@@ -163,17 +161,17 @@ export default function EventsPage() {
             value={form.notes}
             onChange={e => setForm({ ...form, notes: e.target.value })}
           />
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <button
               type="submit"
-              className="rounded-xl bg-primary text-primary-foreground px-5 py-2 font-body font-semibold text-sm hover:opacity-90"
+              className="rounded-lg bg-primary text-primary-foreground px-6 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
             >
-              Create Event
+              Create
             </button>
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="rounded-xl bg-muted/50 px-5 py-2 font-body font-semibold text-sm text-muted-foreground"
+              className="rounded-lg bg-muted/50 px-6 py-2.5 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
             >
               Cancel
             </button>
@@ -183,55 +181,55 @@ export default function EventsPage() {
 
       {/* Event list */}
       {events.length === 0 && !showForm ? (
-        <div className="rounded-2xl bg-card border border-border p-10 text-center">
-          <span className="text-4xl">🌷</span>
-          <p className="font-body text-muted-foreground mt-2">
+        <div className="rounded-lg bg-muted/20 p-12 text-center">
+          <span className="text-4xl block mb-3">🌷</span>
+          <p className="font-body text-muted-foreground">
             No events yet — create your first pop-up!
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {events.map(event => {
             const days = daysUntil(event.dateStart);
             return (
               <div
                 key={event.id}
-                className="rounded-2xl bg-card border border-border p-4 shadow-sm flex flex-col sm:flex-row sm:items-center gap-3"
+                className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/30 transition-colors"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-body font-bold text-foreground">{event.name}</h3>
-                    <span className={cn("px-2 py-0.5 rounded-full text-[11px] font-body font-semibold", STATUS_STYLES[event.status])}>
+                  <div className="flex items-center gap-2 flex-wrap mb-2">
+                    <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
+                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                       {STATUS_LABELS[event.status]}
                     </span>
                   </div>
-                  <p className="text-xs text-muted-foreground font-body mt-1 flex items-center gap-1 flex-wrap">
+                  <p className="text-xs text-muted-foreground font-body space-y-1">
                     <span>{formatDate(event.dateStart)}</span>
                     {days >= 0 && event.status !== "completed" && (
-                      <span className="text-accent font-semibold">
-                        · {days === 0 ? "Today!" : `in ${days} day${days === 1 ? "" : "s"}`}
+                      <span className="text-accent font-semibold ml-2">
+                        {days === 0 ? "Today" : `${days}d away`}
                       </span>
                     )}
-                    <span className="flex items-center gap-0.5">
-                      <MapPin size={11} /> {event.location}
+                    <span className="block">
+                      <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
+                      {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
                     </span>
-                    <span>· {EVENT_TYPE_LABELS[event.eventType]}</span>
-                    {event.preOrders > 0 && <span>· {event.preOrders} pre-orders</span>}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Link
                     to={`/events/${event.id}/counter`}
-                    className="flex items-center gap-1.5 rounded-xl bg-accent text-accent-foreground px-4 py-2 font-body font-bold text-sm hover:opacity-90 active:scale-95 transition-all"
+                    className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
                   >
-                    <Coffee size={15} /> Open Counter
+                    <Coffee size={16} strokeWidth={1.5} />
+                    <span className="hidden sm:inline">Counter</span>
                   </Link>
                   <button
                     onClick={() => handleDelete(event)}
-                    className="p-2 rounded-xl text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                     aria-label={`Delete ${event.name}`}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={16} strokeWidth={1.5} />
                   </button>
                 </div>
               </div>
@@ -241,44 +239,44 @@ export default function EventsPage() {
       )}
 
       {/* Session history */}
-      <div className="rounded-2xl bg-card border border-border shadow-sm overflow-hidden">
+      <section className="space-y-3">
         <button
           onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/20 transition-colors"
+          className="w-full flex items-center justify-between text-left font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
         >
-          <span className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <span className="flex items-center gap-2">
             <History size={14} /> Past Sessions {history.length > 0 && `(${history.length})`}
           </span>
-          <span className="text-muted-foreground text-sm">{showHistory ? "▾" : "▸"}</span>
+          <span className="text-sm">{showHistory ? "▾" : "▸"}</span>
         </button>
         {showHistory && (
-          <div className="px-4 pb-4 space-y-2">
+          <div className="space-y-2">
             {history.length === 0 ? (
-              <p className="text-sm font-body text-muted-foreground py-4 text-center">
-                No saved sessions yet — end a counter session to archive it 🌷
+              <p className="text-sm font-body text-muted-foreground py-6 text-center">
+                No saved sessions yet — end a counter session to archive it
               </p>
             ) : (
               history.map(s => (
-                <div key={s.id} className="rounded-xl bg-muted/20 border border-border/50 px-3 py-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0">
+                <div key={s.id} className="rounded-lg bg-muted/15 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
                       <p className="font-body font-semibold text-sm text-foreground truncate">{s.eventName}</p>
-                      <p className="text-xs font-body text-muted-foreground">
+                      <p className="text-xs font-body text-muted-foreground mt-1">
                         {new Date(s.date).toLocaleDateString()} · {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
-                        {s.extraSales > 0 && ` · +${formatCurrency(s.extraSales)} extra`}
+                        {s.extraSales > 0 && ` · +${formatCurrency(s.extraSales)}`}
                       </p>
-                      <p className="text-xs font-body text-muted-foreground mt-0.5">
+                      <p className="text-xs font-body text-muted-foreground mt-1">
                         {Object.entries(s.productCounts)
                           .map(([id, count]) => `${getDrink(id)?.emoji ?? ""}${count}`)
-                          .join("  ")}
+                          .join(" ")}
                       </p>
                     </div>
                     <button
                       onClick={() => setHistory(deleteFromHistory(s.id))}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors shrink-0"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
                       aria-label="Delete session"
                     >
-                      <Trash2 size={14} />
+                      <Trash2 size={14} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
@@ -286,7 +284,7 @@ export default function EventsPage() {
             )}
           </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
