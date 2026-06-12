@@ -118,54 +118,73 @@ See `SCHEMA.md` for detailed schema design.
 8. **blog_posts** - Generated blog content
 9. **website_updates** - Quick updates to website data
 
-## Module Architecture
+## Module Architecture (5 Modules + Drink Counter)
 
-### 1. Event Tracker + Drink Counter ⭐ PRIMARY
-The barista's main interface. Shows active event with large tap buttons for each drink type.
+### 1. Event Tracker + Drink Counter ⭐ PRIMARY FOCUS
+The barista's main interface when at an event. Seamlessly integrated with event management.
 
-**Features:**
+**Drink Counter Features:**
 - **Event Overview**: Name, date, pre-order count, location
-- **Drink Counter**: Large tap buttons (☕ Hot Coffee, 🧋 Iced Coffee, etc.)
-- **Session Progress**: Total drinks sold vs. pre-orders with progress bar
-- **Extra Sales Tracking**: Shows revenue from sales beyond pre-orders
-- **Order Log**: Timestamped list of all drinks sold
-- **Real-time Sync**: Syncs counts to Supabase in real-time
-- **Offline Mode**: Works without internet (syncs when reconnected)
-- **Celebration**: Confetti when pre-orders fulfilled
+- **Large Tap Buttons**: ☕ Hot Coffee, 🧋 Iced Coffee, 🥤 Cold Brew, 🍋 Lemonade, 🍫 Chocolate Milk
+- **Session Progress**: Total drinks sold vs. pre-orders with visual progress bar
+- **Extra Sales Tracking**: Automatic calculation of revenue beyond pre-orders
+- **Order Log**: Timestamped detailed list of all drinks sold
+- **Real-time Sync**: Automatic syncing to Supabase (2-5 second debounce)
+- **Offline Mode**: Full functionality without internet (syncs when reconnected)
+- **Celebration**: Confetti animation when pre-orders fulfilled
 - **Mobile-first**: Optimized for portrait orientation on small screens
 
-### 2. Event Management
-- Calendar + List view of upcoming events
+**Event Management (when not at event):**
+- Calendar view + List view of events
 - Create/edit/delete events
-- Client contact information
-- Revenue estimates
-- Deposit tracking
-- Event history and past sales data
+- Client contact information per event
+- Revenue estimates and deposit tracking
+- Event history with analytics
 
-### 3. Content & Website CMS (Secondary)
+### 2. Dashboard Overview
+- Welcome message with current date
+- Upcoming events (next 7 days) with drink counter status
+- Live drink counts for active events (if team member role)
+- Inventory alerts (low stock items)
+- Quick action buttons (New Event, New Blog Post, View Inventory)
+- Revenue summary for the month
+- Real-time status indicators
+
+### 3. Content & Website CMS
 - **Blog Generator**:
-  - Pre-built templates (Coffee Origin, Seasonal Launch, Community Update)
+  - Pre-built templates (Coffee Origin Spotlight, Seasonal Drink Launch, Community Update)
   - Rich text editor
   - SEO fields (title, keywords, meta description)
-  - Tone selector
+  - Tone selector (friendly, professional, casual)
   - Auto-save drafts
+  - Publish/Schedule controls
   
-- **Website Updater**:
+- **Website Quick Updater**:
   - Operating hours management
-  - Seasonal menu updates
+  - Seasonal menu item updates
   - Alert banner management
+  - Real-time preview
 
-### 4. Logistics & Packing Checklists (Secondary)
+### 4. Logistics & Packing Checklists
 - Auto-generate checklists based on event type
-- Catering Setup, Farmers Market, Pop-up templates
-- Digital sign-offs with timestamps
-- Checklist templates management
+- Pre-built templates:
+  - Catering Setup (espresso machine, grinders, syrups, etc.)
+  - Farmers Market Setup (tent, weights, display, POS)
+  - Pop-up Event (minimal equipment, mobile setup)
+- Digital checkboxes with timestamp capture and user attribution
+- Offline-capable with state persistence
+- Checklist templates management (admin)
+- Download/print checklist
 
-### 5. Operations & Supplies Log (Secondary)
-- Real-time inventory tracker
-- Low-stock alerts
-- Add/edit/delete items
-- Usage history per event
+### 5. Operations & Supplies Log
+- Real-time inventory tracker for core supplies
+- Items: Coffee Beans, Oat Milk, Whole Milk, 12oz Cups, Lids, Napkins, Equipment, etc.
+- Current quantity vs. reorder level
+- Low-stock visual alerts (red indicators when below threshold)
+- Add/edit/delete inventory items
+- Usage history linked to events
+- Reorder level management
+- Supplier contact information
 
 ## Authentication & Security
 - Supabase Auth (email/password)

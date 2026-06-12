@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["Bagel Fat One", "cursive"],
+        display: ["Kelros", "Quicksand", "sans-serif"],
         body: ["Quicksand", "sans-serif"],
       },
       colors: {

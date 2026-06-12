@@ -1,4 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&family=Bagel+Fat+One&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+
+@font-face {
+  font-family: 'Kelros';
+  src: url('/Kelros_Final.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -47,7 +55,7 @@
     --radius: 1.25rem;
 
     /* Typography */
-    --font-display: 'Bagel Fat One', cursive;
+    --font-display: 'Kelros', 'Quicksand', sans-serif;
     --font-body: 'Quicksand', sans-serif;
   }
 

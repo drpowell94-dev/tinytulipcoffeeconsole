@@ -1,28 +1,43 @@
 # Tiny Tulip Coffee Console
 
-A barista-focused event management system with real-time drink counting. Perfect for pop-ups, farmers markets, and catering events.
+A comprehensive operations management system for Tiny Tulip Coffee with **integrated drink counter** for baristas at events. Perfect for pop-ups, farmers markets, and catering events.
 
-## 🎯 Primary Feature: Drink Counter ⭐
+## 🎯 All Features
 
-A mobile-first tap-counter that baristas use to count prepaid drinks and track extra sales **in real-time**. 
+### 1. **Event Tracker + Drink Counter** ⭐ PRIMARY
+Mobile-first drink counting interface for baristas at events:
+- **Large tap buttons** for each drink type (☕ 🧋 🥤 🍋 🍫)
+- **Real-time progress** toward pre-order goals
+- **Extra sales tracking** with revenue calculation
+- **Order log** with timestamps
+- **Offline support** (syncs automatically when online)
+- **Celebration** when pre-orders fulfilled
+- Also includes full event management (create, edit, contacts, deposits)
 
-**Example Workflow**:
-1. Barista opens app at event
-2. Enters event name ("Farmers Market - Sat") and pre-order count (25)
-3. **Taps buttons** for each drink sold: ☕ Hot Coffee, 🧋 Iced Coffee, etc.
-4. Sees live progress: "23 / 25" drinks with progress bar
-5. Extra sales automatically tracked: "+3 extra drinks = $21"
-6. Counts sync to Supabase → team sees live updates on dashboard
-7. Session ends → saved to history with full analytics
+### 2. **Dashboard Overview**
+- Welcome screen with quick stats
+- Upcoming events (next 7 days)
+- Live drink counts for active events
+- Inventory alerts
+- Monthly revenue summary
+- Quick action buttons
 
-## 🎯 Secondary Features
+### 3. **Content & Website CMS**
+- **Blog Generator**: Templates for coffee content, SEO fields, tone selector
+- **Website Quick Updater**: Operating hours, seasonal menu, alert banners
+- Auto-save drafts and publish scheduling
 
-- **Event Management**: Create/manage events with contacts, dates, locations
-- **Team Dashboard**: Real-time view of all active events and drink counts
-- **Event History**: Past events with full analytics and revenue reports
-- **Content & Website CMS**: Blog generator and website updates
-- **Logistics & Packing Checklists**: Event-type-specific checklists with digital sign-offs
-- **Inventory Tracking**: Supply management with low-stock alerts
+### 4. **Logistics & Packing Checklists**
+- Auto-generated checklists by event type
+- Digital checkboxes with timestamps
+- Download/print capability
+- Offline support
+
+### 5. **Operations & Supplies Log**
+- Real-time inventory tracking
+- Low-stock alerts (visual indicators)
+- Usage history per event
+- Supplier management
 
 ## 🏗️ Tech Stack
 
@@ -36,49 +51,51 @@ A mobile-first tap-counter that baristas use to count prepaid drinks and track e
 
 ## 📋 Documentation
 
-### For Drink Tracker Setup (PRIMARY)
-- **[QUICK_START_DRINK_TRACKER.md](./QUICK_START_DRINK_TRACKER.md)** ← **START HERE!**
-  - 15-minute setup for barista counter
-  - Supabase configuration
-  - Database schema for drink tracking
-  - Real-time sync setup
-  - Works offline with localStorage
-  
-- **[DRINK_TRACKER_GUIDE.md](./DRINK_TRACKER_GUIDE.md)** ← Deep dive
-  - Complete drink counter architecture
-  - Database schema for orders, counts, sessions
-  - Frontend integration (React hooks)
-  - Supabase sync strategy
-  - Offline-first design
-  - Example workflow
+### Quick Start
+- **[QUICK_START_DRINK_TRACKER.md](./QUICK_START_DRINK_TRACKER.md)** ← **START HERE! (15 min)**
+  - Fast setup for just the drink counter
+  - Perfect for trying out quickly
+  - Supabase + React foundation
 
-### For System Architecture
-- **[ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)** ← Full system design
-  - Component hierarchy
-  - Data flow diagrams
-  - State management
-  - Security & RLS policies
+### Full System Integration (All 5 Modules)
+- **[FULL_APP_INTEGRATION.md](./FULL_APP_INTEGRATION.md)** ← **Complete system design**
+  - All 5 modules + drink counter
+  - Module breakdown with examples
+  - Data flow architecture
+  - Detailed layouts & workflows
+  - Implementation sequence
+  - User roles & permissions
+
+### Deep Dive Guides
+- **[DRINK_TRACKER_GUIDE.md](./DRINK_TRACKER_GUIDE.md)** ← Drink counter details
+  - Architecture & design decisions
+  - Database schema for drink tracking
+  - Sync strategy (offline-first)
   - Performance optimization
   
-### For Full Implementation
-- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** ← Build roadmap
-  - 3 phases: Foundation → Drink Counter → Supporting Features
-  - Step-by-step implementation
+- **[ARCHITECTURE_OVERVIEW.md](./ARCHITECTURE_OVERVIEW.md)** ← System architecture
+  - Component hierarchy
+  - Data flow diagrams
+  - Security implementation
+  - Deployment strategy
+
+### Implementation Guides
+- **[IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md)** ← Step-by-step roadmap
+  - 5 phases (Foundation → Drink Counter → Dashboard → Content/Logistics → Operations)
+  - Timeline & effort estimates
   - Technology decisions
-  - Effort estimates
 
-### For Database Design
-- **[SCHEMA.md](./SCHEMA.md)** ← Complete database reference
-  - All table definitions
-  - Relationships & indexes
-  - RLS policies
-  - Seed data
+### Reference
+- **[SCHEMA.md](./SCHEMA.md)** ← Database reference
+  - 15 table definitions
+  - Relationships & constraints
+  - Row-level security
+  - Indexes for performance
 
-### For Project Overview
-- **[CLAUDE.md](./CLAUDE.md)** ← Tech stack & structure
-  - Technology choices
-  - Brand colors
-  - Project structure
+- **[CLAUDE.md](./CLAUDE.md)** ← Project overview
+  - Technology stack
+  - Brand colors & fonts
+  - Module architecture
   - Dependencies
 
 ## 🚀 Quick Start
