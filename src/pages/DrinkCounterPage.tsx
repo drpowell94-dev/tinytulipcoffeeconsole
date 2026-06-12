@@ -19,6 +19,8 @@ import {
 } from "@/lib/drinkStore";
 import { scheduleSync, archiveSessionRemote } from "@/services/drinkSync";
 import { isSupabaseEnabled } from "@/services/supabase";
+import { savePost } from "@/lib/contentStore";
+import { generateEventRecap } from "@/lib/blogWriter";
 import { TapButton } from "@/components/drinks/TapButton";
 import { OrderLog } from "@/components/drinks/OrderLog";
 import { formatCurrency } from "@/lib/utils";
@@ -46,7 +48,7 @@ export default function DrinkCounterPage() {
 
     if (preOrders > 0 && total >= preOrders && !celebrated) {
       setCelebrated(true);
-      toast.success("🎉🌷 All pre-orders fulfilled! Amazing work!", { duration: 5000 });
+      toast.success("All pre-orders fulfilled — amazing work!", { duration: 5000 });
       const end = Date.now() + 1500;
       const fire = () => {
         confetti({
@@ -70,7 +72,7 @@ export default function DrinkCounterPage() {
     if (!event) return;
     const summary = generateSummary(event.name, preOrders, orders);
     navigator.clipboard.writeText(summary).then(() => {
-      toast.success("Summary copied to clipboard! 🌷");
+      toast.success("Summary copied to clipboard");
     });
     const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     const subject = encodeURIComponent(`${event.name}, ${today}`);
@@ -92,7 +94,18 @@ export default function DrinkCounterPage() {
         productCounts: saved.productCounts,
       });
       updateEvent(event.id, { status: "completed" });
-      toast.success(`Session saved — ${saved.totalDrinks} drinks, ${formatCurrency(saved.totalRevenue)} 📚`);
+      const recap = generateEventRecap(saved);
+      savePost({
+        title: recap.title,
+        template: "community-update",
+        tone: "friendly",
+        keywords: "",
+        body: recap.body,
+        status: "draft",
+      });
+      toast.success(
+        `Session saved — ${saved.totalDrinks} drinks, ${formatCurrency(saved.totalRevenue)}. Recap draft is waiting in Content.`
+      );
     }
     clearSession(event.id);
     setOrders([]);
@@ -103,7 +116,7 @@ export default function DrinkCounterPage() {
   const handleReset = () => {
     if (orders.length > 0 && event) {
       archiveSession(event.id, event.name, preOrders, orders);
-      toast.success("Previous counts saved to history 📚");
+      toast.success("Previous counts saved to history");
     }
     clearSession(eventId);
     setOrders([]);

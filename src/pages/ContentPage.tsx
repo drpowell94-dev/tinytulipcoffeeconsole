@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Save, Globe } from "lucide-react";
+import { Trash2, Save, Globe, Sparkles, PenLine } from "lucide-react";
 import { toast } from "sonner";
 import {
   BLOG_TEMPLATES,
@@ -12,6 +12,7 @@ import {
   type BlogTone,
   type WebsiteSettings,
 } from "@/lib/contentStore";
+import { generateBlogDraft } from "@/lib/blogWriter";
 
 type Tab = "blog" | "website";
 
@@ -31,8 +32,12 @@ export default function ContentPage() {
       </div>
 
       <div className="flex gap-2">
-        <TabButton active={tab === "blog"} onClick={() => setTab("blog")}>✍️ Blog</TabButton>
-        <TabButton active={tab === "website"} onClick={() => setTab("website")}>🌐 Website</TabButton>
+        <TabButton active={tab === "blog"} onClick={() => setTab("blog")}>
+          <PenLine size={15} strokeWidth={1.75} /> Blog
+        </TabButton>
+        <TabButton active={tab === "website"} onClick={() => setTab("website")}>
+          <Globe size={15} strokeWidth={1.75} /> Website
+        </TabButton>
       </div>
 
       {tab === "blog" ? <BlogGenerator /> : <WebsiteUpdater />}
@@ -44,8 +49,8 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
   return (
     <button
       onClick={onClick}
-      className={`rounded-lg px-4 py-2.5 font-body font-semibold text-sm transition-colors ${
-        active ? "bg-accent text-accent-foreground" : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
+      className={`flex items-center gap-2 rounded-lg px-4 py-2.5 font-body font-semibold text-sm transition-colors ${
+        active ? "bg-primary text-primary-foreground" : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
       }`}
     >
       {children}
@@ -83,6 +88,13 @@ function BlogGenerator() {
     }
   };
 
+  const handleGenerate = () => {
+    const draft = generateBlogDraft(template, tone, keywords);
+    if (!title.trim()) setTitle(draft.title);
+    setBody(draft.body);
+    toast.success("Draft written — give it your voice and publish");
+  };
+
   const handlePublish = () => {
     if (!title.trim()) {
       toast.error("Add a title first");
@@ -91,7 +103,7 @@ function BlogGenerator() {
     const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "published" });
     setPosts(next);
     resetForm();
-    toast.success("Post published! 🌷");
+    toast.success("Post published!");
   };
 
   const resetForm = () => {
@@ -144,10 +156,16 @@ function BlogGenerator() {
           value={body}
           onChange={e => setBody(e.target.value)}
         />
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleGenerate}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Sparkles size={16} strokeWidth={1.75} /> Generate draft
+          </button>
           <button
             onClick={handlePublish}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
@@ -159,7 +177,7 @@ function BlogGenerator() {
 
       <div className="rounded-lg bg-muted/20 p-5 h-fit">
         <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-4">
-          📚 Posts ({posts.length})
+          Posts ({posts.length})
         </p>
         {posts.length === 0 ? (
           <p className="text-sm font-body text-muted-foreground">None yet</p>
@@ -170,7 +188,10 @@ function BlogGenerator() {
                 <button onClick={() => handleEdit(post)} className="text-left min-w-0 flex-1">
                   <p className="font-body font-semibold text-sm truncate">{post.title}</p>
                   <p className="text-[10px] font-body text-muted-foreground mt-0.5">
-                    {post.status === "published" ? "✅" : "📝"} {new Date(post.updatedAt).toLocaleDateString()}
+                    <span className={post.status === "published" ? "text-accent font-semibold" : ""}>
+                      {post.status === "published" ? "Published" : "Draft"}
+                    </span>{" "}
+                    · {new Date(post.updatedAt).toLocaleDateString()}
                   </p>
                 </button>
                 <button
@@ -194,14 +215,14 @@ function WebsiteUpdater() {
 
   const handleSave = () => {
     saveSiteSettings(settings);
-    toast.success("Website settings saved! 🌐");
+    toast.success("Website settings saved");
   };
 
   return (
     <div className="rounded-lg bg-muted/20 p-6 space-y-6 max-w-2xl">
       <div>
         <label className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-          🕐 Operating Hours
+          Operating Hours
         </label>
         <textarea
           className={input}
@@ -212,7 +233,7 @@ function WebsiteUpdater() {
       </div>
       <div>
         <label className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
-          🍂 Seasonal Menu
+          Seasonal Menu
         </label>
         <textarea
           className={input}
@@ -224,7 +245,7 @@ function WebsiteUpdater() {
       </div>
       <div>
         <label className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-3 block">
-          🚨 Alert Banner
+          Alert Banner
         </label>
         <input
           className={input}

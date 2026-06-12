@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Trash2, Printer } from "lucide-react";
+import { Trash2, Printer, ClipboardList } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadChecklists,
@@ -40,7 +40,7 @@ export default function LogisticsPage() {
 
       {lists.length === 0 ? (
         <div className="rounded-lg bg-muted/20 p-12 text-center">
-          <span className="text-4xl block mb-3">📋</span>
+          <ClipboardList size={40} strokeWidth={1.25} className="mx-auto mb-3 text-muted-foreground" />
           <p className="font-body text-muted-foreground">
             No checklists yet. Create an event and its packing list appears here.
           </p>

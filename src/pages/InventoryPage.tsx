@@ -120,7 +120,11 @@ export default function InventoryPage() {
               <div className="flex-1 min-w-0">
                 <p className={cn("font-body font-semibold text-base", isLow ? "text-destructive" : "text-foreground")}>
                   {item.name}
-                  {isLow && <span className="ml-2 text-[10px] font-bold uppercase tracking-wide">🔴</span>}
+                  {isLow && (
+                    <span className="ml-2 align-middle inline-block rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
+                      Low
+                    </span>
+                  )}
                 </p>
                 <p className="text-xs font-body text-muted-foreground mt-1">
                   Reorder at {item.reorderLevel} {item.unit}

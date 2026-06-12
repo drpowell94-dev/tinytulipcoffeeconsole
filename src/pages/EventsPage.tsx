@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadEvents,
@@ -13,7 +13,10 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { createChecklistForEvent } from "@/lib/checklistStore";
-import { loadHistory, deleteFromHistory, getDrink, type SavedSession } from "@/lib/drinkStore";
+import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
+import { savePost } from "@/lib/contentStore";
+import { generateEventRecap } from "@/lib/blogWriter";
+import { DrinkIcon, TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn, formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 
 const STATUS_STYLES: Record<EventStatus, string> = {
@@ -65,7 +68,7 @@ export default function EventsPage() {
     setEvents(loadEvents());
     setForm(EMPTY_FORM);
     setShowForm(false);
-    toast.success(`"${event.name}" created — packing checklist auto-generated 🌷`);
+    toast.success(`"${event.name}" created — packing checklist auto-generated`);
   };
 
   const handleDelete = (event: TulipEvent) => {
@@ -182,7 +185,7 @@ export default function EventsPage() {
       {/* Event list */}
       {events.length === 0 && !showForm ? (
         <div className="rounded-lg bg-muted/20 p-12 text-center">
-          <span className="text-4xl block mb-3">🌷</span>
+          <TulipLogo size={44} className="mx-auto mb-3" />
           <p className="font-body text-muted-foreground">
             No events yet — create your first pop-up!
           </p>
@@ -265,19 +268,43 @@ export default function EventsPage() {
                         {new Date(s.date).toLocaleDateString()} · {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
                         {s.extraSales > 0 && ` · +${formatCurrency(s.extraSales)}`}
                       </p>
-                      <p className="text-xs font-body text-muted-foreground mt-1">
-                        {Object.entries(s.productCounts)
-                          .map(([id, count]) => `${getDrink(id)?.emoji ?? ""}${count}`)
-                          .join(" ")}
-                      </p>
+                      <div className="flex items-center gap-3 mt-2">
+                        {Object.entries(s.productCounts).map(([id, count]) => (
+                          <span key={id} className="flex items-center gap-1 text-xs font-body text-muted-foreground">
+                            <DrinkIcon id={id} size={18} className="text-muted-foreground" />
+                            {count}
+                          </span>
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      onClick={() => setHistory(deleteFromHistory(s.id))}
-                      className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
-                      aria-label="Delete session"
-                    >
-                      <Trash2 size={14} strokeWidth={1.5} />
-                    </button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => {
+                          const recap = generateEventRecap(s);
+                          savePost({
+                            title: recap.title,
+                            template: "community-update",
+                            tone: "friendly",
+                            keywords: "",
+                            body: recap.body,
+                            status: "draft",
+                          });
+                          toast.success("Recap draft created — find it in Content");
+                        }}
+                        className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-colors"
+                        aria-label="Draft a recap post"
+                        title="Draft recap post"
+                      >
+                        <Sparkles size={15} strokeWidth={1.75} />
+                      </button>
+                      <button
+                        onClick={() => setHistory(deleteFromHistory(s.id))}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                        aria-label="Delete session"
+                      >
+                        <Trash2 size={14} strokeWidth={1.5} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))

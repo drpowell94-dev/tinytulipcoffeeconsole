@@ -1,5 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, CalendarDays, FileText, ClipboardCheck, Package } from "lucide-react";
+import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -25,7 +26,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-background min-h-screen sticky top-0">
         <div className="px-6 py-8">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">🌷</span>
+            <TulipLogo size={36} />
             <div>
               <h1 className="font-display text-xl leading-tight text-foreground">Tiny Tulip</h1>
               <p className="text-xs text-muted-foreground font-body mt-0.5">Coffee Console</p>
@@ -41,7 +42,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                 cn(
                   "flex items-center gap-3 px-4 py-3 rounded-lg font-body font-semibold text-sm transition-all duration-200",
                   isActive
-                    ? "bg-accent text-accent-foreground hover-scale"
+                    ? "bg-primary text-primary-foreground hover-scale"
                     : "text-foreground hover:bg-muted/30 hover-scale"
                 )
               }
@@ -60,7 +61,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
         <header className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
-          <span className="text-2xl">🌷</span>
+          <TulipLogo size={28} />
           <h1 className="font-display text-lg">Tiny Tulip</h1>
         </header>
 
