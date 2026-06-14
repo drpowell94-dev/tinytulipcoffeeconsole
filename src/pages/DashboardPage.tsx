@@ -6,6 +6,7 @@ import { lowStockItems } from "@/lib/inventoryStore";
 import { loadHistory } from "@/lib/drinkStore";
 import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
+import ConversionFunnelWidget from "@/components/dashboard/ConversionFunnelWidget";
 
 export default function DashboardPage() {
   const upcoming = upcomingEvents(7);
@@ -124,6 +125,9 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
+
+      {/* Conversion Funnel Widget */}
+      <ConversionFunnelWidget userId="default-user" />
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (

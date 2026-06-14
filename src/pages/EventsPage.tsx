@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown } from "lucide-react";
+import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
   loadEvents,
@@ -318,6 +319,9 @@ export default function EventsPage() {
           </button>
         </div>
       </div>
+
+      {/* Lead response time alert */}
+      <LeadResponseAlert userId="default-user" />
 
       {/* Quick leads section */}
       {pendingLeads.length > 0 && (

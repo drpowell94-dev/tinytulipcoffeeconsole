@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X } from "lucide-react";
+import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X, Mail } from "lucide-react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn } from "@/lib/utils";
 
@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
   { to: "/logistics", label: "Logistics", icon: ClipboardCheck },
+  { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];
 
