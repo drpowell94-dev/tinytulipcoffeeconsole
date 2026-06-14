@@ -184,7 +184,7 @@ export default function EventsPage() {
                   className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
                 >
                   <Coffee size={16} strokeWidth={1.5} />
-                  <span className="hidden sm:inline">Counter</span>
+                  <span>Counter</span>
                 </Link>
                 <button
                   onClick={() => handleDelete(event)}
@@ -270,30 +270,32 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">Events</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">Events</h1>
           <p className="text-sm text-muted-foreground font-body mt-1">
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Download size={16} strokeWidth={2} /> Import from Wix
+            <Download size={16} strokeWidth={2} />
+            <span className="sm:hidden">Import</span>
+            <span className="hidden sm:inline">Import from Wix</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
-            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
             <Plus size={16} strokeWidth={2} /> Add Lead
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
             <Plus size={16} strokeWidth={2} /> New Event
           </button>
