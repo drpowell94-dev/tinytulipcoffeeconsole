@@ -125,7 +125,7 @@ export default function EventsPage() {
     toast(`Declined lead: "${lead.name}"`);
   };
 
-  const pendingLeads = events.filter(e => e.status === "inquiry" && e.notes?.includes("lead"));
+  const pendingLeads = events.filter(e => e.status === "inquiry");
 
   const renderEvent = (event: TulipEvent, showLogistics = false) => {
     const days = daysUntil(event.dateStart);
@@ -138,7 +138,7 @@ export default function EventsPage() {
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
               <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
-                {event.status === "inquiry" && event.notes?.includes("lead") ? "New Lead" : STATUS_LABELS[event.status]}
+                {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
             </div>
             <p className="text-xs text-muted-foreground font-body space-y-1">
@@ -156,7 +156,7 @@ export default function EventsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            {event.status === "inquiry" && event.notes?.includes("lead") ? (
+            {event.status === "inquiry" ? (
               <>
                 <button
                   onClick={() => handleConvertLead(event)}
