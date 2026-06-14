@@ -144,6 +144,7 @@ export default function EventsPage() {
       eventType: "popup",
       dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       location: "TBD",
+      preOrders: 0,
       status: "inquiry",
       depositStatus: "pending",
       contactPhone: quickLead.phone.trim() || undefined,
