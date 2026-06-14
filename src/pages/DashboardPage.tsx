@@ -14,7 +14,12 @@ export default function DashboardPage() {
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
 
   useEffect(() => {
-    generateInsights().then(data => setInsights(data || []));
+    generateInsights()
+      .then(data => setInsights(data || []))
+      .catch(err => {
+        console.error("Failed to generate insights:", err);
+        setInsights([]);
+      });
   }, []);
 
   const monthStart = new Date();

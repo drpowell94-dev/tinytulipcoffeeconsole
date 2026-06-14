@@ -58,10 +58,19 @@ export default function ContentPage() {
           <button
             onClick={() => {
               const authUrl = generateInstagramAuthUrl();
-              if (authUrl && authUrl.includes("instagram.com")) {
-                window.location.href = authUrl;
-              } else {
-                toast.info("Instagram integration setup required. Check environment variables.");
+              if (!authUrl) {
+                toast.error("Instagram credentials not configured. Add VITE_INSTAGRAM_CLIENT_ID to .env");
+                return;
+              }
+              try {
+                const url = new URL(authUrl);
+                if (url.hostname === "graph.instagram.com" && url.pathname.includes("oauth")) {
+                  window.location.href = authUrl;
+                } else {
+                  toast.error("Invalid Instagram authorization URL");
+                }
+              } catch {
+                toast.error("Invalid Instagram authorization URL");
               }
             }}
             className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0 whitespace-nowrap"
@@ -155,9 +164,12 @@ function BlogGenerator() {
           setShowGenerated(true);
           toast.success("Content variants generated!");
         }
+      } else {
+        console.warn("Content generation failed:", response.status);
       }
     } catch (err) {
-      console.warn("Content generation unavailable:", err);
+      console.error("Content generation error:", err);
+      toast.error("Failed to generate content variants. Try again later.");
     } finally {
       setGenerating(false);
     }

@@ -73,6 +73,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={sidebarOpen}
             className="p-2 rounded-lg hover:bg-muted/30 transition-colors"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}

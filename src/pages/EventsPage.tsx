@@ -50,6 +50,7 @@ export default function EventsPage() {
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
+  const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [tab, setTab] = useState<"upcoming" | "past" | "leads">("upcoming");
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
@@ -225,18 +226,23 @@ export default function EventsPage() {
         {showLogistics && event.guestCount && (
           <button
             onClick={() => {
-              if (!expandedLogistics[event.id]) {
-                getPredictedNeeds(event).then(needs => {
-                  setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
-                });
-              } else {
+              if (expandedLogistics[event.id]) {
                 setExpandedLogistics(prev => {
                   const next = { ...prev };
                   delete next[event.id];
                   return next;
                 });
+              } else if (!loadingLogistics[event.id]) {
+                setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
+                getPredictedNeeds(event)
+                  .then(needs => {
+                    setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
+                  })
+                  .catch(() => toast.error("Failed to load predicted needs"))
+                  .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
               }
             }}
+            disabled={loadingLogistics[event.id]}
             className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-3.5 flex items-center justify-between gap-2 hover:bg-accent/12 transition-colors group"
           >
             <span className="flex items-center gap-2 text-sm font-body font-semibold text-accent">
@@ -459,7 +465,10 @@ export default function EventsPage() {
               min={0}
               placeholder="Pre-orders (drinks)"
               value={form.preOrders || ""}
-              onChange={e => setForm({ ...form, preOrders: parseInt(e.target.value) || 0 })}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}
@@ -467,7 +476,10 @@ export default function EventsPage() {
               min={0}
               placeholder="Estimated revenue ($)"
               value={form.estimatedRevenue || ""}
-              onChange={e => setForm({ ...form, estimatedRevenue: parseInt(e.target.value) || 0 })}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, estimatedRevenue: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}
