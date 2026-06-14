@@ -486,8 +486,8 @@ export default function EventsPage() {
         {/* Main event list */}
         <div className="space-y-6">
           {/* Filter buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <Filter size={16} className="text-muted-foreground" />
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-4 sm:-mx-0 px-4 sm:px-0">
+            <Filter size={16} className="text-muted-foreground shrink-0" />
             {[
               { id: "all" as const, label: "All", count: events.length },
               { id: "upcoming" as const, label: "Upcoming", count: upcoming.length },
@@ -497,7 +497,7 @@ export default function EventsPage() {
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-body font-semibold transition-colors ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-body font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   filter === f.id
                     ? "bg-accent text-accent-foreground"
                     : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
