@@ -48,7 +48,7 @@ export default function DashboardPage() {
 
       {/* Quick stats — whitespace-based layout */}
       <div className="space-y-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           <StatCard icon={<CalendarDays size={20} />} label="Events This Week" value={String(upcoming.length)} />
           <StatCard icon={<Coffee size={20} />} label="Drinks This Month" value={String(monthDrinks)} />
           <StatCard icon={<TrendingUp size={20} />} label="Revenue This Month" value={formatCurrency(monthRevenue)} />
@@ -62,8 +62,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Upcoming events */}
-      <section className="space-y-4">
-        <div className="flex items-baseline justify-between">
+      <section className="space-y-6">
+        <div className="flex items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl text-foreground">Upcoming Events</h2>
           <Link to="/events" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
             View all →
@@ -131,7 +131,7 @@ export default function DashboardPage() {
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (
-        <section className="space-y-4 p-6 rounded-lg bg-destructive/5">
+        <section className="space-y-4 p-5 rounded-lg bg-destructive/5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-lg text-destructive">Low Stock</h2>
             <Link to="/inventory" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
@@ -152,7 +152,7 @@ export default function DashboardPage() {
       )}
 
       {/* Quick actions */}
-      <section className="space-y-4">
+      <section className="space-y-6">
         <h2 className="font-display text-lg text-foreground">Quick Actions</h2>
         <div className="grid grid-cols-3 gap-4">
           <QuickAction to="/events" icon={<Plus size={18} />} label="New Event" />
@@ -166,12 +166,12 @@ export default function DashboardPage() {
 
 function StatCard({ icon, label, value, alert }: { icon: React.ReactNode; label: string; value: string; alert?: boolean }) {
   return (
-    <div className={`rounded-lg p-5 transition-colors ${alert ? "bg-destructive/8" : "bg-muted/20"}`}>
+    <div className={`rounded-lg p-5 transition-colors space-y-2 ${alert ? "bg-destructive/8" : "bg-muted/20"}`}>
       <div className={alert ? "text-destructive" : "text-foreground/60"}>
         {icon}
       </div>
-      <p className="font-display text-3xl mt-3 text-foreground">{value}</p>
-      <p className="text-xs font-body text-muted-foreground mt-1">{label}</p>
+      <p className="font-display text-3xl text-foreground">{value}</p>
+      <p className="text-xs font-body text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -207,7 +207,7 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-3 rounded-lg bg-muted/20 p-5 hover:bg-muted/35 transition-colors font-body font-semibold text-xs text-center text-foreground hover-scale"
+      className="flex flex-col items-center gap-2 rounded-lg bg-muted/20 p-5 hover:bg-muted/35 transition-colors font-body font-semibold text-xs text-center text-foreground hover-scale"
     >
       <div className="text-accent">{icon}</div>
       {label}

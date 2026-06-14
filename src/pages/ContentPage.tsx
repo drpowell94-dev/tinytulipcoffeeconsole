@@ -32,7 +32,7 @@ export default function ContentPage() {
         </p>
       </div>
 
-      <div className="flex gap-2 flex-wrap">
+      <div className="flex gap-2 flex-wrap -mt-6">
         <TabButton active={tab === "blog"} onClick={() => setTab("blog")}>
           <PenLine size={15} strokeWidth={1.75} /> Blog
         </TabButton>
@@ -44,7 +44,7 @@ export default function ContentPage() {
       {tab === "blog" ? <BlogGenerator /> : <WebsiteUpdater />}
 
       {/* Instagram integration banner */}
-      <div className="rounded-lg border border-accent/30 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-6">
+      <div className="rounded-lg border border-accent/30 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1">
             <Instagram size={20} className="text-accent mt-1 shrink-0" strokeWidth={1.5} />
@@ -205,8 +205,8 @@ function BlogGenerator() {
   };
 
   return (
-    <div className="grid lg:grid-cols-[1fr_300px] gap-6">
-      <div className="rounded-lg bg-muted/20 p-6 space-y-4">
+    <div className="grid lg:grid-cols-[1fr_280px] gap-6">
+      <div className="rounded-lg bg-muted/20 p-5 space-y-4">
         <div className="grid sm:grid-cols-2 gap-4">
           <select className={input} value={template} onChange={e => applyTemplate(e.target.value)}>
             {BLOG_TEMPLATES.map(t => (
@@ -240,7 +240,7 @@ function BlogGenerator() {
         />
 
         {/* Generated content variants - prominent section */}
-        <div className="rounded-lg bg-gradient-to-br from-accent/12 to-accent/8 border border-accent/25 p-5 space-y-3">
+        <div className="rounded-lg bg-gradient-to-br from-accent/12 to-accent/8 border border-accent/25 p-4 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Sparkles size={18} className="text-accent" strokeWidth={2} />
@@ -264,22 +264,22 @@ function BlogGenerator() {
             showGenerated && (
               <div className="space-y-3 mt-3 pt-3 border-t border-accent/20">
                 {generatedContent.socialCaption && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent">
                       <Share2 size={14} /> Social Caption
                     </div>
-                    <p className="text-xs font-body text-foreground bg-background/70 p-3 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
+                    <p className="text-xs font-body text-foreground bg-background/70 p-2.5 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
                       {generatedContent.socialCaption}
                     </p>
                   </div>
                 )}
 
                 {generatedContent.emailExcerpt && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent">
                       <Mail size={14} /> Email Excerpt
                     </div>
-                    <p className="text-xs font-body text-foreground bg-background/70 p-3 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
+                    <p className="text-xs font-body text-foreground bg-background/70 p-2.5 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
                       {generatedContent.emailExcerpt}
                     </p>
                   </div>
@@ -340,8 +340,8 @@ function BlogGenerator() {
         </div>
       </div>
 
-      <div className="rounded-lg bg-muted/20 p-5 h-fit">
-        <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-4">
+      <div className="rounded-lg bg-muted/20 p-4 h-fit space-y-3">
+        <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
           Posts ({posts.length})
         </p>
         {posts.length === 0 ? (
@@ -384,7 +384,7 @@ function WebsiteUpdater() {
   };
 
   return (
-    <div className="rounded-lg bg-muted/20 p-6 space-y-6 max-w-2xl">
+    <div className="rounded-lg bg-muted/20 p-5 space-y-6 max-w-2xl">
       <div>
         <label className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-2 block">
           Operating Hours

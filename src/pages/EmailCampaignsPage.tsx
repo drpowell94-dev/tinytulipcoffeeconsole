@@ -68,11 +68,11 @@ export default function EmailCampaignsPage() {
       </div>
 
       {/* Available variables info */}
-      <div className="rounded-lg bg-accent/8 border border-accent/20 p-4">
+      <div className="rounded-lg bg-accent/8 border border-accent/20 p-5">
         <p className="text-sm font-body font-semibold text-foreground mb-2">
           📧 Available Template Variables:
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs font-mono text-muted-foreground">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs font-mono text-muted-foreground">
           <span>{'{{clientName}}'}</span>
           <span>{'{{eventName}}'}</span>
           <span>{'{{eventType}}'}</span>
@@ -86,7 +86,7 @@ export default function EmailCampaignsPage() {
       </div>
 
       {/* Campaign list */}
-      <div className="space-y-3">
+      <div className="space-y-4">
         {campaigns.map(campaign => (
           <div
             key={campaign.id}
@@ -94,7 +94,7 @@ export default function EmailCampaignsPage() {
           >
             <button
               onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
-              className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-3 flex-1 text-left">
                 <Mail size={18} className="text-accent shrink-0" />
@@ -128,7 +128,7 @@ export default function EmailCampaignsPage() {
             </button>
 
             {expandedId === campaign.id && (
-              <div className="border-t border-border p-4 space-y-4 bg-background/50">
+              <div className="border-t border-border p-5 space-y-4 bg-background/50">
                 {editingId === campaign.id && editingCampaign ? (
                   // Edit mode
                   <div className="space-y-4">
@@ -203,7 +203,7 @@ export default function EmailCampaignsPage() {
                       <p className="text-xs font-body font-semibold text-muted-foreground mb-1">
                         Subject:
                       </p>
-                      <p className="text-sm font-body text-foreground bg-background/50 p-2 rounded">
+                      <p className="text-sm font-body text-foreground bg-background/50 p-3 rounded">
                         {campaign.subject}
                       </p>
                     </div>
@@ -212,7 +212,7 @@ export default function EmailCampaignsPage() {
                       <p className="text-xs font-body font-semibold text-muted-foreground mb-1">
                         Body:
                       </p>
-                      <p className="text-sm font-body text-foreground bg-background/50 p-2 rounded whitespace-pre-wrap">
+                      <p className="text-sm font-body text-foreground bg-background/50 p-3 rounded whitespace-pre-wrap">
                         {campaign.body}
                       </p>
                     </div>
@@ -247,7 +247,7 @@ export default function EmailCampaignsPage() {
       )}
 
       {/* Info section */}
-      <div className="rounded-lg border border-accent/20 bg-accent/8 p-6 space-y-3">
+      <div className="rounded-lg border border-accent/20 bg-accent/8 p-5 space-y-3">
         <h3 className="font-body font-semibold text-foreground">How Email Campaigns Work</h3>
         <ul className="space-y-2 text-sm font-body text-foreground">
           <li className="flex gap-2">

@@ -139,12 +139,12 @@ export default function DrinkCounterPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col max-w-xl mx-auto">
       {/* Subtle top bar */}
-      <div className="bg-gradient-to-b from-accent/5 to-transparent text-center text-xs font-body text-muted-foreground py-2 px-4">
+      <div className="bg-gradient-to-b from-accent/5 to-transparent text-center text-xs font-body text-muted-foreground py-2 px-4 sm:px-6">
         Purely a pop-up. Where the people are.
       </div>
 
       {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-6 pb-4 gap-3">
+      <header className="flex items-center justify-between px-4 sm:px-6 pt-6 pb-4 gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link
             to="/events"
@@ -161,11 +161,12 @@ export default function DrinkCounterPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={handleReset}
             className="p-2 rounded-lg hover:bg-muted/30 text-foreground/60 transition-colors"
             title="Reset counts"
+            aria-label="Reset counts"
           >
             <RotateCcw size={18} strokeWidth={1.5} />
           </button>
@@ -173,6 +174,7 @@ export default function DrinkCounterPage() {
             onClick={handleExport}
             className="p-2 rounded-lg bg-accent/10 hover:bg-accent/20 text-accent transition-colors"
             title="Export session"
+            aria-label="Export session"
           >
             <ClipboardCopy size={18} strokeWidth={1.5} />
           </button>
@@ -180,9 +182,9 @@ export default function DrinkCounterPage() {
       </header>
 
       {/* Session stats - clean elevation design */}
-      <div className="mx-4 mb-6 rounded-lg bg-muted/15 p-6">
-        <div className="space-y-6">
-          <div className="flex items-baseline justify-between">
+      <div className="mx-4 mb-6 rounded-lg bg-muted/15 p-5">
+        <div className="space-y-5">
+          <div className="flex items-baseline justify-between gap-3">
             <div>
               <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">
                 Total
@@ -225,7 +227,7 @@ export default function DrinkCounterPage() {
       </div>
 
       {/* Order log */}
-      <div className="px-4 flex-1">
+      <div className="px-4 sm:px-6 flex-1">
         <button
           onClick={() => setShowLog(!showLog)}
           className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors mb-3"
@@ -236,7 +238,7 @@ export default function DrinkCounterPage() {
       </div>
 
       {/* End session */}
-      <div className="p-4">
+      <div className="p-5">
         <button
           onClick={handleEndSession}
           className="w-full flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground font-body font-semibold py-4 hover-scale active:scale-95 transition-all"

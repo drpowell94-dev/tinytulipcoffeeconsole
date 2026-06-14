@@ -29,7 +29,7 @@ export default function LeadResponseAlert({ userId }: { userId?: string }) {
   if (alerts.length === 0) return null;
 
   return (
-    <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 p-4 space-y-2">
+    <div className="rounded-lg border-l-4 border-destructive bg-destructive/10 p-5 space-y-2">
       <div className="flex items-center gap-2">
         <AlertTriangle size={18} className="text-destructive" strokeWidth={2} />
         <h3 className="font-body font-semibold text-foreground">

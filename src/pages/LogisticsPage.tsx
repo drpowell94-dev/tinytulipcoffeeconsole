@@ -46,7 +46,7 @@ export default function LogisticsPage() {
           </p>
         </div>
       ) : (
-        <div className="grid lg:grid-cols-[240px_1fr] gap-6">
+        <div className="grid md:grid-cols-[240px_1fr] gap-6">
           {/* Checklist selector */}
           <div className="space-y-2">
             {lists.map(list => {
@@ -55,7 +55,7 @@ export default function LogisticsPage() {
                 <button
                   key={list.id}
                   onClick={() => setOpenId(list.id)}
-                  className={`w-full text-left rounded-lg p-4 transition-colors ${
+                  className={`w-full text-left rounded-lg p-5 transition-colors ${
                     openId === list.id ? "bg-accent text-accent-foreground" : "bg-muted/20 hover:bg-muted/35 text-foreground"
                   }`}
                 >
@@ -70,7 +70,7 @@ export default function LogisticsPage() {
 
           {/* Active checklist */}
           {open && (
-            <div className="rounded-lg bg-muted/15 p-6">
+            <div className="rounded-lg bg-muted/15 p-5">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="font-display text-2xl text-foreground">{open.eventName}</h2>
                 <div className="flex gap-2">

@@ -163,7 +163,7 @@ export default function EventsPage() {
     return (
       <div key={event.id} className="space-y-3">
         <div
-          className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-start gap-4 hover:bg-muted/30 transition-colors"
+          className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-muted/30 transition-colors"
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">
@@ -244,7 +244,7 @@ export default function EventsPage() {
               }
             }}
             disabled={loadingLogistics[event.id]}
-            className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-3.5 flex items-center justify-between gap-2 hover:bg-accent/12 transition-colors group"
+            className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-5 flex items-center justify-between gap-3 hover:bg-accent/12 transition-colors group"
           >
             <span className="flex items-center gap-2 text-sm font-body font-semibold text-accent">
               <Zap size={14} strokeWidth={2} /> Predicted Supply Needs
@@ -254,7 +254,7 @@ export default function EventsPage() {
         )}
 
         {expandedLogistics[event.id] && (
-          <div className="rounded-lg bg-accent/8 p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-body">
+          <div className="rounded-lg bg-accent/8 p-5 grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-body">
             <div className="space-y-0.5">
               <p className="font-semibold text-accent/70">Cups</p>
               <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedCups}</p>
@@ -303,17 +303,17 @@ export default function EventsPage() {
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
             <Download size={16} strokeWidth={2} /> Import from Wix
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
             <Plus size={16} strokeWidth={2} /> New Event
           </button>
@@ -325,7 +325,7 @@ export default function EventsPage() {
 
       {/* Quick leads section */}
       {pendingLeads.length > 0 && (
-        <section className="rounded-lg border border-accent/20 bg-accent/8 p-6 space-y-4">
+        <section className="rounded-lg border border-accent/20 bg-accent/8 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-display text-lg text-foreground flex items-center gap-2">
@@ -370,7 +370,7 @@ export default function EventsPage() {
 
       {/* Quick lead form */}
       {leadQuickForm && (
-        <div className="rounded-lg bg-accent/8 border border-accent/20 p-4 space-y-3">
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
           <form onSubmit={handleQuickAddLead} className="space-y-3">
             <input
               className={input}
@@ -414,7 +414,7 @@ export default function EventsPage() {
       {pendingLeads.length === 0 && !leadQuickForm && (
         <button
           onClick={() => setLeadQuickForm(true)}
-          className="w-full rounded-lg border-2 border-dashed border-accent/30 p-4 text-center hover:border-accent/50 hover:bg-accent/5 transition-all"
+          className="w-full rounded-lg border-2 border-dashed border-accent/30 p-5 text-center hover:border-accent/50 hover:bg-accent/5 transition-all"
         >
           <p className="font-body font-semibold text-sm text-foreground">+ Add a New Lead</p>
           <p className="text-xs text-muted-foreground mt-1">Manually log incoming booking requests</p>
@@ -423,7 +423,7 @@ export default function EventsPage() {
 
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-6 space-y-4">
+        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
               className={input}
@@ -590,7 +590,7 @@ export default function EventsPage() {
       </div>
 
       {/* Session history */}
-      <section className="space-y-3">
+      <section className="space-y-4">
         <button
           onClick={() => setShowHistory(!showHistory)}
           className="w-full flex items-center justify-between text-left font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
@@ -601,7 +601,7 @@ export default function EventsPage() {
           <span className="text-sm">{showHistory ? "▾" : "▸"}</span>
         </button>
         {showHistory && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {history.length === 0 ? (
               <p className="text-sm font-body text-muted-foreground py-6 text-center">
                 No saved sessions yet — end a counter session to archive it

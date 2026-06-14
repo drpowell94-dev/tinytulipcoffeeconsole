@@ -20,14 +20,14 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
   if (!funnel) return null;
 
   return (
-    <div className="rounded-lg bg-muted/20 p-6 space-y-6">
+    <div className="rounded-lg bg-muted/20 p-5 space-y-6">
       <div className="flex items-center gap-2">
         <TrendingUp size={20} className="text-accent" strokeWidth={1.75} />
         <h2 className="font-display text-lg text-foreground">Conversion Funnel</h2>
       </div>
 
       {/* Main metrics row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <MetricCard
           icon={<Users size={18} />}
           label="Total Leads"
