@@ -65,8 +65,8 @@ export default function InventoryPage() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleAdd} className="rounded-lg bg-muted/20 p-6 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <form onSubmit={handleAdd} className="rounded-lg bg-muted/20 p-5 space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <input
               className={input}
               placeholder="Item name *"
@@ -106,14 +106,14 @@ export default function InventoryPage() {
         </form>
       )}
 
-      <div className="space-y-3">
+      <div className="space-y-4">
         {items.map(item => {
           const isLow = item.quantity <= item.reorderLevel;
           return (
             <div
               key={item.id}
               className={cn(
-                "rounded-lg p-4 flex items-center gap-4 transition-colors",
+                "rounded-lg p-5 flex items-center gap-4 transition-colors",
                 isLow ? "bg-destructive/8" : "bg-muted/20 hover:bg-muted/35"
               )}
             >

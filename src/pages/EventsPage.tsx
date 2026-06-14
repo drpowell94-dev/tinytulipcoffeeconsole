@@ -1,11 +1,13 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
   loadEvents,
   createEvent,
   deleteEvent,
+  updateEvent,
   EVENT_TYPE_LABELS,
   STATUS_LABELS,
   type TulipEvent,
@@ -13,6 +15,7 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
+import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
 import { savePost } from "@/lib/contentStore";
@@ -37,6 +40,7 @@ const EMPTY_FORM = {
   contactName: "",
   contactPhone: "",
   notes: "",
+  status: "confirmed" as EventStatus,
 };
 
 export default function EventsPage() {
@@ -46,6 +50,10 @@ export default function EventsPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
+  const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
+  const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
+  const [showLeadForm, setShowLeadForm] = useState(false);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -81,17 +89,20 @@ export default function EventsPage() {
       location: form.location.trim() || "TBD",
       preOrders: form.preOrders,
       estimatedRevenue: form.estimatedRevenue || undefined,
-      status: "confirmed",
+      status: form.status,
       depositStatus: "pending",
       contactName: form.contactName.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
-    createChecklistForEvent(event.id, event.name, event.eventType);
+    if (form.status === "confirmed") {
+      createChecklistForEvent(event.id, event.name, event.eventType);
+    }
     setEvents(loadEvents());
     setForm(EMPTY_FORM);
     setShowForm(false);
-    toast.success(`"${event.name}" created — packing checklist auto-generated`);
+    const statusLabel = form.status === "inquiry" ? "lead" : "event";
+    toast.success(`"${event.name}" created as ${statusLabel}${form.status === "confirmed" ? " — packing checklist auto-generated" : ""}`);
   };
 
   const handleDelete = (event: TulipEvent) => {
@@ -110,49 +121,151 @@ export default function EventsPage() {
     .filter(e => daysUntil(e.dateStart) < 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
-  const renderEvent = (event: TulipEvent) => {
+  const handleConvertLead = (lead: TulipEvent) => {
+    updateEvent(lead.id, { status: "confirmed" });
+    setEvents(loadEvents());
+    toast.success(`"${lead.name}" moved to confirmed`);
+  };
+
+  const handleDeclineLead = (lead: TulipEvent) => {
+    handleDelete(lead);
+    toast(`Declined lead: "${lead.name}"`);
+  };
+
+  const pendingLeads = events.filter(e => e.status === "inquiry");
+
+  const renderEvent = (event: TulipEvent, showLogistics = true) => {
     const days = daysUntil(event.dateStart);
     return (
-      <div
-        key={event.id}
-        className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
-            <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
-              {STATUS_LABELS[event.status]}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground font-body space-y-1">
-            <span>{formatDate(event.dateStart)}</span>
-            {days >= 0 && event.status !== "completed" && (
-              <span className="text-accent font-semibold ml-2">
-                {days === 0 ? "Today" : `${days}d away`}
+      <div key={event.id} className="space-y-3">
+        <div
+          className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
+              <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
+                {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
+            </div>
+            <p className="text-xs text-muted-foreground font-body space-y-1">
+              <span>{formatDate(event.dateStart)}</span>
+              {days >= 0 && event.status !== "completed" && (
+                <span className="text-accent font-semibold ml-2">
+                  {days === 0 ? "Today" : `${days}d away`}
+                </span>
+              )}
+              <span className="block">
+                <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
+                {event.guestCount && ` • ${event.guestCount} guests`}
+                {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {event.status === "inquiry" ? (
+              <>
+                <button
+                  onClick={() => handleConvertLead(event)}
+                  className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+                >
+                  <CheckCircle2 size={14} /> Accept
+                </button>
+                <button
+                  onClick={() => handleDeclineLead(event)}
+                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <XCircle size={16} strokeWidth={1.5} />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to={`/events/${event.id}/counter`}
+                  className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                >
+                  <Coffee size={16} strokeWidth={1.5} />
+                  <span className="hidden sm:inline">Counter</span>
+                </Link>
+                <button
+                  onClick={() => handleDelete(event)}
+                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  aria-label={`Delete ${event.name}`}
+                >
+                  <Trash2 size={16} strokeWidth={1.5} />
+                </button>
+              </>
             )}
-            <span className="block">
-              <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
-              {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
-            </span>
-          </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            to={`/events/${event.id}/counter`}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-          >
-            <Coffee size={16} strokeWidth={1.5} />
-            <span className="hidden sm:inline">Counter</span>
-          </Link>
+
+        {/* Predictive logistics section */}
+        {showLogistics && event.guestCount && (
           <button
-            onClick={() => handleDelete(event)}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            aria-label={`Delete ${event.name}`}
+            onClick={() => {
+              if (expandedLogistics[event.id]) {
+                setExpandedLogistics(prev => {
+                  const next = { ...prev };
+                  delete next[event.id];
+                  return next;
+                });
+              } else if (!loadingLogistics[event.id]) {
+                setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
+                getPredictedNeeds(event)
+                  .then(needs => {
+                    setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
+                  })
+                  .catch(() => toast.error("Failed to load predicted needs"))
+                  .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
+              }
+            }}
+            disabled={loadingLogistics[event.id]}
+            className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-5 flex items-center justify-between gap-3 hover:bg-accent/12 transition-colors group"
           >
-            <Trash2 size={16} strokeWidth={1.5} />
+            <span className="flex items-center gap-2 text-sm font-body font-semibold text-accent">
+              <Zap size={14} strokeWidth={2} /> Predicted Supply Needs
+            </span>
+            <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
           </button>
-        </div>
+        )}
+
+        {expandedLogistics[event.id] && (
+          <div className="rounded-lg bg-accent/8 p-5 grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-body">
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Cups</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedCups}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Beans (lbs)</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedBeansLbs}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Milk (L)</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedMilkLiters}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Lids</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedLids}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Napkins</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedNapkins}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Confidence</p>
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
+                expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
+                "bg-muted/30 text-muted-foreground"
+              }`}>
+                {expandedLogistics[event.id].confidence}
+              </span>
+            </div>
+            <p className="col-span-2 sm:col-span-3 text-muted-foreground text-[10px] mt-1">
+              {expandedLogistics[event.id].methodology}
+            </p>
+          </div>
+        )}
       </div>
     );
   };
@@ -166,26 +279,109 @@ export default function EventsPage() {
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
             <Download size={16} strokeWidth={2} /> Import from Wix
           </button>
           <button
-            onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+            onClick={() => setShowLeadForm(!showLeadForm)}
+            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
-            <Plus size={16} strokeWidth={2} /> New
+            <Plus size={16} strokeWidth={2} /> Add Lead
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Plus size={16} strokeWidth={2} /> New Event
           </button>
         </div>
       </div>
 
+      {/* Lead response time alert */}
+      <LeadResponseAlert userId="default-user" />
+
+      {/* Quick lead form - always accessible */}
+      {showLeadForm && (
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
+          <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!form.name.trim()) {
+              toast.error("Lead name is required");
+              return;
+            }
+            const event = createEvent({
+              name: form.name.trim(),
+              eventType: "popup",
+              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              location: form.location.trim() || "TBD",
+              preOrders: 0,
+              status: "inquiry",
+              depositStatus: "pending",
+              contactPhone: form.contactPhone.trim() || undefined,
+              notes: form.notes.trim() || undefined,
+            });
+            setEvents(loadEvents());
+            setForm(EMPTY_FORM);
+            setShowLeadForm(false);
+            toast.success(`Lead "${event.name}" created`);
+          }} className="space-y-3">
+            <input
+              className={input}
+              placeholder="Lead name or company *"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+              autoFocus
+            />
+            <input
+              className={input}
+              placeholder="Phone (optional)"
+              value={form.contactPhone}
+              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Location (optional)"
+              value={form.location}
+              onChange={e => setForm({ ...form, location: e.target.value })}
+            />
+            <textarea
+              className={input}
+              placeholder="Notes (optional)"
+              rows={2}
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+              >
+                Add Lead
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLeadForm(false);
+                  setForm(EMPTY_FORM);
+                }}
+                className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* Create form */}
       {showForm && (
-        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-6 space-y-4">
+        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <input
               className={input}
@@ -202,6 +398,16 @@ export default function EventsPage() {
               {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
+            </select>
+            <select
+              className={input}
+              value={form.status}
+              onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}
+            >
+              <option value="inquiry">📝 Lead (Inquiry)</option>
+              <option value="confirmed">✓ Confirmed</option>
+              <option value="completed">✓✓ Completed</option>
+              <option value="cancelled">✗ Cancelled</option>
             </select>
             <input
               className={input}
@@ -221,7 +427,10 @@ export default function EventsPage() {
               min={0}
               placeholder="Pre-orders (drinks)"
               value={form.preOrders || ""}
-              onChange={e => setForm({ ...form, preOrders: parseInt(e.target.value) || 0 })}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}
@@ -229,7 +438,10 @@ export default function EventsPage() {
               min={0}
               placeholder="Estimated revenue ($)"
               value={form.estimatedRevenue || ""}
-              onChange={e => setForm({ ...form, estimatedRevenue: parseInt(e.target.value) || 0 })}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, estimatedRevenue: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}
@@ -269,106 +481,139 @@ export default function EventsPage() {
         </form>
       )}
 
-      {/* Event list */}
-      {events.length === 0 && !showForm ? (
-        <div className="rounded-lg bg-muted/20 p-12 text-center">
-          <TulipLogo size={44} className="mx-auto mb-3" />
-          <p className="font-body text-muted-foreground">
-            No events yet — create your first pop-up, or tap "Import from Wix"!
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-8">
-          {upcoming.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Upcoming ({upcoming.length})
-              </h2>
-              <div className="space-y-4">{upcoming.map(renderEvent)}</div>
-            </section>
-          )}
-          {past.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Past ({past.length})
-              </h2>
-              <div className="space-y-4">{past.map(renderEvent)}</div>
-            </section>
-          )}
-        </div>
-      )}
+      {/* Event list with session history sidebar */}
+      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        {/* Main event list */}
+        <div className="space-y-6">
+          {/* Filter buttons */}
+          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-4 sm:-mx-0 px-4 sm:px-0">
+            <Filter size={16} className="text-muted-foreground shrink-0" />
+            {[
+              { id: "all" as const, label: "All", count: events.length },
+              { id: "upcoming" as const, label: "Upcoming", count: upcoming.length },
+              { id: "leads" as const, label: "Leads", count: pendingLeads.length },
+              { id: "past" as const, label: "Past", count: past.length },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-body font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                  filter === f.id
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
+                }`}
+              >
+                {f.label} ({f.count})
+              </button>
+            ))}
+          </div>
 
-      {/* Session history */}
-      <section className="space-y-3">
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between text-left font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <History size={14} /> Past Sessions {history.length > 0 && `(${history.length})`}
-          </span>
-          <span className="text-sm">{showHistory ? "▾" : "▸"}</span>
-        </button>
-        {showHistory && (
-          <div className="space-y-2">
-            {history.length === 0 ? (
-              <p className="text-sm font-body text-muted-foreground py-6 text-center">
-                No saved sessions yet — end a counter session to archive it
-              </p>
-            ) : (
-              history.map(s => (
-                <div key={s.id} className="rounded-lg bg-muted/15 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-body font-semibold text-sm text-foreground truncate">{s.eventName}</p>
-                      <p className="text-xs font-body text-muted-foreground mt-1">
-                        {new Date(s.date).toLocaleDateString()} · {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
-                        {s.extraSales > 0 && ` · +${formatCurrency(s.extraSales)}`}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        {Object.entries(s.productCounts).map(([id, count]) => (
-                          <span key={id} className="flex items-center gap-1 text-xs font-body text-muted-foreground">
-                            <DrinkIcon id={id} size={18} className="text-muted-foreground" />
-                            {count}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => {
-                          const recap = generateEventRecap(s);
-                          savePost({
-                            title: recap.title,
-                            template: "community-update",
-                            tone: "friendly",
-                            keywords: "",
-                            body: recap.body,
-                            status: "draft",
-                          });
-                          toast.success("Recap draft created — find it in Content");
-                        }}
-                        className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-colors"
-                        aria-label="Draft a recap post"
-                        title="Draft recap post"
-                      >
-                        <Sparkles size={15} strokeWidth={1.75} />
-                      </button>
-                      <button
-                        onClick={() => setHistory(deleteFromHistory(s.id))}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        aria-label="Delete session"
-                      >
-                        <Trash2 size={14} strokeWidth={1.5} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
+          {/* Unified event+lead list */}
+          <div className="space-y-4">
+            {filter === "all" && events.length > 0 && (
+              <div className="space-y-4">
+                {events
+                  .sort((a, b) => {
+                    // Sort by: leads first, then upcoming, then past
+                    const aIsLead = a.status === "inquiry" ? 0 : 1;
+                    const bIsLead = b.status === "inquiry" ? 0 : 1;
+                    if (aIsLead !== bIsLead) return aIsLead - bIsLead;
+                    return a.dateStart.localeCompare(b.dateStart);
+                  })
+                  .map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "upcoming" && upcoming.length > 0 && (
+              <div className="space-y-4">
+                {upcoming.map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "leads" && pendingLeads.length > 0 && (
+              <div className="space-y-4">
+                {pendingLeads.map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "past" && past.length > 0 && (
+              <div className="space-y-4">
+                {past.map(e => renderEvent(e, false))}
+              </div>
+            )}
+
+            {((filter === "all" && events.length === 0) ||
+              (filter === "upcoming" && upcoming.length === 0) ||
+              (filter === "leads" && pendingLeads.length === 0) ||
+              (filter === "past" && past.length === 0)) && (
+              <div className="rounded-lg bg-muted/20 p-12 text-center">
+                <TulipLogo size={44} className="mx-auto mb-3" />
+                <p className="font-body text-muted-foreground">
+                  {filter === "all" && "No events yet — create one or tap 'Import from Wix'!"}
+                  {filter === "upcoming" && "No upcoming events — create one or tap 'Import from Wix'!"}
+                  {filter === "leads" && "No pending leads. When your booking form receives requests, they'll appear here."}
+                  {filter === "past" && "No past events yet."}
+                </p>
+              </div>
             )}
           </div>
-        )}
-      </section>
+        </div>
+
+        {/* Session history sidebar */}
+        <div className="rounded-lg bg-muted/20 p-5 h-fit space-y-3">
+          <div className="flex items-center gap-2">
+            <History size={16} className="text-muted-foreground" />
+            <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
+              Past Sessions ({history.length})
+            </p>
+          </div>
+          {history.length === 0 ? (
+            <p className="text-sm font-body text-muted-foreground">None yet</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {history.map(s => (
+                <div key={s.id} className="rounded-lg bg-background/50 p-3 border border-border">
+                  <p className="font-body font-semibold text-xs text-foreground truncate">{s.eventName}</p>
+                  <p className="text-[10px] font-body text-muted-foreground mt-1">
+                    {new Date(s.date).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs font-body text-foreground font-bold mt-1">
+                    {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <button
+                      onClick={() => {
+                        const recap = generateEventRecap(s);
+                        savePost({
+                          title: recap.title,
+                          template: "community-update",
+                          tone: "friendly",
+                          keywords: "",
+                          body: recap.body,
+                          status: "draft",
+                        });
+                        toast.success("Recap draft created — find it in Content");
+                      }}
+                      className="p-1 rounded text-accent hover:bg-accent/10 transition-colors shrink-0"
+                      aria-label="Draft a recap post"
+                      title="Draft recap"
+                    >
+                      <Sparkles size={13} strokeWidth={1.75} />
+                    </button>
+                    <button
+                      onClick={() => setHistory(deleteFromHistory(s.id))}
+                      className="p-1 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+                      aria-label="Delete session"
+                    >
+                      <Trash2 size={12} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

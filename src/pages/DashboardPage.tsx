@@ -1,14 +1,27 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package } from "lucide-react";
+import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package, Zap, ExternalLink } from "lucide-react";
 import { upcomingEvents } from "@/lib/eventStore";
 import { lowStockItems } from "@/lib/inventoryStore";
 import { loadHistory } from "@/lib/drinkStore";
+import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
+import ConversionFunnelWidget from "@/components/dashboard/ConversionFunnelWidget";
 
 export default function DashboardPage() {
   const upcoming = upcomingEvents(7);
   const lowStock = lowStockItems();
   const history = loadHistory();
+  const [insights, setInsights] = useState<DashboardInsight[]>([]);
+
+  useEffect(() => {
+    generateInsights()
+      .then(data => setInsights(data || []))
+      .catch(err => {
+        console.error("Failed to generate insights:", err);
+        setInsights([]);
+      });
+  }, []);
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -35,7 +48,7 @@ export default function DashboardPage() {
 
       {/* Quick stats — whitespace-based layout */}
       <div className="space-y-8">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
           <StatCard icon={<CalendarDays size={20} />} label="Events This Week" value={String(upcoming.length)} />
           <StatCard icon={<Coffee size={20} />} label="Drinks This Month" value={String(monthDrinks)} />
           <StatCard icon={<TrendingUp size={20} />} label="Revenue This Month" value={formatCurrency(monthRevenue)} />
@@ -49,18 +62,14 @@ export default function DashboardPage() {
       </div>
 
       {/* Upcoming events */}
-      <section className="space-y-4">
-        <div className="flex items-baseline justify-between">
+      <section className="space-y-6">
+        <div className="flex items-baseline justify-between gap-2">
           <h2 className="font-display text-2xl text-foreground">Upcoming Events</h2>
           <Link to="/events" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
             View all →
           </Link>
         </div>
-        {upcoming.length === 0 ? (
-          <p className="text-sm font-body text-muted-foreground py-8">
-            Nothing in the next 7 days — time to book a pop-up!
-          </p>
-        ) : (
+        {upcoming.length > 0 && (
           <div className="space-y-3">
             {upcoming.map(event => {
               const days = daysUntil(event.dateStart);
@@ -93,11 +102,36 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+        {upcoming.length === 0 && insights.length === 0 && (
+          <p className="text-sm font-body text-muted-foreground py-8">
+            Nothing in the next 7 days — time to book a pop-up!
+          </p>
+        )}
       </section>
+
+      {/* Conversion Funnel Widget - moved higher for visibility */}
+      <ConversionFunnelWidget userId="default-user" />
+
+      {/* Insights always visible */}
+      {insights.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-lg text-foreground flex items-center gap-2">
+              <Zap size={20} className="text-accent" />
+              Smart Recommendations
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {insights.map((insight, idx) => (
+              <InsightCard key={idx} insight={insight} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (
-        <section className="space-y-4 p-6 rounded-lg bg-destructive/5">
+        <section className="space-y-4 p-5 rounded-lg bg-destructive/5">
           <div className="flex items-baseline justify-between">
             <h2 className="font-display text-lg text-destructive">Low Stock</h2>
             <Link to="/inventory" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
@@ -118,7 +152,7 @@ export default function DashboardPage() {
       )}
 
       {/* Quick actions */}
-      <section className="space-y-4">
+      <section className="space-y-6">
         <h2 className="font-display text-lg text-foreground">Quick Actions</h2>
         <div className="grid grid-cols-3 gap-4">
           <QuickAction to="/events" icon={<Plus size={18} />} label="New Event" />
@@ -132,12 +166,39 @@ export default function DashboardPage() {
 
 function StatCard({ icon, label, value, alert }: { icon: React.ReactNode; label: string; value: string; alert?: boolean }) {
   return (
-    <div className={`rounded-lg p-5 transition-colors ${alert ? "bg-destructive/8" : "bg-muted/20"}`}>
+    <div className={`rounded-lg p-5 transition-colors space-y-2 ${alert ? "bg-destructive/8" : "bg-muted/20"}`}>
       <div className={alert ? "text-destructive" : "text-foreground/60"}>
         {icon}
       </div>
-      <p className="font-display text-3xl mt-3 text-foreground">{value}</p>
-      <p className="text-xs font-body text-muted-foreground mt-1">{label}</p>
+      <p className="font-display text-3xl text-foreground">{value}</p>
+      <p className="text-xs font-body text-muted-foreground">{label}</p>
+    </div>
+  );
+}
+
+function InsightCard({ insight }: { insight: DashboardInsight }) {
+  const priorityStyles = {
+    low: "border-l-4 border-muted bg-muted/10",
+    medium: "border-l-4 border-accent bg-accent/8",
+    high: "border-l-4 border-accent bg-accent/12",
+  };
+
+  return (
+    <div className={`rounded-lg p-5 flex items-start gap-4 ${priorityStyles[insight.priority]}`}>
+      <Zap className="shrink-0 mt-1 text-accent" size={18} strokeWidth={1.75} />
+      <div className="flex-1 min-w-0">
+        <p className="font-body text-sm text-foreground font-semibold">
+          {insight.actionableNextStep}
+        </p>
+        {insight.relatedEventId && (
+          <Link
+            to={`/events/${insight.relatedEventId}`}
+            className="inline-flex items-center gap-1 mt-2 text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+          >
+            Draft pitch <ExternalLink size={12} />
+          </Link>
+        )}
+      </div>
     </div>
   );
 }
@@ -146,7 +207,7 @@ function QuickAction({ to, icon, label }: { to: string; icon: React.ReactNode; l
   return (
     <Link
       to={to}
-      className="flex flex-col items-center gap-3 rounded-lg bg-muted/20 p-5 hover:bg-muted/35 transition-colors font-body font-semibold text-xs text-center text-foreground hover-scale"
+      className="flex flex-col items-center gap-2 rounded-lg bg-muted/20 p-5 hover:bg-muted/35 transition-colors font-body font-semibold text-xs text-center text-foreground hover-scale"
     >
       <div className="text-accent">{icon}</div>
       {label}
