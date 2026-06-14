@@ -39,6 +39,7 @@ const EMPTY_FORM = {
   contactName: "",
   contactPhone: "",
   notes: "",
+  status: "confirmed" as EventStatus,
 };
 
 export default function EventsPage() {
@@ -85,17 +86,20 @@ export default function EventsPage() {
       location: form.location.trim() || "TBD",
       preOrders: form.preOrders,
       estimatedRevenue: form.estimatedRevenue || undefined,
-      status: "confirmed",
+      status: form.status,
       depositStatus: "pending",
       contactName: form.contactName.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
-    createChecklistForEvent(event.id, event.name, event.eventType);
+    if (form.status === "confirmed") {
+      createChecklistForEvent(event.id, event.name, event.eventType);
+    }
     setEvents(loadEvents());
     setForm(EMPTY_FORM);
     setShowForm(false);
-    toast.success(`"${event.name}" created — packing checklist auto-generated`);
+    const statusLabel = form.status === "inquiry" ? "lead" : "event";
+    toast.success(`"${event.name}" created as ${statusLabel}${form.status === "confirmed" ? " — packing checklist auto-generated" : ""}`);
   };
 
   const handleDelete = (event: TulipEvent) => {
@@ -303,6 +307,16 @@ export default function EventsPage() {
               {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
+            </select>
+            <select
+              className={input}
+              value={form.status}
+              onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}
+            >
+              <option value="inquiry">📝 Lead (Inquiry)</option>
+              <option value="confirmed">✓ Confirmed</option>
+              <option value="completed">✓✓ Completed</option>
+              <option value="cancelled">✗ Cancelled</option>
             </select>
             <input
               className={input}
