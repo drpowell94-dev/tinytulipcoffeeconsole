@@ -50,8 +50,13 @@ export interface InstagramWebhookPayload {
  * Generate Instagram OAuth authorization URL
  */
 export function generateInstagramAuthUrl(): string {
-  const clientId = process.env.VITE_INSTAGRAM_CLIENT_ID;
-  const redirectUri = process.env.VITE_INSTAGRAM_REDIRECT_URI;
+  const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+  const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
+  // Without credentials there's nothing to authorize against — return empty so
+  // callers can surface a clear "not configured" message instead of opening a
+  // broken URL with client_id=undefined.
+  if (!clientId || !redirectUri) return "";
+
   const scopes = [
     "instagram_business_basic",
     "instagram_business_content_publish",
@@ -68,9 +73,9 @@ export function generateInstagramAuthUrl(): string {
  */
 export async function exchangeCodeForToken(code: string): Promise<InstagramToken | null> {
   try {
-    const clientId = process.env.VITE_INSTAGRAM_CLIENT_ID;
-    const clientSecret = process.env.VITE_INSTAGRAM_CLIENT_SECRET;
-    const redirectUri = process.env.VITE_INSTAGRAM_REDIRECT_URI;
+    const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+    const clientSecret = import.meta.env.VITE_INSTAGRAM_CLIENT_SECRET;
+    const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
 
     const response = await fetch(`${INSTAGRAM_GRAPH_URL}/v18.0/oauth/access_token`, {
       method: "POST",
@@ -397,6 +402,6 @@ Link in bio to book! 🎉`;
  * Verify webhook token from Instagram
  */
 export function verifyInstagramWebhook(token: string): boolean {
-  const verifyToken = process.env.VITE_INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+  const verifyToken = import.meta.env.VITE_INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
   return token === verifyToken;
 }

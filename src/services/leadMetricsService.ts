@@ -1,4 +1,51 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
+import { loadEvents } from "@/lib/eventStore";
+
+/**
+ * Local pipeline funnel computed from the localStorage event store. Leads that
+ * are accepted become "confirmed" and delivered events become "completed", so
+ * we read the funnel off the current pipeline. Declines aren't tracked locally.
+ */
+function localFunnel(): ConversionFunnel {
+  const events = loadEvents();
+  const pending = events.filter(e => e.status === "inquiry").length;
+  const booked = events.filter(e => e.status === "confirmed" || e.status === "completed").length;
+  const completed = events.filter(e => e.status === "completed").length;
+  const total = pending + booked;
+  return {
+    totalLeads: total,
+    acceptedLeads: booked,
+    declinedLeads: 0,
+    convertedLeads: completed,
+    acceptanceRate: total > 0 ? Math.round((booked / total) * 100) : 0,
+    conversionRate: booked > 0 ? Math.round((completed / booked) * 100) : 0,
+    averageResponseTime: 0,
+    bySource: {},
+  };
+}
+
+const RESPONSE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function localPendingLeads(): Array<{
+  leadId: string;
+  leadName: string;
+  hoursOverdue: number;
+  createdAt: string;
+}> {
+  const now = Date.now();
+  return loadEvents()
+    .filter(e => e.status === "inquiry")
+    .map(e => ({
+      leadId: e.id,
+      leadName: e.name,
+      hoursOverdue: Math.max(
+        0,
+        Math.floor((now - new Date(e.createdAt).getTime() - RESPONSE_THRESHOLD_MS) / (60 * 60 * 1000))
+      ),
+      createdAt: e.createdAt,
+    }))
+    .filter(l => l.hoursOverdue > 0);
+}
 
 export interface LeadMetric {
   leadId: string;
@@ -55,7 +102,7 @@ export async function trackLeadResponse(
  * Get conversion funnel metrics for dashboard
  */
 export async function getConversionFunnel(userId: string): Promise<ConversionFunnel | null> {
-  if (!isSupabaseEnabled || !supabase) return null;
+  if (!isSupabaseEnabled || !supabase) return localFunnel();
 
   try {
     // Get all leads for this user
@@ -139,7 +186,7 @@ export async function getPendingLeadsWithAlerts(userId: string): Promise<
     createdAt: string;
   }>
 > {
-  if (!isSupabaseEnabled || !supabase) return [];
+  if (!isSupabaseEnabled || !supabase) return localPendingLeads();
 
   try {
     const { data: leads, error } = await supabase

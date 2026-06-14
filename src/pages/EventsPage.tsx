@@ -36,6 +36,7 @@ const EMPTY_FORM = {
   eventType: "popup" as EventType,
   dateStart: "",
   location: "",
+  guestCount: 0,
   preOrders: 0,
   estimatedRevenue: 0,
   contactName: "",
@@ -89,6 +90,7 @@ export default function EventsPage() {
       eventType: form.eventType,
       dateStart: new Date(form.dateStart).toISOString(),
       location: form.location.trim() || "TBD",
+      guestCount: form.guestCount || undefined,
       preOrders: form.preOrders,
       estimatedRevenue: form.estimatedRevenue || undefined,
       status: form.status,
@@ -429,6 +431,17 @@ export default function EventsPage() {
               placeholder="Location"
               value={form.location}
               onChange={e => setForm({ ...form, location: e.target.value })}
+            />
+            <input
+              className={input}
+              type="number"
+              min={0}
+              placeholder="Guest count (for supply estimates)"
+              value={form.guestCount || ""}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, guestCount: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}

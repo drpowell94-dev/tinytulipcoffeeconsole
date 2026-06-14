@@ -33,7 +33,10 @@ export default function DashboardPage() {
     .filter(s => new Date(s.date) >= monthStart)
     .reduce((sum, s) => sum + s.totalDrinks, 0);
 
-  const today = new Date().toLocaleDateString("en-US", {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const today = now.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -42,7 +45,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-12">
       <div className="pt-2">
-        <h1 className="font-display text-4xl text-foreground leading-tight">Good morning</h1>
+        <h1 className="font-display text-4xl text-foreground leading-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground font-body mt-1">{today}</p>
       </div>
 
@@ -192,10 +195,10 @@ function InsightCard({ insight }: { insight: DashboardInsight }) {
         </p>
         {insight.relatedEventId && (
           <Link
-            to={`/events/${insight.relatedEventId}`}
+            to="/events"
             className="inline-flex items-center gap-1 mt-2 text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
           >
-            Draft pitch <ExternalLink size={12} />
+            View events <ExternalLink size={12} />
           </Link>
         )}
       </div>

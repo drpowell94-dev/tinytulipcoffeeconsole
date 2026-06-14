@@ -14,6 +14,7 @@ import {
 } from "@/lib/contentStore";
 import { generateBlogDraft } from "@/lib/blogWriter";
 import { generateInstagramAuthUrl } from "@/services/instagramService";
+import { isSupabaseEnabled } from "@/services/supabase";
 
 type Tab = "blog" | "website" | "social";
 
@@ -148,8 +149,13 @@ function BlogGenerator() {
     const draft = generateBlogDraft(template, tone, keywords);
     if (!title.trim()) setTitle(draft.title);
     setBody(draft.body);
+    toast.success("Draft written — give it your voice and publish");
 
-    // Generate content variants from backend (optional)
+    // AI content variants (social caption, email excerpt, SEO keywords) come
+    // from a Supabase edge function. Skip the call entirely when there's no
+    // backend so we don't fire a spurious error toast.
+    if (!isSupabaseEnabled) return;
+
     setGenerating(true);
     try {
       const response = await fetch(
@@ -177,15 +183,14 @@ function BlogGenerator() {
         }
       } else {
         console.warn("Content generation failed:", response.status);
+        toast.error("Couldn't generate content variants — try again later.");
       }
     } catch (err) {
       console.error("Content generation error:", err);
-      toast.error("Failed to generate content variants. Try again later.");
+      toast.error("Couldn't generate content variants — try again later.");
     } finally {
       setGenerating(false);
     }
-
-    toast.success("Draft written — give it your voice and publish");
   };
 
   const handlePublish = () => {
@@ -328,22 +333,6 @@ function BlogGenerator() {
             className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
             <Save size={16} strokeWidth={1.5} /> Publish
-          </button>
-          <button
-            onClick={() => {
-              handlePublish();
-              toast.promise(
-                new Promise(resolve => setTimeout(resolve, 800)),
-                {
-                  loading: "Syncing to website...",
-                  success: "Live on website! ✨",
-                  error: "Sync unavailable",
-                }
-              );
-            }}
-            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-          >
-            <Globe size={16} strokeWidth={1.5} /> Website
           </button>
           <p className="text-xs font-body text-muted-foreground">
             {title.trim() ? "Auto-saving" : "Add title to auto-save"}
