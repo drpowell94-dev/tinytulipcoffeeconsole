@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, ClipboardCheck } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
+import EventChecklist from "@/components/events/EventChecklist";
 import { toast } from "sonner";
 import {
   loadEvents,
@@ -54,6 +55,7 @@ export default function EventsPage() {
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [checklistEvent, setChecklistEvent] = useState<TulipEvent | null>(null);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -181,11 +183,18 @@ export default function EventsPage() {
               <>
                 <Link
                   to={`/events/${event.id}/counter`}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
+                  className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
                 >
                   <Coffee size={16} strokeWidth={1.5} />
                   <span>Counter</span>
                 </Link>
+                <button
+                  onClick={() => setChecklistEvent(event)}
+                  className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/70 active:scale-95 transition-all sm:justify-start"
+                >
+                  <ClipboardCheck size={16} strokeWidth={1.5} />
+                  <span>Checklist</span>
+                </button>
                 <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors sm:ml-auto"
@@ -614,6 +623,10 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+
+      {checklistEvent && (
+        <EventChecklist event={checklistEvent} onClose={() => setChecklistEvent(null)} />
+      )}
     </div>
   );
 }
