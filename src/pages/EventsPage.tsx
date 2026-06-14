@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadEvents,
@@ -12,6 +12,7 @@ import {
   type EventType,
   type EventStatus,
 } from "@/lib/eventStore";
+import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
 import { savePost } from "@/lib/contentStore";
@@ -43,7 +44,29 @@ export default function EventsPage() {
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
   const [showForm, setShowForm] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+
+  // On load, pull any events that arrived in Supabase (e.g. via the Wix
+  // receiver) and merge them into the local store.
+  useEffect(() => {
+    syncEventsFromSupabase().then(result => {
+      if (result && result.created > 0) {
+        setEvents(loadEvents());
+        toast.success(`Synced ${result.created} event(s) from Wix`);
+      }
+    });
+  }, []);
+
+  const handleImportWix = () => {
+    setImporting(true);
+    const { created, updated } = importBundledWixEvents();
+    setEvents(loadEvents());
+    setImporting(false);
+    toast.success(
+      `Imported ${created} new event(s)${updated ? `, updated ${updated}` : ""} from Wix`
+    );
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +102,61 @@ export default function EventsPage() {
   const input =
     "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
+  // Split into upcoming (today or later) and past, each sensibly sorted.
+  const upcoming = events
+    .filter(e => daysUntil(e.dateStart) >= 0)
+    .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+  const past = events
+    .filter(e => daysUntil(e.dateStart) < 0)
+    .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
+
+  const renderEvent = (event: TulipEvent) => {
+    const days = daysUntil(event.dateStart);
+    return (
+      <div
+        key={event.id}
+        className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/30 transition-colors"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap mb-2">
+            <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
+            <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
+              {STATUS_LABELS[event.status]}
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground font-body space-y-1">
+            <span>{formatDate(event.dateStart)}</span>
+            {days >= 0 && event.status !== "completed" && (
+              <span className="text-accent font-semibold ml-2">
+                {days === 0 ? "Today" : `${days}d away`}
+              </span>
+            )}
+            <span className="block">
+              <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
+              {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
+            </span>
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            to={`/events/${event.id}/counter`}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Coffee size={16} strokeWidth={1.5} />
+            <span className="hidden sm:inline">Counter</span>
+          </Link>
+          <button
+            onClick={() => handleDelete(event)}
+            className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            aria-label={`Delete ${event.name}`}
+          >
+            <Trash2 size={16} strokeWidth={1.5} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">
@@ -88,12 +166,21 @@ export default function EventsPage() {
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0"
-        >
-          <Plus size={16} strokeWidth={2} /> New
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={handleImportWix}
+            disabled={importing}
+            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <Download size={16} strokeWidth={2} /> Import from Wix
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Plus size={16} strokeWidth={2} /> New
+          </button>
+        </div>
       </div>
 
       {/* Create form */}
@@ -187,57 +274,27 @@ export default function EventsPage() {
         <div className="rounded-lg bg-muted/20 p-12 text-center">
           <TulipLogo size={44} className="mx-auto mb-3" />
           <p className="font-body text-muted-foreground">
-            No events yet — create your first pop-up!
+            No events yet — create your first pop-up, or tap "Import from Wix"!
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {events.map(event => {
-            const days = daysUntil(event.dateStart);
-            return (
-              <div
-                key={event.id}
-                className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/30 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap mb-2">
-                    <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
-                    <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
-                      {STATUS_LABELS[event.status]}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground font-body space-y-1">
-                    <span>{formatDate(event.dateStart)}</span>
-                    {days >= 0 && event.status !== "completed" && (
-                      <span className="text-accent font-semibold ml-2">
-                        {days === 0 ? "Today" : `${days}d away`}
-                      </span>
-                    )}
-                    <span className="block">
-                      <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
-                      {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
-                    </span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Link
-                    to={`/events/${event.id}/counter`}
-                    className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-                  >
-                    <Coffee size={16} strokeWidth={1.5} />
-                    <span className="hidden sm:inline">Counter</span>
-                  </Link>
-                  <button
-                    onClick={() => handleDelete(event)}
-                    className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                    aria-label={`Delete ${event.name}`}
-                  >
-                    <Trash2 size={16} strokeWidth={1.5} />
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="space-y-8">
+          {upcoming.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                Upcoming ({upcoming.length})
+              </h2>
+              <div className="space-y-4">{upcoming.map(renderEvent)}</div>
+            </section>
+          )}
+          {past.length > 0 && (
+            <section className="space-y-4">
+              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
+                Past ({past.length})
+              </h2>
+              <div className="space-y-4">{past.map(renderEvent)}</div>
+            </section>
+          )}
         </div>
       )}
 

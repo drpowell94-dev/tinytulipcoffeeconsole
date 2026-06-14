@@ -9,6 +9,7 @@ export interface TulipEvent {
   name: string;
   eventType: EventType;
   dateStart: string; // ISO
+  dateEnd?: string; // ISO
   location: string;
   guestCount?: number;
   preOrders: number;
@@ -19,6 +20,8 @@ export interface TulipEvent {
   contactEmail?: string;
   contactPhone?: string;
   notes?: string;
+  /** Wix Events ID when this event originated from / syncs with Wix. */
+  wixEventId?: string;
   createdAt: string;
 }
 
@@ -64,6 +67,35 @@ export function deleteEvent(id: string): TulipEvent[] {
   const events = loadEvents().filter(e => e.id !== id);
   saveEvents(events);
   return events;
+}
+
+/**
+ * Merge a batch of events into the store, keyed by wixEventId when present
+ * (falling back to id). Existing rows are updated in place; new rows are added.
+ * Returns the number of events created vs. updated.
+ */
+export function importEvents(incoming: TulipEvent[]): { created: number; updated: number } {
+  const existing = loadEvents();
+  const byKey = new Map<string, number>();
+  existing.forEach((e, i) => byKey.set(e.wixEventId ?? e.id, i));
+
+  let created = 0;
+  let updated = 0;
+  for (const ev of incoming) {
+    const key = ev.wixEventId ?? ev.id;
+    const idx = byKey.get(key);
+    if (idx === undefined) {
+      existing.push(ev);
+      byKey.set(key, existing.length - 1);
+      created++;
+    } else {
+      // Preserve the local id and any counting data already attached.
+      existing[idx] = { ...existing[idx], ...ev, id: existing[idx].id };
+      updated++;
+    }
+  }
+  saveEvents(existing);
+  return { created, updated };
 }
 
 export function upcomingEvents(withinDays = 7): TulipEvent[] {

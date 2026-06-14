@@ -38,8 +38,8 @@
     --muted: 27 17% 66%;             /* Stone Taupe #b8a89b */
     --muted-foreground: 33 22% 40%;  /* Taupe-leaning text */
 
-    /* Accent (Brand Coral) */
-    --accent: 11 76% 56%;            /* Accent Coral #e45b3c */
+    /* Accent (Bloomi red) */
+    --accent: 11 77% 57%;            /* Bloomi heart red #e65a3c */
     --accent-foreground: 38 100% 98%;
 
     /* Destructive (Alert) */
@@ -49,7 +49,7 @@
     /* Border & Input */
     --border: 27 20% 88%;            /* Whisper of taupe */
     --input: 27 20% 88%;
-    --ring: 11 76% 56%;
+    --ring: 11 77% 57%;            /* Bloomi heart red #e65a3c */
 
     /* Radius */
     --radius: 0.75rem;
