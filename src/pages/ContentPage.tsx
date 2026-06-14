@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Save, Globe, Sparkles, PenLine, ChevronDown, Share2, Mail, Tag } from "lucide-react";
+import { Trash2, Save, Globe, Sparkles, PenLine, ChevronDown, Share2, Mail, Tag, Instagram, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import {
   BLOG_TEMPLATES,
@@ -13,6 +13,7 @@ import {
   type WebsiteSettings,
 } from "@/lib/contentStore";
 import { generateBlogDraft } from "@/lib/blogWriter";
+import { generateInstagramAuthUrl } from "@/services/instagramService";
 
 type Tab = "blog" | "website";
 
@@ -27,11 +28,11 @@ export default function ContentPage() {
       <div>
         <h1 className="font-display text-4xl text-foreground">Content & Website</h1>
         <p className="text-sm text-muted-foreground font-body mt-1">
-          Blog posts and website management
+          Blog posts, website management, and social media
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <TabButton active={tab === "blog"} onClick={() => setTab("blog")}>
           <PenLine size={15} strokeWidth={1.75} /> Blog
         </TabButton>
@@ -41,6 +42,34 @@ export default function ContentPage() {
       </div>
 
       {tab === "blog" ? <BlogGenerator /> : <WebsiteUpdater />}
+
+      {/* Instagram integration banner */}
+      <div className="rounded-lg border border-accent/30 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3 flex-1">
+            <Instagram size={20} className="text-accent mt-1 shrink-0" strokeWidth={1.5} />
+            <div>
+              <h3 className="font-body font-semibold text-foreground">Connect Instagram</h3>
+              <p className="text-xs text-muted-foreground font-body mt-1">
+                Automatically post event updates and respond to catering inquiries from your Instagram comments.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              const authUrl = generateInstagramAuthUrl();
+              if (authUrl && authUrl.includes("instagram.com")) {
+                window.location.href = authUrl;
+              } else {
+                toast.info("Instagram integration setup required. Check environment variables.");
+              }
+            }}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0 whitespace-nowrap"
+          >
+            <LogIn size={14} strokeWidth={2} /> Connect
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -198,25 +227,36 @@ function BlogGenerator() {
           onChange={e => setBody(e.target.value)}
         />
 
-        {/* Generated content variants */}
-        {(generatedContent.socialCaption || generatedContent.emailExcerpt || generatedContent.keywords) && (
-          <div className="rounded-lg bg-accent/8 border border-accent/20 p-4 space-y-3">
-            <button
-              onClick={() => setShowGenerated(!showGenerated)}
-              className="w-full flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
-            >
-              <span>✨ AI-Generated Content Variants</span>
-              <ChevronDown size={16} className={`transition-transform ${showGenerated ? "rotate-180" : ""}`} />
-            </button>
+        {/* Generated content variants - prominent section */}
+        <div className="rounded-lg bg-gradient-to-br from-accent/12 to-accent/8 border border-accent/25 p-5 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles size={18} className="text-accent" strokeWidth={2} />
+              <h3 className="font-body font-semibold text-sm text-foreground">AI Content Variants</h3>
+            </div>
+            {(generatedContent.socialCaption || generatedContent.emailExcerpt || generatedContent.keywords) && (
+              <button
+                onClick={() => setShowGenerated(!showGenerated)}
+                className="p-1 rounded hover:bg-accent/10 transition-colors"
+              >
+                <ChevronDown size={16} className={`transition-transform text-accent ${showGenerated ? "rotate-180" : ""}`} />
+              </button>
+            )}
+          </div>
 
-            {showGenerated && (
-              <div className="space-y-3 mt-2 pt-3 border-t border-accent/20">
+          {!generatedContent.socialCaption && !generatedContent.emailExcerpt && !generatedContent.keywords ? (
+            <p className="text-xs font-body text-muted-foreground">
+              Click "Generate variants" below to create social captions, email excerpts, and SEO keywords automatically.
+            </p>
+          ) : (
+            showGenerated && (
+              <div className="space-y-3 mt-3 pt-3 border-t border-accent/20">
                 {generatedContent.socialCaption && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent">
                       <Share2 size={14} /> Social Caption
                     </div>
-                    <p className="text-xs font-body text-foreground bg-background/50 p-2.5 rounded line-clamp-3">
+                    <p className="text-xs font-body text-foreground bg-background/70 p-3 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
                       {generatedContent.socialCaption}
                     </p>
                   </div>
@@ -224,10 +264,10 @@ function BlogGenerator() {
 
                 {generatedContent.emailExcerpt && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent">
                       <Mail size={14} /> Email Excerpt
                     </div>
-                    <p className="text-xs font-body text-foreground bg-background/50 p-2.5 rounded line-clamp-3">
+                    <p className="text-xs font-body text-foreground bg-background/70 p-3 rounded line-clamp-4 hover:line-clamp-none transition-all cursor-pointer">
                       {generatedContent.emailExcerpt}
                     </p>
                   </div>
@@ -235,12 +275,12 @@ function BlogGenerator() {
 
                 {generatedContent.keywords && generatedContent.keywords.length > 0 && (
                   <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent">
                       <Tag size={14} /> SEO Keywords
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-2">
                       {generatedContent.keywords.map((kw, idx) => (
-                        <span key={idx} className="text-xs font-body bg-accent/15 text-accent rounded px-2 py-1 font-semibold">
+                        <span key={idx} className="text-xs font-body bg-accent/20 text-accent rounded-full px-3 py-1.5 font-semibold border border-accent/30">
                           {kw}
                         </span>
                       ))}
@@ -248,9 +288,9 @@ function BlogGenerator() {
                   </div>
                 )}
               </div>
-            )}
-          </div>
-        )}
+            )
+          )}
+        </div>
 
         <div className="flex items-center gap-3 flex-wrap">
           <button

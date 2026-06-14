@@ -63,19 +63,7 @@ export default function DashboardPage() {
             View all →
           </Link>
         </div>
-        {upcoming.length === 0 ? (
-          <div className="space-y-3">
-            {insights.length > 0 ? (
-              insights.map((insight, idx) => (
-                <InsightCard key={idx} insight={insight} />
-              ))
-            ) : (
-              <p className="text-sm font-body text-muted-foreground py-8">
-                Nothing in the next 7 days — time to book a pop-up!
-              </p>
-            )}
-          </div>
-        ) : (
+        {upcoming.length > 0 && (
           <div className="space-y-3">
             {upcoming.map(event => {
               const days = daysUntil(event.dateStart);
@@ -108,7 +96,29 @@ export default function DashboardPage() {
             })}
           </div>
         )}
+        {upcoming.length === 0 && insights.length === 0 && (
+          <p className="text-sm font-body text-muted-foreground py-8">
+            Nothing in the next 7 days — time to book a pop-up!
+          </p>
+        )}
       </section>
+
+      {/* Insights always visible */}
+      {insights.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-lg text-foreground flex items-center gap-2">
+              <Zap size={20} className="text-accent" />
+              Smart Recommendations
+            </h2>
+          </div>
+          <div className="space-y-3">
+            {insights.map((insight, idx) => (
+              <InsightCard key={idx} insight={insight} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (

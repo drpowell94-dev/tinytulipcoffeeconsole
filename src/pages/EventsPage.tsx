@@ -130,6 +130,30 @@ export default function EventsPage() {
   };
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
+  const [leadQuickForm, setLeadQuickForm] = useState(false);
+  const [quickLead, setQuickLead] = useState({ name: "", phone: "", notes: "" });
+
+  const handleQuickAddLead = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickLead.name.trim()) {
+      toast.error("Lead name is required");
+      return;
+    }
+    const event = createEvent({
+      name: quickLead.name.trim(),
+      eventType: "popup",
+      dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      location: "TBD",
+      status: "inquiry",
+      depositStatus: "pending",
+      contactPhone: quickLead.phone.trim() || undefined,
+      notes: quickLead.notes.trim() || undefined,
+    });
+    setEvents(loadEvents());
+    setQuickLead({ name: "", phone: "", notes: "" });
+    setLeadQuickForm(false);
+    toast.success(`Lead "${event.name}" created`);
+  };
 
   const renderEvent = (event: TulipEvent, showLogistics = false) => {
     const days = daysUntil(event.dateStart);
@@ -283,10 +307,108 @@ export default function EventsPage() {
             onClick={() => setShowForm(!showForm)}
             className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
-            <Plus size={16} strokeWidth={2} /> New
+            <Plus size={16} strokeWidth={2} /> New Event
           </button>
         </div>
       </div>
+
+      {/* Quick leads section */}
+      {pendingLeads.length > 0 && (
+        <section className="rounded-lg border border-accent/20 bg-accent/8 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-lg text-foreground flex items-center gap-2">
+                <TrendingUp size={18} className="text-accent" />
+                Pending Leads ({pendingLeads.length})
+              </h2>
+              <p className="text-xs text-muted-foreground font-body mt-1">Inbound booking requests awaiting response</p>
+            </div>
+            <button
+              onClick={() => setTab("leads")}
+              className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+            >
+              View all →
+            </button>
+          </div>
+          <div className="space-y-2">
+            {pendingLeads.slice(0, 3).map(lead => (
+              <div key={lead.id} className="flex items-center justify-between rounded-lg bg-background/50 p-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-body font-semibold text-sm text-foreground truncate">{lead.name}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{formatDate(lead.dateStart)}{lead.location && ` • ${lead.location}`}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => handleConvertLead(lead)}
+                    className="flex items-center gap-1 rounded-lg bg-accent text-accent-foreground px-2.5 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+                  >
+                    <CheckCircle2 size={12} /> Accept
+                  </button>
+                  <button
+                    onClick={() => handleDeclineLead(lead)}
+                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  >
+                    <XCircle size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Quick lead form */}
+      {leadQuickForm && (
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-4 space-y-3">
+          <form onSubmit={handleQuickAddLead} className="space-y-3">
+            <input
+              className={input}
+              placeholder="Lead name or company *"
+              value={quickLead.name}
+              onChange={e => setQuickLead({ ...quickLead, name: e.target.value })}
+              autoFocus
+            />
+            <input
+              className={input}
+              placeholder="Phone (optional)"
+              value={quickLead.phone}
+              onChange={e => setQuickLead({ ...quickLead, phone: e.target.value })}
+            />
+            <textarea
+              className={input}
+              placeholder="Quick notes (optional)"
+              rows={2}
+              value={quickLead.notes}
+              onChange={e => setQuickLead({ ...quickLead, notes: e.target.value })}
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+              >
+                Add Lead
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeadQuickForm(false)}
+                className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {pendingLeads.length === 0 && !leadQuickForm && (
+        <button
+          onClick={() => setLeadQuickForm(true)}
+          className="w-full rounded-lg border-2 border-dashed border-accent/30 p-4 text-center hover:border-accent/50 hover:bg-accent/5 transition-all"
+        >
+          <p className="font-body font-semibold text-sm text-foreground">+ Add a New Lead</p>
+          <p className="text-xs text-muted-foreground mt-1">Manually log incoming booking requests</p>
+        </button>
+      )}
 
       {/* Create form */}
       {showForm && (
