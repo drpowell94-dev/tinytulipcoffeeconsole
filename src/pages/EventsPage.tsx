@@ -370,77 +370,71 @@ export default function EventsPage() {
         </form>
       )}
 
-      {/* Event list */}
-      {events.length === 0 && !showForm ? (
-        <div className="rounded-lg bg-muted/20 p-12 text-center">
-          <TulipLogo size={44} className="mx-auto mb-3" />
-          <p className="font-body text-muted-foreground">
-            No events yet — create your first pop-up, or tap "Import from Wix"!
-          </p>
+      {/* Event list with tabs - always visible */}
+      <div className="space-y-6">
+        {/* Tabs - always visible */}
+        <div className="flex gap-2 border-b border-border">
+          {[
+            { id: "upcoming" as const, label: `Upcoming (${upcoming.length})` },
+            { id: "past" as const, label: `Past (${past.length})` },
+            { id: "leads" as const, label: `Pending Leads (${pendingLeads.length})` },
+          ].map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className={`px-4 py-3 text-sm font-body font-semibold transition-colors border-b-2 ${
+                tab === t.id
+                  ? "border-accent text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="space-y-6">
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-border">
-            {[
-              { id: "upcoming" as const, label: `Upcoming (${upcoming.length})` },
-              { id: "past" as const, label: `Past (${past.length})` },
-              { id: "leads" as const, label: `Pending Leads (${pendingLeads.length})` },
-            ].map(t => (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={`px-4 py-3 text-sm font-body font-semibold transition-colors border-b-2 ${
-                  tab === t.id
-                    ? "border-accent text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
 
-          {/* Tab content */}
-          <div className="space-y-4">
-            {tab === "upcoming" && upcoming.length > 0 && (
-              <div className="space-y-4">
-                {upcoming.map(e => renderEvent(e, true))}
-              </div>
-            )}
+        {/* Tab content */}
+        <div className="space-y-4">
+          {tab === "upcoming" && upcoming.length > 0 && (
+            <div className="space-y-4">
+              {upcoming.map(e => renderEvent(e, true))}
+            </div>
+          )}
 
-            {tab === "upcoming" && upcoming.length === 0 && (
-              <p className="text-sm font-body text-muted-foreground py-6">
-                No upcoming events — schedule one to get started!
+          {tab === "upcoming" && upcoming.length === 0 && (
+            <div className="rounded-lg bg-muted/20 p-12 text-center">
+              <TulipLogo size={44} className="mx-auto mb-3" />
+              <p className="font-body text-muted-foreground">
+                No upcoming events — create one or tap "Import from Wix"!
               </p>
-            )}
+            </div>
+          )}
 
-            {tab === "past" && past.length > 0 && (
-              <div className="space-y-4">
-                {past.map(e => renderEvent(e, false))}
-              </div>
-            )}
+          {tab === "past" && past.length > 0 && (
+            <div className="space-y-4">
+              {past.map(e => renderEvent(e, false))}
+            </div>
+          )}
 
-            {tab === "past" && past.length === 0 && (
-              <p className="text-sm font-body text-muted-foreground py-6">
-                No past events yet.
-              </p>
-            )}
+          {tab === "past" && past.length === 0 && (
+            <p className="text-sm font-body text-muted-foreground py-6">
+              No past events yet.
+            </p>
+          )}
 
-            {tab === "leads" && pendingLeads.length > 0 && (
-              <div className="space-y-4">
-                {pendingLeads.map(e => renderEvent(e, false))}
-              </div>
-            )}
+          {tab === "leads" && pendingLeads.length > 0 && (
+            <div className="space-y-4">
+              {pendingLeads.map(e => renderEvent(e, false))}
+            </div>
+          )}
 
-            {tab === "leads" && pendingLeads.length === 0 && (
-              <p className="text-sm font-body text-muted-foreground py-6">
-                No pending leads. When your booking form receives requests, they'll appear here.
-              </p>
-            )}
-          </div>
+          {tab === "leads" && pendingLeads.length === 0 && (
+            <p className="text-sm font-body text-muted-foreground py-6">
+              No pending leads. When your booking form receives requests, they'll appear here.
+            </p>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Session history */}
       <section className="space-y-3">
