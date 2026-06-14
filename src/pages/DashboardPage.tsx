@@ -1,14 +1,21 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package } from "lucide-react";
+import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package, Zap, ExternalLink } from "lucide-react";
 import { upcomingEvents } from "@/lib/eventStore";
 import { lowStockItems } from "@/lib/inventoryStore";
 import { loadHistory } from "@/lib/drinkStore";
+import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 
 export default function DashboardPage() {
   const upcoming = upcomingEvents(7);
   const lowStock = lowStockItems();
   const history = loadHistory();
+  const [insights, setInsights] = useState<DashboardInsight[]>([]);
+
+  useEffect(() => {
+    generateInsights().then(data => setInsights(data || []));
+  }, []);
 
   const monthStart = new Date();
   monthStart.setDate(1);
@@ -57,9 +64,17 @@ export default function DashboardPage() {
           </Link>
         </div>
         {upcoming.length === 0 ? (
-          <p className="text-sm font-body text-muted-foreground py-8">
-            Nothing in the next 7 days — time to book a pop-up!
-          </p>
+          <div className="space-y-3">
+            {insights.length > 0 ? (
+              insights.map((insight, idx) => (
+                <InsightCard key={idx} insight={insight} />
+              ))
+            ) : (
+              <p className="text-sm font-body text-muted-foreground py-8">
+                Nothing in the next 7 days — time to book a pop-up!
+              </p>
+            )}
+          </div>
         ) : (
           <div className="space-y-3">
             {upcoming.map(event => {
@@ -138,6 +153,33 @@ function StatCard({ icon, label, value, alert }: { icon: React.ReactNode; label:
       </div>
       <p className="font-display text-3xl mt-3 text-foreground">{value}</p>
       <p className="text-xs font-body text-muted-foreground mt-1">{label}</p>
+    </div>
+  );
+}
+
+function InsightCard({ insight }: { insight: DashboardInsight }) {
+  const priorityStyles = {
+    low: "border-l-4 border-muted bg-muted/10",
+    medium: "border-l-4 border-accent bg-accent/8",
+    high: "border-l-4 border-accent bg-accent/12",
+  };
+
+  return (
+    <div className={`rounded-lg p-5 flex items-start gap-4 ${priorityStyles[insight.priority]}`}>
+      <Zap className="shrink-0 mt-1 text-accent" size={18} strokeWidth={1.75} />
+      <div className="flex-1 min-w-0">
+        <p className="font-body text-sm text-foreground font-semibold">
+          {insight.actionableNextStep}
+        </p>
+        {insight.relatedEventId && (
+          <Link
+            to={`/events/${insight.relatedEventId}`}
+            className="inline-flex items-center gap-1 mt-2 text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+          >
+            Draft pitch <ExternalLink size={12} />
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

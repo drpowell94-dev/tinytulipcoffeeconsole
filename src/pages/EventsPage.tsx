@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadEvents,
   createEvent,
   deleteEvent,
+  updateEvent,
   EVENT_TYPE_LABELS,
   STATUS_LABELS,
   type TulipEvent,
@@ -13,6 +14,7 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
+import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
 import { savePost } from "@/lib/contentStore";
@@ -46,6 +48,8 @@ export default function EventsPage() {
   const [showHistory, setShowHistory] = useState(false);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
+  const [tab, setTab] = useState<"upcoming" | "past" | "leads">("upcoming");
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -110,49 +114,146 @@ export default function EventsPage() {
     .filter(e => daysUntil(e.dateStart) < 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
-  const renderEvent = (event: TulipEvent) => {
+  const handleConvertLead = (lead: TulipEvent) => {
+    updateEvent(lead.id, { status: "confirmed" });
+    setEvents(loadEvents());
+    toast.success(`"${lead.name}" moved to confirmed`);
+  };
+
+  const handleDeclineLead = (lead: TulipEvent) => {
+    handleDelete(lead);
+    toast(`Declined lead: "${lead.name}"`);
+  };
+
+  const pendingLeads = events.filter(e => e.status === "inquiry" && e.notes?.includes("lead"));
+
+  const renderEvent = (event: TulipEvent, showLogistics = false) => {
     const days = daysUntil(event.dateStart);
     return (
-      <div
-        key={event.id}
-        className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-muted/30 transition-colors"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-2">
-            <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
-            <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
-              {STATUS_LABELS[event.status]}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground font-body space-y-1">
-            <span>{formatDate(event.dateStart)}</span>
-            {days >= 0 && event.status !== "completed" && (
-              <span className="text-accent font-semibold ml-2">
-                {days === 0 ? "Today" : `${days}d away`}
+      <div key={event.id} className="space-y-3">
+        <div
+          className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-start gap-4 hover:bg-muted/30 transition-colors"
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap mb-2">
+              <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
+              <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
+                {event.status === "inquiry" && event.notes?.includes("lead") ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
+            </div>
+            <p className="text-xs text-muted-foreground font-body space-y-1">
+              <span>{formatDate(event.dateStart)}</span>
+              {days >= 0 && event.status !== "completed" && (
+                <span className="text-accent font-semibold ml-2">
+                  {days === 0 ? "Today" : `${days}d away`}
+                </span>
+              )}
+              <span className="block">
+                <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
+                {event.guestCount && ` • ${event.guestCount} guests`}
+                {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
+              </span>
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {event.status === "inquiry" && event.notes?.includes("lead") ? (
+              <>
+                <button
+                  onClick={() => handleConvertLead(event)}
+                  className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+                >
+                  <CheckCircle2 size={14} /> Accept
+                </button>
+                <button
+                  onClick={() => handleDeclineLead(event)}
+                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                >
+                  <XCircle size={16} strokeWidth={1.5} />
+                </button>
+              </>
+            ) : (
+              <>
+                <Link
+                  to={`/events/${event.id}/counter`}
+                  className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                >
+                  <Coffee size={16} strokeWidth={1.5} />
+                  <span className="hidden sm:inline">Counter</span>
+                </Link>
+                <button
+                  onClick={() => handleDelete(event)}
+                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  aria-label={`Delete ${event.name}`}
+                >
+                  <Trash2 size={16} strokeWidth={1.5} />
+                </button>
+              </>
             )}
-            <span className="block">
-              <MapPin className="inline mr-1" size={12} /> {event.location} • {EVENT_TYPE_LABELS[event.eventType]}
-              {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
-            </span>
-          </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <Link
-            to={`/events/${event.id}/counter`}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-          >
-            <Coffee size={16} strokeWidth={1.5} />
-            <span className="hidden sm:inline">Counter</span>
-          </Link>
+
+        {/* Predictive logistics section */}
+        {showLogistics && event.guestCount && (
           <button
-            onClick={() => handleDelete(event)}
-            className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            aria-label={`Delete ${event.name}`}
+            onClick={() => {
+              if (!expandedLogistics[event.id]) {
+                getPredictedNeeds(event).then(needs => {
+                  setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
+                });
+              } else {
+                setExpandedLogistics(prev => {
+                  const next = { ...prev };
+                  delete next[event.id];
+                  return next;
+                });
+              }
+            }}
+            className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-3.5 flex items-center justify-between gap-2 hover:bg-accent/12 transition-colors group"
           >
-            <Trash2 size={16} strokeWidth={1.5} />
+            <span className="flex items-center gap-2 text-sm font-body font-semibold text-accent">
+              <Zap size={14} strokeWidth={2} /> Predicted Supply Needs
+            </span>
+            <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
           </button>
-        </div>
+        )}
+
+        {expandedLogistics[event.id] && (
+          <div className="rounded-lg bg-accent/8 p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-body">
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Cups</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedCups}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Beans (lbs)</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedBeansLbs}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Milk (L)</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedMilkLiters}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Lids</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedLids}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Napkins</p>
+              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedNapkins}</p>
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-semibold text-accent/70">Confidence</p>
+              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
+                expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
+                "bg-muted/30 text-muted-foreground"
+              }`}>
+                {expandedLogistics[event.id].confidence}
+              </span>
+            </div>
+            <p className="col-span-2 sm:col-span-3 text-muted-foreground text-[10px] mt-1">
+              {expandedLogistics[event.id].methodology}
+            </p>
+          </div>
+        )}
       </div>
     );
   };
@@ -278,23 +379,66 @@ export default function EventsPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-8">
-          {upcoming.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Upcoming ({upcoming.length})
-              </h2>
-              <div className="space-y-4">{upcoming.map(renderEvent)}</div>
-            </section>
-          )}
-          {past.length > 0 && (
-            <section className="space-y-4">
-              <h2 className="font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest">
-                Past ({past.length})
-              </h2>
-              <div className="space-y-4">{past.map(renderEvent)}</div>
-            </section>
-          )}
+        <div className="space-y-6">
+          {/* Tabs */}
+          <div className="flex gap-2 border-b border-border">
+            {[
+              { id: "upcoming" as const, label: `Upcoming (${upcoming.length})` },
+              { id: "past" as const, label: `Past (${past.length})` },
+              { id: "leads" as const, label: `Pending Leads (${pendingLeads.length})` },
+            ].map(t => (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={`px-4 py-3 text-sm font-body font-semibold transition-colors border-b-2 ${
+                  tab === t.id
+                    ? "border-accent text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Tab content */}
+          <div className="space-y-4">
+            {tab === "upcoming" && upcoming.length > 0 && (
+              <div className="space-y-4">
+                {upcoming.map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {tab === "upcoming" && upcoming.length === 0 && (
+              <p className="text-sm font-body text-muted-foreground py-6">
+                No upcoming events — schedule one to get started!
+              </p>
+            )}
+
+            {tab === "past" && past.length > 0 && (
+              <div className="space-y-4">
+                {past.map(e => renderEvent(e, false))}
+              </div>
+            )}
+
+            {tab === "past" && past.length === 0 && (
+              <p className="text-sm font-body text-muted-foreground py-6">
+                No past events yet.
+              </p>
+            )}
+
+            {tab === "leads" && pendingLeads.length > 0 && (
+              <div className="space-y-4">
+                {pendingLeads.map(e => renderEvent(e, false))}
+              </div>
+            )}
+
+            {tab === "leads" && pendingLeads.length === 0 && (
+              <p className="text-sm font-body text-muted-foreground py-6">
+                No pending leads. When your booking form receives requests, they'll appear here.
+              </p>
+            )}
+          </div>
         </div>
       )}
 

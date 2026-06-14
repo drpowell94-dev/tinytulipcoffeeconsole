@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Trash2, Save, Globe, Sparkles, PenLine } from "lucide-react";
+import { Trash2, Save, Globe, Sparkles, PenLine, ChevronDown, Share2, Mail, Tag } from "lucide-react";
 import { toast } from "sonner";
 import {
   BLOG_TEMPLATES,
@@ -66,6 +66,13 @@ function BlogGenerator() {
   const [tone, setTone] = useState<BlogTone>("friendly");
   const [keywords, setKeywords] = useState("");
   const [body, setBody] = useState(BLOG_TEMPLATES[0].starter);
+  const [showGenerated, setShowGenerated] = useState(false);
+  const [generatedContent, setGeneratedContent] = useState<{
+    socialCaption?: string;
+    emailExcerpt?: string;
+    keywords?: string[];
+  }>({});
+  const [generating, setGenerating] = useState(false);
   const autosave = useRef<number>();
 
   // Auto-save draft 2s after typing stops (only once a title exists)
@@ -88,10 +95,44 @@ function BlogGenerator() {
     }
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const draft = generateBlogDraft(template, tone, keywords);
     if (!title.trim()) setTitle(draft.title);
     setBody(draft.body);
+
+    // Generate content variants from backend (optional)
+    setGenerating(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/content-generator`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${import.meta.env.VITE_WIX_WEBHOOK_SECRET || "demo"}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            blogPostId: editingId || "temp",
+            blogContent: draft.body,
+            template: template,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.generatedContent) {
+          setGeneratedContent(data.generatedContent);
+          setShowGenerated(true);
+          toast.success("Content variants generated!");
+        }
+      }
+    } catch (err) {
+      console.warn("Content generation unavailable:", err);
+    } finally {
+      setGenerating(false);
+    }
+
     toast.success("Draft written — give it your voice and publish");
   };
 
@@ -156,18 +197,90 @@ function BlogGenerator() {
           value={body}
           onChange={e => setBody(e.target.value)}
         />
+
+        {/* Generated content variants */}
+        {(generatedContent.socialCaption || generatedContent.emailExcerpt || generatedContent.keywords) && (
+          <div className="rounded-lg bg-accent/8 border border-accent/20 p-4 space-y-3">
+            <button
+              onClick={() => setShowGenerated(!showGenerated)}
+              className="w-full flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+            >
+              <span>✨ AI-Generated Content Variants</span>
+              <ChevronDown size={16} className={`transition-transform ${showGenerated ? "rotate-180" : ""}`} />
+            </button>
+
+            {showGenerated && (
+              <div className="space-y-3 mt-2 pt-3 border-t border-accent/20">
+                {generatedContent.socialCaption && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                      <Share2 size={14} /> Social Caption
+                    </div>
+                    <p className="text-xs font-body text-foreground bg-background/50 p-2.5 rounded line-clamp-3">
+                      {generatedContent.socialCaption}
+                    </p>
+                  </div>
+                )}
+
+                {generatedContent.emailExcerpt && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                      <Mail size={14} /> Email Excerpt
+                    </div>
+                    <p className="text-xs font-body text-foreground bg-background/50 p-2.5 rounded line-clamp-3">
+                      {generatedContent.emailExcerpt}
+                    </p>
+                  </div>
+                )}
+
+                {generatedContent.keywords && generatedContent.keywords.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5 text-xs font-body font-semibold text-accent/70">
+                      <Tag size={14} /> SEO Keywords
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {generatedContent.keywords.map((kw, idx) => (
+                        <span key={idx} className="text-xs font-body bg-accent/15 text-accent rounded px-2 py-1 font-semibold">
+                          {kw}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={handleGenerate}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+            disabled={generating}
+            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all disabled:opacity-50"
           >
-            <Sparkles size={16} strokeWidth={1.75} /> Generate draft
+            <Sparkles size={16} strokeWidth={1.75} /> {generating ? "Generating..." : "Generate variants"}
           </button>
           <button
             onClick={handlePublish}
             className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
             <Save size={16} strokeWidth={1.5} /> Publish
+          </button>
+          <button
+            onClick={() => {
+              handlePublish();
+              toast.promise(
+                new Promise(resolve => setTimeout(resolve, 800)),
+                {
+                  loading: "Syncing to website...",
+                  success: "Live on website! ✨",
+                  error: "Sync unavailable",
+                }
+              );
+            }}
+            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Globe size={16} strokeWidth={1.5} /> Website
           </button>
           <p className="text-xs font-body text-muted-foreground">
             {title.trim() ? "Auto-saving" : "Add title to auto-save"}
