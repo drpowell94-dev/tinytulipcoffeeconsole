@@ -115,6 +115,7 @@ function BlogGenerator() {
   const [tone, setTone] = useState<BlogTone>("friendly");
   const [keywords, setKeywords] = useState("");
   const [body, setBody] = useState(BLOG_TEMPLATES[0].starter);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
   const [showGenerated, setShowGenerated] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<{
     socialCaption?: string;
@@ -129,12 +130,12 @@ function BlogGenerator() {
     window.clearTimeout(autosave.current);
     if (!title.trim()) return;
     autosave.current = window.setTimeout(() => {
-      const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "draft" });
+      const next = savePost({ id: editingId, title, template, tone, keywords, body, status });
       setPosts(next);
       if (!editingId) setEditingId(next[0].id);
     }, 2000);
     return () => window.clearTimeout(autosave.current);
-  }, [title, template, tone, keywords, body, editingId]);
+  }, [title, template, tone, keywords, body, editingId, status]);
 
   const applyTemplate = (id: string) => {
     setTemplate(id);
@@ -204,6 +205,7 @@ function BlogGenerator() {
     setTitle("");
     setKeywords("");
     setBody(BLOG_TEMPLATES.find(t => t.id === template)?.starter ?? "");
+    setStatus("draft");
   };
 
   const handleEdit = (post: BlogPost) => {
@@ -213,6 +215,7 @@ function BlogGenerator() {
     setTone(post.tone);
     setKeywords(post.keywords);
     setBody(post.body);
+    setStatus(post.status);
   };
 
   return (
