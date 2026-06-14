@@ -15,7 +15,7 @@ import {
 import { generateBlogDraft } from "@/lib/blogWriter";
 import { generateInstagramAuthUrl } from "@/services/instagramService";
 
-type Tab = "blog" | "website";
+type Tab = "blog" | "website" | "social";
 
 const input =
   "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
@@ -39,11 +39,22 @@ export default function ContentPage() {
         <TabButton active={tab === "website"} onClick={() => setTab("website")}>
           <Globe size={15} strokeWidth={1.75} /> Website
         </TabButton>
+        <TabButton active={tab === "social"} onClick={() => setTab("social")}>
+          <Instagram size={15} strokeWidth={1.75} /> Social
+        </TabButton>
       </div>
 
-      {tab === "blog" ? <BlogGenerator /> : <WebsiteUpdater />}
+      {tab === "blog" && <BlogGenerator />}
+      {tab === "website" && <WebsiteUpdater />}
+      {tab === "social" && <SocialManager />}
+    </div>
+  );
+}
 
-      {/* Instagram integration banner */}
+function SocialManager() {
+  return (
+    <div className="space-y-6">
+      {/* Instagram integration */}
       <div className="rounded-lg border border-accent/30 bg-gradient-to-r from-accent/10 via-accent/5 to-transparent p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1">

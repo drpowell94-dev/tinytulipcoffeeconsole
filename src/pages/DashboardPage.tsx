@@ -109,6 +109,9 @@ export default function DashboardPage() {
         )}
       </section>
 
+      {/* Conversion Funnel Widget - moved higher for visibility */}
+      <ConversionFunnelWidget userId="default-user" />
+
       {/* Insights always visible */}
       {insights.length > 0 && (
         <section className="space-y-4">
@@ -125,9 +128,6 @@ export default function DashboardPage() {
           </div>
         </section>
       )}
-
-      {/* Conversion Funnel Widget */}
-      <ConversionFunnelWidget userId="default-user" />
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (

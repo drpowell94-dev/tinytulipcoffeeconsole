@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -52,7 +52,8 @@ export default function EventsPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
-  const [tab, setTab] = useState<"upcoming" | "past" | "leads">("upcoming");
+  const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
+  const [showLeadForm, setShowLeadForm] = useState(false);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -132,33 +133,8 @@ export default function EventsPage() {
   };
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
-  const [leadQuickForm, setLeadQuickForm] = useState(false);
-  const [quickLead, setQuickLead] = useState({ name: "", phone: "", notes: "" });
 
-  const handleQuickAddLead = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!quickLead.name.trim()) {
-      toast.error("Lead name is required");
-      return;
-    }
-    const event = createEvent({
-      name: quickLead.name.trim(),
-      eventType: "popup",
-      dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      location: "TBD",
-      preOrders: 0,
-      status: "inquiry",
-      depositStatus: "pending",
-      contactPhone: quickLead.phone.trim() || undefined,
-      notes: quickLead.notes.trim() || undefined,
-    });
-    setEvents(loadEvents());
-    setQuickLead({ name: "", phone: "", notes: "" });
-    setLeadQuickForm(false);
-    toast.success(`Lead "${event.name}" created`);
-  };
-
-  const renderEvent = (event: TulipEvent, showLogistics = false) => {
+  const renderEvent = (event: TulipEvent, showLogistics = true) => {
     const days = daysUntil(event.dateStart);
     return (
       <div key={event.id} className="space-y-3">
@@ -303,13 +279,19 @@ export default function EventsPage() {
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
           <button
             onClick={handleImportWix}
             disabled={importing}
             className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
             <Download size={16} strokeWidth={2} /> Import from Wix
+          </button>
+          <button
+            onClick={() => setShowLeadForm(!showLeadForm)}
+            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Plus size={16} strokeWidth={2} /> Add Lead
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
@@ -323,74 +305,57 @@ export default function EventsPage() {
       {/* Lead response time alert */}
       <LeadResponseAlert userId="default-user" />
 
-      {/* Quick leads section */}
-      {pendingLeads.length > 0 && (
-        <section className="rounded-lg border border-accent/20 bg-accent/8 p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="font-display text-lg text-foreground flex items-center gap-2">
-                <TrendingUp size={18} className="text-accent" />
-                Pending Leads ({pendingLeads.length})
-              </h2>
-              <p className="text-xs text-muted-foreground font-body mt-1">Inbound booking requests awaiting response</p>
-            </div>
-            <button
-              onClick={() => setTab("leads")}
-              className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
-            >
-              View all →
-            </button>
-          </div>
-          <div className="space-y-2">
-            {pendingLeads.slice(0, 3).map(lead => (
-              <div key={lead.id} className="flex items-center justify-between rounded-lg bg-background/50 p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="font-body font-semibold text-sm text-foreground truncate">{lead.name}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">{formatDate(lead.dateStart)}{lead.location && ` • ${lead.location}`}</p>
-                </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    onClick={() => handleConvertLead(lead)}
-                    className="flex items-center gap-1 rounded-lg bg-accent text-accent-foreground px-2.5 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
-                  >
-                    <CheckCircle2 size={12} /> Accept
-                  </button>
-                  <button
-                    onClick={() => handleDeclineLead(lead)}
-                    className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  >
-                    <XCircle size={14} strokeWidth={1.5} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Quick lead form */}
-      {leadQuickForm && (
+      {/* Quick lead form - always accessible */}
+      {showLeadForm && (
         <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
-          <form onSubmit={handleQuickAddLead} className="space-y-3">
+          <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            if (!form.name.trim()) {
+              toast.error("Lead name is required");
+              return;
+            }
+            const event = createEvent({
+              name: form.name.trim(),
+              eventType: "popup",
+              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              location: form.location.trim() || "TBD",
+              preOrders: 0,
+              status: "inquiry",
+              depositStatus: "pending",
+              contactPhone: form.contactPhone.trim() || undefined,
+              notes: form.notes.trim() || undefined,
+            });
+            setEvents(loadEvents());
+            setForm(EMPTY_FORM);
+            setShowLeadForm(false);
+            toast.success(`Lead "${event.name}" created`);
+          }} className="space-y-3">
             <input
               className={input}
               placeholder="Lead name or company *"
-              value={quickLead.name}
-              onChange={e => setQuickLead({ ...quickLead, name: e.target.value })}
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
               autoFocus
             />
             <input
               className={input}
               placeholder="Phone (optional)"
-              value={quickLead.phone}
-              onChange={e => setQuickLead({ ...quickLead, phone: e.target.value })}
+              value={form.contactPhone}
+              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Location (optional)"
+              value={form.location}
+              onChange={e => setForm({ ...form, location: e.target.value })}
             />
             <textarea
               className={input}
-              placeholder="Quick notes (optional)"
+              placeholder="Notes (optional)"
               rows={2}
-              value={quickLead.notes}
-              onChange={e => setQuickLead({ ...quickLead, notes: e.target.value })}
+              value={form.notes}
+              onChange={e => setForm({ ...form, notes: e.target.value })}
             />
             <div className="flex gap-2">
               <button
@@ -401,7 +366,10 @@ export default function EventsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setLeadQuickForm(false)}
+                onClick={() => {
+                  setShowLeadForm(false);
+                  setForm(EMPTY_FORM);
+                }}
                 className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
               >
                 Cancel
@@ -409,16 +377,6 @@ export default function EventsPage() {
             </div>
           </form>
         </div>
-      )}
-
-      {pendingLeads.length === 0 && !leadQuickForm && (
-        <button
-          onClick={() => setLeadQuickForm(true)}
-          className="w-full rounded-lg border-2 border-dashed border-accent/30 p-5 text-center hover:border-accent/50 hover:bg-accent/5 transition-all"
-        >
-          <p className="font-body font-semibold text-sm text-foreground">+ Add a New Lead</p>
-          <p className="text-xs text-muted-foreground mt-1">Manually log incoming booking requests</p>
-        </button>
       )}
 
       {/* Create form */}
@@ -523,143 +481,139 @@ export default function EventsPage() {
         </form>
       )}
 
-      {/* Event list with tabs - always visible */}
-      <div className="space-y-6">
-        {/* Tabs - always visible */}
-        <div className="flex gap-2 border-b border-border">
-          {[
-            { id: "upcoming" as const, label: `Upcoming (${upcoming.length})` },
-            { id: "past" as const, label: `Past (${past.length})` },
-            { id: "leads" as const, label: `Pending Leads (${pendingLeads.length})` },
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`px-4 py-3 text-sm font-body font-semibold transition-colors border-b-2 ${
-                tab === t.id
-                  ? "border-accent text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+      {/* Event list with session history sidebar */}
+      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
+        {/* Main event list */}
+        <div className="space-y-6">
+          {/* Filter buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter size={16} className="text-muted-foreground" />
+            {[
+              { id: "all" as const, label: "All", count: events.length },
+              { id: "upcoming" as const, label: "Upcoming", count: upcoming.length },
+              { id: "leads" as const, label: "Leads", count: pendingLeads.length },
+              { id: "past" as const, label: "Past", count: past.length },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setFilter(f.id)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-body font-semibold transition-colors ${
+                  filter === f.id
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
+                }`}
+              >
+                {f.label} ({f.count})
+              </button>
+            ))}
+          </div>
+
+          {/* Unified event+lead list */}
+          <div className="space-y-4">
+            {filter === "all" && events.length > 0 && (
+              <div className="space-y-4">
+                {events
+                  .sort((a, b) => {
+                    // Sort by: leads first, then upcoming, then past
+                    const aIsLead = a.status === "inquiry" ? 0 : 1;
+                    const bIsLead = b.status === "inquiry" ? 0 : 1;
+                    if (aIsLead !== bIsLead) return aIsLead - bIsLead;
+                    return a.dateStart.localeCompare(b.dateStart);
+                  })
+                  .map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "upcoming" && upcoming.length > 0 && (
+              <div className="space-y-4">
+                {upcoming.map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "leads" && pendingLeads.length > 0 && (
+              <div className="space-y-4">
+                {pendingLeads.map(e => renderEvent(e, true))}
+              </div>
+            )}
+
+            {filter === "past" && past.length > 0 && (
+              <div className="space-y-4">
+                {past.map(e => renderEvent(e, false))}
+              </div>
+            )}
+
+            {((filter === "all" && events.length === 0) ||
+              (filter === "upcoming" && upcoming.length === 0) ||
+              (filter === "leads" && pendingLeads.length === 0) ||
+              (filter === "past" && past.length === 0)) && (
+              <div className="rounded-lg bg-muted/20 p-12 text-center">
+                <TulipLogo size={44} className="mx-auto mb-3" />
+                <p className="font-body text-muted-foreground">
+                  {filter === "all" && "No events yet — create one or tap 'Import from Wix'!"}
+                  {filter === "upcoming" && "No upcoming events — create one or tap 'Import from Wix'!"}
+                  {filter === "leads" && "No pending leads. When your booking form receives requests, they'll appear here."}
+                  {filter === "past" && "No past events yet."}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Tab content */}
-        <div className="space-y-4">
-          {tab === "upcoming" && upcoming.length > 0 && (
-            <div className="space-y-4">
-              {upcoming.map(e => renderEvent(e, true))}
-            </div>
-          )}
-
-          {tab === "upcoming" && upcoming.length === 0 && (
-            <div className="rounded-lg bg-muted/20 p-12 text-center">
-              <TulipLogo size={44} className="mx-auto mb-3" />
-              <p className="font-body text-muted-foreground">
-                No upcoming events — create one or tap "Import from Wix"!
-              </p>
-            </div>
-          )}
-
-          {tab === "past" && past.length > 0 && (
-            <div className="space-y-4">
-              {past.map(e => renderEvent(e, false))}
-            </div>
-          )}
-
-          {tab === "past" && past.length === 0 && (
-            <p className="text-sm font-body text-muted-foreground py-6">
-              No past events yet.
+        {/* Session history sidebar */}
+        <div className="rounded-lg bg-muted/20 p-5 h-fit space-y-3">
+          <div className="flex items-center gap-2">
+            <History size={16} className="text-muted-foreground" />
+            <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
+              Past Sessions ({history.length})
             </p>
-          )}
-
-          {tab === "leads" && pendingLeads.length > 0 && (
-            <div className="space-y-4">
-              {pendingLeads.map(e => renderEvent(e, false))}
+          </div>
+          {history.length === 0 ? (
+            <p className="text-sm font-body text-muted-foreground">None yet</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {history.map(s => (
+                <div key={s.id} className="rounded-lg bg-background/50 p-3 border border-border">
+                  <p className="font-body font-semibold text-xs text-foreground truncate">{s.eventName}</p>
+                  <p className="text-[10px] font-body text-muted-foreground mt-1">
+                    {new Date(s.date).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs font-body text-foreground font-bold mt-1">
+                    {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
+                  </p>
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <button
+                      onClick={() => {
+                        const recap = generateEventRecap(s);
+                        savePost({
+                          title: recap.title,
+                          template: "community-update",
+                          tone: "friendly",
+                          keywords: "",
+                          body: recap.body,
+                          status: "draft",
+                        });
+                        toast.success("Recap draft created — find it in Content");
+                      }}
+                      className="p-1 rounded text-accent hover:bg-accent/10 transition-colors shrink-0"
+                      aria-label="Draft a recap post"
+                      title="Draft recap"
+                    >
+                      <Sparkles size={13} strokeWidth={1.75} />
+                    </button>
+                    <button
+                      onClick={() => setHistory(deleteFromHistory(s.id))}
+                      className="p-1 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+                      aria-label="Delete session"
+                    >
+                      <Trash2 size={12} strokeWidth={1.5} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-
-          {tab === "leads" && pendingLeads.length === 0 && (
-            <p className="text-sm font-body text-muted-foreground py-6">
-              No pending leads. When your booking form receives requests, they'll appear here.
-            </p>
           )}
         </div>
       </div>
-
-      {/* Session history */}
-      <section className="space-y-4">
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="w-full flex items-center justify-between text-left font-body text-xs font-semibold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <History size={14} /> Past Sessions {history.length > 0 && `(${history.length})`}
-          </span>
-          <span className="text-sm">{showHistory ? "▾" : "▸"}</span>
-        </button>
-        {showHistory && (
-          <div className="space-y-3">
-            {history.length === 0 ? (
-              <p className="text-sm font-body text-muted-foreground py-6 text-center">
-                No saved sessions yet — end a counter session to archive it
-              </p>
-            ) : (
-              history.map(s => (
-                <div key={s.id} className="rounded-lg bg-muted/15 p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="font-body font-semibold text-sm text-foreground truncate">{s.eventName}</p>
-                      <p className="text-xs font-body text-muted-foreground mt-1">
-                        {new Date(s.date).toLocaleDateString()} · {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
-                        {s.extraSales > 0 && ` · +${formatCurrency(s.extraSales)}`}
-                      </p>
-                      <div className="flex items-center gap-3 mt-2">
-                        {Object.entries(s.productCounts).map(([id, count]) => (
-                          <span key={id} className="flex items-center gap-1 text-xs font-body text-muted-foreground">
-                            <DrinkIcon id={id} size={18} className="text-muted-foreground" />
-                            {count}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => {
-                          const recap = generateEventRecap(s);
-                          savePost({
-                            title: recap.title,
-                            template: "community-update",
-                            tone: "friendly",
-                            keywords: "",
-                            body: recap.body,
-                            status: "draft",
-                          });
-                          toast.success("Recap draft created — find it in Content");
-                        }}
-                        className="p-1.5 rounded-lg text-accent hover:bg-accent/10 transition-colors"
-                        aria-label="Draft a recap post"
-                        title="Draft recap post"
-                      >
-                        <Sparkles size={15} strokeWidth={1.75} />
-                      </button>
-                      <button
-                        onClick={() => setHistory(deleteFromHistory(s.id))}
-                        className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        aria-label="Delete session"
-                      >
-                        <Trash2 size={14} strokeWidth={1.5} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </section>
     </div>
   );
 }
