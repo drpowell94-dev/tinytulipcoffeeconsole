@@ -134,14 +134,12 @@ export default function EventsPage() {
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
 
-  const renderEvent = (event: TulipEvent, showLogistics = true) => {
+  const renderEvent = (event: TulipEvent) => {
     const days = daysUntil(event.dateStart);
     return (
       <div key={event.id} className="space-y-3">
-        <div
-          className="rounded-lg bg-muted/20 p-5 flex flex-col sm:flex-row sm:items-start gap-3 hover:bg-muted/30 transition-colors"
-        >
-          <div className="flex-1 min-w-0">
+        <div className="rounded-lg bg-muted/20 p-5 hover:bg-muted/30 transition-colors space-y-3">
+          <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap mb-2">
               <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
               <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
@@ -162,18 +160,19 @@ export default function EventsPage() {
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {event.status === "inquiry" ? (
               <>
                 <button
                   onClick={() => handleConvertLead(event)}
-                  className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
                 >
                   <CheckCircle2 size={14} /> Accept
                 </button>
                 <button
                   onClick={() => handleDeclineLead(event)}
-                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  aria-label={`Decline ${event.name}`}
                 >
                   <XCircle size={16} strokeWidth={1.5} />
                 </button>
@@ -182,14 +181,14 @@ export default function EventsPage() {
               <>
                 <Link
                   to={`/events/${event.id}/counter`}
-                  className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                  className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
                 >
                   <Coffee size={16} strokeWidth={1.5} />
                   <span className="hidden sm:inline">Counter</span>
                 </Link>
                 <button
                   onClick={() => handleDelete(event)}
-                  className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors sm:ml-auto"
                   aria-label={`Delete ${event.name}`}
                 >
                   <Trash2 size={16} strokeWidth={1.5} />
@@ -199,73 +198,72 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Predictive logistics section */}
-        {showLogistics && event.guestCount && (
-          <button
-            onClick={() => {
-              if (expandedLogistics[event.id]) {
-                setExpandedLogistics(prev => {
-                  const next = { ...prev };
-                  delete next[event.id];
-                  return next;
-                });
-              } else if (!loadingLogistics[event.id]) {
-                setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
-                getPredictedNeeds(event)
-                  .then(needs => {
-                    setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
-                  })
-                  .catch(() => toast.error("Failed to load predicted needs"))
-                  .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
-              }
-            }}
-            disabled={loadingLogistics[event.id]}
-            className="w-full text-left rounded-lg bg-accent/8 border border-accent/20 p-5 flex items-center justify-between gap-3 hover:bg-accent/12 transition-colors group"
-          >
-            <span className="flex items-center gap-2 text-sm font-body font-semibold text-accent">
-              <Zap size={14} strokeWidth={2} /> Predicted Supply Needs
-            </span>
-            <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
-          </button>
-        )}
+          {/* Predictive logistics section - nested in card */}
+          {event.guestCount && (
+            <div className="border-t border-border/50 pt-3">
+              <button
+                onClick={() => {
+                  if (expandedLogistics[event.id]) {
+                    setExpandedLogistics(prev => {
+                      const next = { ...prev };
+                      delete next[event.id];
+                      return next;
+                    });
+                  } else if (!loadingLogistics[event.id]) {
+                    setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
+                    getPredictedNeeds(event)
+                      .then(needs => {
+                        setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
+                      })
+                      .catch(() => toast.error("Failed to load predicted needs"))
+                      .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
+                  }
+                }}
+                disabled={loadingLogistics[event.id]}
+                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+              >
+                <span className="flex items-center gap-1">
+                  <Zap size={14} strokeWidth={2} /> Supplies
+                </span>
+                <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
+              </button>
 
-        {expandedLogistics[event.id] && (
-          <div className="rounded-lg bg-accent/8 p-5 grid grid-cols-2 md:grid-cols-3 gap-4 text-xs font-body">
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Cups</p>
-              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedCups}</p>
+              {expandedLogistics[event.id] && (
+                <div className="mt-3 p-3 rounded bg-accent/5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-body">
+                  <div>
+                    <p className="text-accent/70 font-semibold">Cups</p>
+                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedCups}</p>
+                  </div>
+                  <div>
+                    <p className="text-accent/70 font-semibold">Beans (lbs)</p>
+                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedBeansLbs}</p>
+                  </div>
+                  <div>
+                    <p className="text-accent/70 font-semibold">Milk (L)</p>
+                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedMilkLiters}</p>
+                  </div>
+                  <div>
+                    <p className="text-accent/70 font-semibold">Lids</p>
+                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedLids}</p>
+                  </div>
+                  <div>
+                    <p className="text-accent/70 font-semibold">Napkins</p>
+                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedNapkins}</p>
+                  </div>
+                  <div>
+                    <p className="text-accent/70 font-semibold">Confidence</p>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                      expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
+                      expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
+                      "bg-muted/30 text-muted-foreground"
+                    }`}>
+                      {expandedLogistics[event.id].confidence}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Beans (lbs)</p>
-              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedBeansLbs}</p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Milk (L)</p>
-              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedMilkLiters}</p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Lids</p>
-              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedLids}</p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Napkins</p>
-              <p className="text-foreground font-bold text-sm">{expandedLogistics[event.id].predictedNapkins}</p>
-            </div>
-            <div className="space-y-0.5">
-              <p className="font-semibold text-accent/70">Confidence</p>
-              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
-                expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
-                "bg-muted/30 text-muted-foreground"
-              }`}>
-                {expandedLogistics[event.id].confidence}
-              </span>
-            </div>
-            <p className="col-span-2 sm:col-span-3 text-muted-foreground text-[10px] mt-1">
-              {expandedLogistics[event.id].methodology}
-            </p>
-          </div>
-        )}
+          )}
       </div>
     );
   };
@@ -520,25 +518,25 @@ export default function EventsPage() {
                     if (aIsLead !== bIsLead) return aIsLead - bIsLead;
                     return a.dateStart.localeCompare(b.dateStart);
                   })
-                  .map(e => renderEvent(e, true))}
+                  .map(e => renderEvent(e))}
               </div>
             )}
 
             {filter === "upcoming" && upcoming.length > 0 && (
               <div className="space-y-4">
-                {upcoming.map(e => renderEvent(e, true))}
+                {upcoming.map(e => renderEvent(e))}
               </div>
             )}
 
             {filter === "leads" && pendingLeads.length > 0 && (
               <div className="space-y-4">
-                {pendingLeads.map(e => renderEvent(e, true))}
+                {pendingLeads.map(e => renderEvent(e))}
               </div>
             )}
 
             {filter === "past" && past.length > 0 && (
               <div className="space-y-4">
-                {past.map(e => renderEvent(e, false))}
+                {past.map(e => renderEvent(e))}
               </div>
             )}
 
