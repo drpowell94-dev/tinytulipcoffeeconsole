@@ -90,29 +90,16 @@ export function DrinkIcon({ id, size = 48, className }: IconProps & { id: string
   return Icon ? <Icon size={size} className={className} /> : null;
 }
 
-/** Brand mark — coral bloom, taupe stem. */
+/** Brand mark — Bloomi, the Tiny Tulip heart mascot. */
 export function TulipLogo({ size = 32, className }: IconProps) {
   return (
-    <svg
+    <img
+      src="/bloomi-logo.png"
       width={size}
       height={size}
-      viewBox="0 0 48 48"
-      fill="none"
       className={className}
-      aria-hidden
-    >
-      <path
-        d="M14 7v8.5a10 10 0 0 0 20 0V7l-5.5 4.5L24 6l-4.5 5.5L14 7Z"
-        fill="hsl(11 76% 56%)"
-        stroke="hsl(11 76% 56%)"
-        strokeWidth="2"
-        strokeLinejoin="round"
-      />
-      <g stroke="hsl(33 24% 44%)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M24 26v17" />
-        <path d="M24 38c0-5.5-3.8-7.5-8-8.5.3 5.5 3.5 8.5 8 8.5Z" />
-        <path d="M24 38c0-5.5 3.8-7.5 8-8.5-.3 5.5-3.5 8.5-8 8.5Z" />
-      </g>
-    </svg>
+      style={{ width: size, height: size, objectFit: "contain" }}
+      alt="Tiny Tulip Coffee"
+    />
   );
 }
