@@ -21,6 +21,39 @@ type Tab = "blog" | "website" | "social";
 const input =
   "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
+/**
+ * Publish a blog post to Wix via Supabase Edge Function.
+ * This is called when the user clicks the "Website" button.
+ */
+async function publishToWixEdgeFunction(post: {
+  title: string;
+  body: string;
+  excerpt?: string;
+  featured?: boolean;
+}): Promise<{ success: boolean; postId?: string }> {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+
+  if (!supabaseUrl) {
+    throw new Error("Supabase URL not configured");
+  }
+
+  const response = await fetch(`${supabaseUrl}/functions/v1/publish-to-wix`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(post),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new Error(error.error || `HTTP ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data as { success: boolean; postId?: string };
+}
+
 export default function ContentPage() {
   const [tab, setTab] = useState<Tab>("blog");
 
@@ -338,18 +371,29 @@ function BlogGenerator() {
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (!title.trim()) {
                 toast.error("Add a title first");
                 return;
               }
 
-              // Publish locally
+              // Publish locally first
               handlePublish();
 
-              // Show info about Wix sync
-              toast.info(
-                "📱 Ready to sync to tinytulipcoffee.com! Let Claude know to publish this post via Wix MCP."
+              // Then sync to Wix via Edge Function
+              toast.promise(
+                publishToWixEdgeFunction({
+                  title: title.trim(),
+                  body: body.trim(),
+                  excerpt: keywords.trim() ? `Tags: ${keywords}` : undefined,
+                  featured: true,
+                }),
+                {
+                  loading: "Publishing to tinytulipcoffee.com...",
+                  success: "✨ Live on your website!",
+                  error: (err) =>
+                    `Failed to publish: ${err instanceof Error ? err.message : String(err)}`,
+                }
               );
             }}
             className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
