@@ -74,26 +74,26 @@ export function generateBlogDraft(
   }
 
   if (templateId === "popup-event-announcement") {
-    const partner = theme || "a collab we're excited about";
-    const vibe = weave(kws.slice(1), "coffee, community, and good vibes");
+    const event = theme || "a resident event we're stoked about";
+    const community = weave(kws.slice(1), "neighbors, friends, and the community");
     return {
-      title: `Pop-Up Alert: ${theme || "You Don't Want to Miss This"}`,
+      title: `We're Popping Up: ${theme || "Bringing Coffee to Your Neighborhood"}`,
       body: [
-        `## Special Event: ${partner}`,
+        `## Coming to ${event}`,
         "",
-        `${voice.opener} We're popping up somewhere special, and we want you there${voice.exclaim}`,
+        `${voice.opener} We're pulling up to an event that means something real — a chance to pour coffee for ${community}${voice.exclaim}`,
         "",
-        "### The Plan",
+        "### What to Expect",
         "",
-        `We're bringing the cart to connect over ${vibe}. It's the kind of event where you show up for the coffee and stay for the company.`,
+        "Cold-crafted drinks, good people, and coffee made the way we've always made it. No frills, just real.",
         "",
-        "### Mark Your Calendar",
+        "### When & Where",
         "",
-        "[DATE] — [TIME] — [LOCATION]. Limited time, limited quantities. First come, first served.",
+        "[DATE] — [TIME] — [LOCATION]. We'll be there all day.",
         "",
-        "### Why You Should Go",
+        "### Why This Matters",
         "",
-        "Because pop-ups are where the magic happens. And we'd love to see you there.",
+        "Pop-ups aren't just about the coffee. They're about showing up for your neighborhood and the people who make it home.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),

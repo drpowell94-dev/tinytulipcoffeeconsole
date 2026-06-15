@@ -28,15 +28,15 @@ export const BLOG_TEMPLATES: BlogTemplate[] = [
   },
   {
     id: "popup-event-announcement",
-    name: "Graffiti Streetwear Pop-Up Announcement",
+    name: "Resident Event Pop-Up Announcement",
     starter:
-      "## We're Popping Up With [PARTNER NAME]\n\nTwo passions, one cart. We're teaming up with [PARTNER] for an exclusive coffee + [STREETWEAR/COLLAB] event.\n\n### What to Expect\n\n[Describe the vibe, the drinks, the collab]\n\n### When & Where\n\n[Date], [Time], [Location]\n\n### How to Get There\n\n[Directions/parking/transit info]\n\nFirst ones there get the exclusive blend. See you there! 🌷",
+      "## Pop-Up at [RESIDENT EVENT NAME]\n\nWe're bringing the cart to [NEIGHBORHOOD/COMMUNITY]. Come hang with us and the folks who make this place what it is.\n\n### What's Happening\n\n[Describe the event, the vibe, the community]\n\n### When & Where\n\n[Date], [Time], [Location]\n\n### What We're Pouring\n\n[Menu highlights for this event]\n\nWe'll be here all day. See you there! 🌷",
   },
   {
     id: "community-update",
     name: "Community Update",
     starter:
-      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Where We've Been\n\n[Recap recent pop-ups, markets, collabs]\n\n### Where We're Going\n\n[Upcoming events and dates]\n\n### Thank You\n\n[Community shout-outs and appreciation]\n\nPurely a pop-up, where the people are. See you soon! 🌷",
+      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Where We've Been\n\n[Recap recent pop-ups, markets, resident events]\n\n### Where We're Going\n\n[Upcoming events and dates]\n\n### Thank You\n\n[Community shout-outs and appreciation]\n\nPurely a pop-up, where the people are. See you soon! 🌷",
   },
 ];
 
