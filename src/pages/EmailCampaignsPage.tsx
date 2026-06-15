@@ -164,7 +164,7 @@ export default function EmailCampaignsPage() {
           >
             <button
               onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
-              className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
             >
               <div className="flex items-center gap-3 flex-1 text-left">
                 <Mail size={18} className="text-accent shrink-0" />
