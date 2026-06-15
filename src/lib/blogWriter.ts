@@ -46,54 +46,54 @@ export function generateBlogDraft(
   const kws = keywordList(keywords);
   const theme = kws[0] ?? "";
 
-  if (templateId === "coffee-origin") {
-    const origin = theme || "our newest single origin";
-    const notes = weave(kws.slice(1), "dark chocolate, toasted hazelnut, and a honeyed finish");
+  if (templateId === "canned-latte-feature") {
+    const product = theme || "our new canned latte";
+    const highlight = weave(kws.slice(1), "smooth, cold-crafted, and ready to go");
     return {
-      title: `Origin Spotlight: ${theme ? theme : "Our Newest Beans"}`,
+      title: `New Release: ${theme || "Cold-Crafted Canned Latte"}`,
       body: [
-        `## Meet ${origin}`,
+        `## Introducing ${product}`,
         "",
-        `${voice.opener} This month we're pouring something special: beans from ${origin}. Every batch is small-lot and roasted the week we serve it, so what hits your cup is as fresh as it gets${voice.exclaim}`,
+        `${voice.opener} We've done something we're really proud of — a canned latte that tastes like it came straight from the cart${voice.exclaim}`,
         "",
-        "### Tasting Notes",
+        "### What Makes It Special",
         "",
-        `Expect ${notes}. It shines as a pour-over, and it holds its own against oat milk in a latte.`,
+        `${highlight}. No artificial anything. Just real espresso, real milk, and the taste that made Tiny Tulip what it is.`,
         "",
-        "### Why We Chose It",
+        "### How We Got Here",
         "",
-        `We pick coffees the same way we pick our pop-up spots — by chasing what feels right. This one stopped us at first sip, and we think it'll do the same to you.`,
+        "We tested hundreds of combinations until we got one that felt right. This is it.",
         "",
-        "### How We Brew It",
+        "### How to Get One",
         "",
-        "At our events we pull it as espresso and batch it for cold brew. At home, try 1:16 with water just off the boil, and let it bloom for 30 seconds.",
+        "Now available at select pop-ups and farmers markets. We're making limited batches, so grab one while they're here.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),
     };
   }
 
-  if (templateId === "seasonal-launch") {
-    const drink = theme || "our new seasonal drink";
-    const ingredients = weave(kws.slice(1), "real fruit, house-made syrup, and our signature espresso");
+  if (templateId === "popup-event-announcement") {
+    const partner = theme || "a collab we're excited about";
+    const vibe = weave(kws.slice(1), "coffee, community, and good vibes");
     return {
-      title: `New on the Menu: ${theme || "A Seasonal Favorite"}`,
+      title: `Pop-Up Alert: ${theme || "You Don't Want to Miss This"}`,
       body: [
-        `## Introducing ${drink}`,
+        `## Special Event: ${partner}`,
         "",
-        `${voice.opener} The seasonal board just got a new headliner — ${drink} is officially here${voice.exclaim}`,
+        `${voice.opener} We're popping up somewhere special, and we want you there${voice.exclaim}`,
         "",
-        "### What's In It",
+        "### The Plan",
         "",
-        `We build it with ${ingredients}. No shortcuts, no artificial anything — the same way we make everything at the cart.`,
+        `We're bringing the cart to connect over ${vibe}. It's the kind of event where you show up for the coffee and stay for the company.`,
         "",
-        "### Our Honest Review",
+        "### Mark Your Calendar",
         "",
-        "We test every seasonal drink on ourselves (tough job) until it earns a spot on the menu. This one didn't take long.",
+        "[DATE] — [TIME] — [LOCATION]. Limited time, limited quantities. First come, first served.",
         "",
-        "### Where to Find It",
+        "### Why You Should Go",
         "",
-        "It's pouring at every pop-up and market while the season lasts. Follow along to see where the cart lands next.",
+        "Because pop-ups are where the magic happens. And we'd love to see you there.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),

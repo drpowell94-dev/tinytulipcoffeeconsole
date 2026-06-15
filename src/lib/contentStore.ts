@@ -21,22 +21,22 @@ export interface BlogTemplate {
 
 export const BLOG_TEMPLATES: BlogTemplate[] = [
   {
-    id: "coffee-origin",
-    name: "Coffee Origin Spotlight",
+    id: "canned-latte-feature",
+    name: "Canned Latte Product Spotlight",
     starter:
-      "## Meet Our Newest Origin\n\nThis month we're featuring beans from [REGION]. Grown at [ELEVATION], these beans bring notes of [TASTING NOTES].\n\n### The Story\n\n[Tell the farm/co-op story here]\n\n### How We Brew It\n\n[Brewing recommendations]\n\nCome try a cup at our next pop-up! 🌷",
+      "## Introducing Our New Canned Latte\n\nWe're thrilled to announce [PRODUCT NAME] — a cold-crafted latte in a can. No shortcuts, no artificial anything, just real espresso and milk.\n\n### What Makes It Different\n\n[Highlight the product: texture, taste, ingredients]\n\n### Where to Find It\n\nAvailable at our pop-ups and farmers markets starting [DATE]. Limited quantity while supplies last.\n\n### Try It First\n\nCome say hi at the next event — first taste is on us. 🌷",
   },
   {
-    id: "seasonal-launch",
-    name: "Seasonal Drink Launch",
+    id: "popup-event-announcement",
+    name: "Graffiti Streetwear Pop-Up Announcement",
     starter:
-      "## Introducing: [DRINK NAME]\n\nOur new seasonal drink is here! Made with [INGREDIENTS], it's the perfect way to celebrate [SEASON].\n\n### What's In It\n\n[Ingredient highlights]\n\n### Available\n\n[Dates and locations]\n\nFind us at the farmers market this weekend! 🌷",
+      "## We're Popping Up With [PARTNER NAME]\n\nTwo passions, one cart. We're teaming up with [PARTNER] for an exclusive coffee + [STREETWEAR/COLLAB] event.\n\n### What to Expect\n\n[Describe the vibe, the drinks, the collab]\n\n### When & Where\n\n[Date], [Time], [Location]\n\n### How to Get There\n\n[Directions/parking/transit info]\n\nFirst ones there get the exclusive blend. See you there! 🌷",
   },
   {
     id: "community-update",
     name: "Community Update",
     starter:
-      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Recent Events\n\n[Recap recent pop-ups and markets]\n\n### Coming Up\n\n[Upcoming schedule]\n\n### Thank You\n\n[Community shout-outs]\n\nSee you soon! 🌷",
+      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Where We've Been\n\n[Recap recent pop-ups, markets, collabs]\n\n### Where We're Going\n\n[Upcoming events and dates]\n\n### Thank You\n\n[Community shout-outs and appreciation]\n\nPurely a pop-up, where the people are. See you soon! 🌷",
   },
 ];
 
