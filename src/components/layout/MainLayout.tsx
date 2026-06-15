@@ -69,7 +69,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <header className="md:hidden flex items-center justify-between px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
           <div className="flex items-center gap-3">
             <TulipLogo size={28} />
-            <h1 className="font-display text-lg">Tiny Tulip</h1>
+            <div>
+              <h1 className="font-display text-lg leading-tight">Tiny Tulip</h1>
+              <p className="text-[10px] text-muted-foreground font-body leading-none">Coffee Console</p>
+            </div>
           </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
