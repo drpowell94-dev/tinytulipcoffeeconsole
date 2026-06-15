@@ -305,8 +305,16 @@ export default function EventsPage() {
 
       {/* Quick lead form - always accessible */}
       {showLeadForm && (
-        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
-          <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-body font-semibold text-foreground">New Lead / Booking Inquiry</h3>
+            <button
+              onClick={() => setShowLeadForm(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+          </div>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!form.name.trim()) {
@@ -315,52 +323,94 @@ export default function EventsPage() {
             }
             const event = createEvent({
               name: form.name.trim(),
-              eventType: "popup",
-              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              eventType: (form.eventType as EventType) || "popup",
+              dateStart: form.dateStart ? new Date(form.dateStart).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim() || "TBD",
-              preOrders: 0,
+              guestCount: form.preOrders || undefined,
+              estimatedRevenue: form.estimatedRevenue || undefined,
               status: "inquiry",
               depositStatus: "pending",
+              contactName: form.contactName.trim() || undefined,
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
             });
             setEvents(loadEvents());
             setForm(EMPTY_FORM);
             setShowLeadForm(false);
-            toast.success(`Lead "${event.name}" created`);
-          }} className="space-y-3">
-            <input
-              className={input}
-              placeholder="Lead name or company *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              autoFocus
-            />
-            <input
-              className={input}
-              placeholder="Phone (optional)"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Location (optional)"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
+            toast.success(`Lead "${event.name}" created — view in Leads tab to accept or decline`);
+          }} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input
+                className={input}
+                placeholder="Client name or company *"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                autoFocus
+                required
+              />
+              <input
+                className={input}
+                type="email"
+                placeholder="Email (optional)"
+                value={form.contactName}
+                onChange={e => setForm({ ...form, contactName: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Phone"
+                value={form.contactPhone}
+                onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+              />
+              <input
+                className={input}
+                type="number"
+                min={1}
+                placeholder="Guest count"
+                value={form.preOrders || ""}
+                onChange={e => {
+                  const num = parseInt(e.target.value, 10);
+                  setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+                }}
+              />
+              <input
+                className={input}
+                type="datetime-local"
+                placeholder="Event date"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              />
+              <select
+                className={input}
+                value={form.eventType}
+                onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+              >
+                <option value="popup">Pop-up</option>
+                <option value="farmers_market">Farmers Market</option>
+                <option value="catering">Catering</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <input
+                className={input}
+                placeholder="Location (address or neighborhood)"
+                value={form.location}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+              />
+            </div>
             <textarea
               className={input}
-              placeholder="Notes (optional)"
+              placeholder="Special requests or notes"
               rows={2}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                className="flex-1 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
               >
-                Add Lead
+                Create Lead
               </button>
               <button
                 type="button"
@@ -368,7 +418,7 @@ export default function EventsPage() {
                   setShowLeadForm(false);
                   setForm(EMPTY_FORM);
                 }}
-                className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+                className="rounded-lg bg-muted/50 px-4 py-2.5 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
               >
                 Cancel
               </button>
