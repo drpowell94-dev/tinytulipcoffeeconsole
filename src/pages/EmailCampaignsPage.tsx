@@ -138,19 +138,19 @@ export default function EmailCampaignsPage() {
       </div>
 
       {/* Available variables info */}
-      <div className="rounded-lg bg-accent/8 border border-accent/20 p-5">
-        <p className="text-sm font-body font-semibold text-foreground mb-2">
+      <div className="rounded-lg bg-accent/8 border border-accent/20 p-4">
+        <p className="text-sm font-body font-semibold text-foreground mb-3">
           📧 Available Template Variables:
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs font-mono text-muted-foreground">
-          <span>{'{{clientName}}'}</span>
-          <span>{'{{eventName}}'}</span>
-          <span>{'{{eventType}}'}</span>
-          <span>{'{{eventDate}}'}</span>
-          <span>{'{{guestCount}}'}</span>
-          <span>{'{{location}}'}</span>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono text-muted-foreground">
+          <span className="break-all">{'{{clientName}}'}</span>
+          <span className="break-all">{'{{eventName}}'}</span>
+          <span className="break-all">{'{{eventType}}'}</span>
+          <span className="break-all">{'{{eventDate}}'}</span>
+          <span className="break-all">{'{{guestCount}}'}</span>
+          <span className="break-all">{'{{location}}'}</span>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
+        <p className="text-[10px] text-muted-foreground mt-3">
           These will be automatically filled from your lead information
         </p>
       </div>
@@ -164,11 +164,11 @@ export default function EmailCampaignsPage() {
           >
             <button
               onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
-              className="w-full flex items-center justify-between pl-4 pr-12 py-2 hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center justify-between pl-4 pr-4 py-3 gap-3 hover:bg-muted/30 transition-colors"
             >
-              <div className="flex items-center gap-3 flex-1 text-left">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Mail size={18} className="text-accent shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-body font-semibold text-foreground truncate">
                     {campaign.name}
                   </h3>
@@ -177,13 +177,13 @@ export default function EmailCampaignsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0 pl-2">
+              <div className="flex items-center gap-3 shrink-0">
                 {campaign.isActive ? (
-                  <span className="px-2 py-1 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-xs font-semibold whitespace-nowrap">
+                  <span className="px-3 py-1 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-xs font-semibold whitespace-nowrap">
                     Active
                   </span>
                 ) : (
-                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold whitespace-nowrap">
+                  <span className="px-3 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold whitespace-nowrap">
                     Inactive
                   </span>
                 )}
@@ -198,7 +198,7 @@ export default function EmailCampaignsPage() {
             </button>
 
             {expandedId === campaign.id && (
-              <div className="border-t border-border pl-4 pr-12 py-4 space-y-3 bg-background/50">
+              <div className="border-t border-border px-4 py-4 space-y-3 bg-background/50">
                 {editingId === campaign.id && editingCampaign ? (
                   // Edit mode
                   <div className="space-y-4">
