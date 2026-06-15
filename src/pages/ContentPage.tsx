@@ -163,6 +163,7 @@ function BlogGenerator() {
     const draft = generateBlogDraft(template, tone, keywords);
     if (!title.trim()) setTitle(draft.title);
     setBody(draft.body);
+    if (!keywords.trim()) setKeywords(draft.seoKeywords);
 
     // Generate content variants from backend (optional)
     setGenerating(true);
