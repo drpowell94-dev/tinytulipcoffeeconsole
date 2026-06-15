@@ -24,19 +24,19 @@ export const BLOG_TEMPLATES: BlogTemplate[] = [
     id: "canned-latte-feature",
     name: "Canned Latte Product Spotlight",
     starter:
-      "## [LATTE FLAVOR] Canned Latte: Cold, Crafted, Ready\n\nOur premium canned lattes are [FLAVOR PROFILE]. Perfect for [OCCASION].\n\n### What Makes Them Different\n\n[Why our canned lattes stand out—quality, taste, convenience]\n\n### How to Enjoy\n\nChilled straight from the can or poured over ice. No preparation needed.\n\n### Where to Find\n\nShop online, grab at pop-ups, or discover us at [LOCATION].\n\nTaste the difference. 🌷",
+      "## Introducing Our New Canned Latte\n\nWe're thrilled to announce [PRODUCT NAME] — a cold-crafted latte in a can. No shortcuts, no artificial anything, just real espresso and milk.\n\n### What Makes It Different\n\n[Highlight the product: texture, taste, ingredients]\n\n### Where to Find It\n\nAvailable at our pop-ups and farmers markets starting [DATE]. Limited quantity while supplies last.\n\n### Try It First\n\nCome say hi at the next event — first taste is on us. 🌷",
   },
   {
     id: "popup-event-announcement",
-    name: "Graffiti Streetwear Pop-Up Announcement",
+    name: "Resident Event Pop-Up Announcement",
     starter:
-      "## Mobile Iced Coffee Meets [EVENT/LOCATION] Vibes\n\nWe're popping up at [EVENT NAME] with fresh, cold-brew excellence and the energy of graffiti streetwear culture.\n\n### What's On the Menu\n\n[Feature canned lattes, seasonal iced offerings, and limited collaborations]\n\n### The Experience\n\n[Describe the vibe—merging coffee culture with streetwear aesthetics]\n\n### When & Where\n\n[Date, time, and location]\n\nBring your crew. 🌷",
+      "## Pop-Up at [RESIDENT EVENT NAME]\n\nWe're bringing the cart to [NEIGHBORHOOD/COMMUNITY]. Come hang with us and the folks who make this place what it is.\n\n### What's Happening\n\n[Describe the event, the vibe, the community]\n\n### When & Where\n\n[Date], [Time], [Location]\n\n### What We're Pouring\n\n[Menu highlights for this event]\n\nWe'll be here all day. See you there! 🌷",
   },
   {
     id: "community-update",
     name: "Community Update",
     starter:
-      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Recent Pop-Ups & Collabs\n\n[Recap recent events, partnerships, and community moments]\n\n### Coming Up\n\n[Upcoming pop-up schedule and new flavors]\n\n### Thank You\n\n[Community shout-outs and customer stories]\n\nSee you at the next pop-up! 🌷",
+      "## What's Brewing at Tiny Tulip\n\nHey friends! Here's what we've been up to lately.\n\n### Where We've Been\n\n[Recap recent pop-ups, markets, resident events]\n\n### Where We're Going\n\n[Upcoming events and dates]\n\n### Thank You\n\n[Community shout-outs and appreciation]\n\nPurely a pop-up, where the people are. See you soon! 🌷",
   },
 ];
 

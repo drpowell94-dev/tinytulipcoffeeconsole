@@ -41,92 +41,67 @@ export function generateBlogDraft(
   templateId: string,
   tone: BlogTone,
   keywords: string
-): { title: string; body: string } {
+): { title: string; body: string; seoKeywords: string } {
   const voice = VOICES[tone];
   const kws = keywordList(keywords);
   const theme = kws[0] ?? "";
 
   if (templateId === "canned-latte-feature") {
-    const flavor = theme || "our signature canned latte";
-    const profile = weave(kws.slice(1), "smooth, cold-crafted, and ready to drink");
+    const product = theme || "our new canned latte";
+    const highlight = weave(kws.slice(1), "smooth, cold-crafted, and ready to go");
     return {
-      title: `${theme || "Premium Canned Latte"}: Cold Crafted, Always Ready`,
+      title: `New Release: ${theme || "Cold-Crafted Canned Latte"}`,
       body: [
-        `## ${flavor}`,
+        `${voice.opener} We've done something we're really proud of — a canned latte that tastes like it came straight from the cart${voice.exclaim}`,
         "",
-        `${voice.opener} We've perfected the art of the canned latte — ${profile}${voice.exclaim}`,
+        `${highlight}. No artificial anything. Just real espresso, real milk, and the taste that made Tiny Tulip what it is.`,
         "",
-        "### What's Inside",
-        "",
-        `Premium espresso, high-quality dairy, and nothing artificial. Every can delivers the same smooth, cold-brew excellence you'd expect from our pop-ups.`,
-        "",
-        "### Why We Went Canned",
-        "",
-        `Convenience meets craftsmanship. Grab one before your day starts, share one with a friend, or stock your fridge. No preparation. No compromise.`,
-        "",
-        "### Where to Find",
-        "",
-        "Shop online, grab at our next pop-up, or ask your local retailer.",
+        "We tested hundreds of combinations until we got one that felt right. This is it. Now available at select pop-ups and farmers markets. We're making limited batches, so grab one while they're here.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),
+      seoKeywords: "canned latte, cold brew, espresso, ready to drink, specialty coffee",
     };
   }
 
   if (templateId === "popup-event-announcement") {
-    const event = theme || "our next pop-up";
-    const vibe = weave(kws.slice(1), "cold iced coffee, graffiti culture, and street style");
+    const event = theme || "a resident event we're stoked about";
+    const community = weave(kws.slice(1), "neighbors, friends, and the community");
     return {
-      title: `${theme || "Pop-Up Alert"}: Where Coffee Meets Culture`,
+      title: `We're Popping Up: ${theme || "Bringing Coffee to Your Neighborhood"}`,
       body: [
-        `## We're Popping Up Near You`,
+        `${voice.opener} We're pulling up to an event that means something real — a chance to pour coffee for ${community}${voice.exclaim}`,
         "",
-        `${voice.opener} Bringing mobile iced coffee excellence and graffiti streetwear vibes to ${event}${voice.exclaim}`,
+        "Cold-crafted drinks, good people, and coffee made the way we've always made it. No frills, just real. We'll be there all day.",
         "",
-        "### What's On Tap",
-        "",
-        `Cold-crafted espresso drinks, premium canned lattes, and seasonal ice-cold creations. All built for the moment.`,
-        "",
-        "### The Vibe",
-        "",
-        `${vibe}. This isn't just coffee—it's an experience.`,
-        "",
-        "### Find Us",
-        "",
-        `Check our calendar for exact dates and locations. Follow along for surprise drops and limited collabs.`,
+        "Pop-ups aren't just about the coffee. They're about showing up for your neighborhood and the people who make it home.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),
+      seoKeywords: "pop-up coffee, neighborhood event, specialty coffee, cold brew, community",
     };
   }
 
   // community-update (default)
-  const focus = weave(kws, "pop-ups, collabs, and the graffiti coffee culture");
+  const focus = weave(kws, "markets, pop-ups, and new faces");
   return {
     title: "What's Brewing at Tiny Tulip",
     body: [
-      "## What's Brewing",
-      "",
       `${voice.opener} It's been a full stretch of ${focus} around here, and we wanted to catch you up${voice.exclaim}`,
       "",
-      "### Lately",
+      "The cart has been everywhere — early markets, afternoon pop-ups, and a few events that sold out before we finished setting up the tent. Thank you for that.",
       "",
-      "Our mobile iced coffee pop-ups have been hitting new neighborhoods, our canned lattes are in new hands, and the community keeps showing up strong.",
+      "More dates are landing on the calendar every week. Keep an eye on the schedule so you know where to find us.",
       "",
-      "### Coming Up",
-      "",
-      "New flavors launching, bigger pop-ups planned, and some exciting partnerships in the works. Stay tuned.",
-      "",
-      "### Thank You",
-      "",
-      "To everyone grabbing a cold one, rolling through our pop-ups, and keeping the culture alive. Purely a pop-up, where the people are.",
+      "Purely a pop-up, where the people are — and you keep showing up. It means everything.",
       "",
       voice.closer + " 🌷",
     ].join("\n"),
+    seoKeywords: "coffee, pop-up, specialty coffee, farmers market, neighborhood",
   };
 }
 
-export function generateEventRecap(session: SavedSession): { title: string; body: string } {
+export function generateEventRecap(session: SavedSession): { title: string; body: string; seoKeywords: string } {
   const date = new Date(session.date).toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
@@ -143,11 +118,7 @@ export function generateEventRecap(session: SavedSession): { title: string; body
   return {
     title: `Recap: ${session.eventName}`,
     body: [
-      `## ${session.eventName} — Recap`,
-      "",
       `What a day. On ${date} we poured **${session.totalDrinks} drinks** at ${session.eventName}${soldOut ? " — and yes, we fulfilled every single pre-order!" : "."}`,
-      "",
-      "### The Numbers",
       "",
       breakdown,
       "",
@@ -158,13 +129,12 @@ export function generateEventRecap(session: SavedSession): { title: string; body
         ? `Beyond pre-orders, walk-ups kept the cart busy all day.`
         : "",
       "",
-      "### Thank You",
-      "",
       "To everyone who stopped by, said hi, and let us make your drink — this is why we do it. Purely a pop-up, where the people are.",
       "",
       "See you at the next one! 🌷",
     ]
       .filter(line => line !== null)
       .join("\n"),
+    seoKeywords: "event recap, coffee event, pop-up, specialty coffee",
   };
 }
