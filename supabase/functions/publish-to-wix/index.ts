@@ -10,13 +10,43 @@ interface BlogPost {
   featured?: boolean;
 }
 
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
 serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   // Only allow POST
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
 
   try {
+    // Authenticate with Bearer token
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid authorization header" }),
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.substring(7);
+    const expectedToken = Deno.env.get("WIX_WEBHOOK_SECRET");
+
+    if (!expectedToken || token !== expectedToken) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401 }
+      );
+    }
+
     const post: BlogPost = await req.json();
 
     // Validate required fields
@@ -62,7 +92,7 @@ serve(async (req) => {
           error: `Failed to create draft: ${draftResponse.statusText}`,
           details: errorData,
         }),
-        { status: draftResponse.status }
+        { status: draftResponse.status, headers: corsHeaders }
       );
     }
 
@@ -72,7 +102,7 @@ serve(async (req) => {
     if (!draftPostId) {
       return new Response(
         JSON.stringify({ error: "No draft post ID returned from Wix" }),
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -96,7 +126,7 @@ serve(async (req) => {
           error: `Failed to publish: ${publishResponse.statusText}`,
           details: errorData,
         }),
-        { status: publishResponse.status }
+        { status: publishResponse.status, headers: corsHeaders }
       );
     }
 
@@ -106,7 +136,7 @@ serve(async (req) => {
     if (!postId) {
       return new Response(
         JSON.stringify({ error: "No post ID returned from publish" }),
-        { status: 500 }
+        { status: 500, headers: corsHeaders }
       );
     }
 
@@ -116,14 +146,14 @@ serve(async (req) => {
         postId,
         message: `Post published successfully to Wix: ${post.title}`,
       }),
-      { status: 200, headers: { "Content-Type": "application/json" } }
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Publish error:", message);
     return new Response(
       JSON.stringify({ error: "Internal server error", details: message }),
-      { status: 500, headers: { "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });

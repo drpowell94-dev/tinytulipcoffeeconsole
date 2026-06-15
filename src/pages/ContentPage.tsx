@@ -239,6 +239,12 @@ function BlogGenerator() {
       return;
     }
 
+    const secret = import.meta.env.VITE_WIX_WEBHOOK_SECRET;
+    if (!secret) {
+      toast.error("Wix webhook secret not configured");
+      return;
+    }
+
     setPublishing(true);
     try {
       const response = await fetch(
@@ -246,6 +252,7 @@ function BlogGenerator() {
         {
           method: "POST",
           headers: {
+            "Authorization": `Bearer ${secret}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({

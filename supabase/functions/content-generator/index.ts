@@ -131,14 +131,14 @@ export const handler = async (req: Request): Promise<Response> => {
   try {
     // Authenticate with Bearer token
     const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return new Response(
-        JSON.stringify({ error: "Missing authorization header" }),
+        JSON.stringify({ error: "Missing or invalid authorization header" }),
         { status: 401, headers: corsHeaders }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
+    const token = authHeader.substring(7);
     const expectedToken = Deno.env.get("WIX_WEBHOOK_SECRET");
 
     if (!expectedToken || token !== expectedToken) {
