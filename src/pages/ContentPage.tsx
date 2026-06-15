@@ -137,16 +137,26 @@ function BlogGenerator() {
   const autosave = useRef<number>();
 
   // Auto-save draft 2s after typing stops (only once a title exists)
+  // Note: Avoid including editingId in deps to prevent race conditions when setting new post ID
   useEffect(() => {
     window.clearTimeout(autosave.current);
     if (!title.trim()) return;
+
     autosave.current = window.setTimeout(() => {
-      const next = savePost({ id: editingId, title, template, tone, keywords, body, status });
-      setPosts(next);
-      if (!editingId) setEditingId(next[0].id);
+      try {
+        const next = savePost({ id: editingId, title, template, tone, keywords, body, status });
+        setPosts(next);
+        // Only set ID if this is a new post (no editingId yet)
+        if (!editingId && next.length > 0 && next[0].id) {
+          setEditingId(next[0].id);
+        }
+      } catch (error) {
+        console.error("Autosave failed:", error);
+      }
     }, 2000);
+
     return () => window.clearTimeout(autosave.current);
-  }, [title, template, tone, keywords, body, editingId, status]);
+  }, [title, template, tone, keywords, body, status]);
 
   const applyTemplate = (id: string) => {
     setTemplate(id);
