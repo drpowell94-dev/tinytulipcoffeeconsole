@@ -134,6 +134,9 @@ function BlogGenerator() {
     keywords?: string[];
   }>({});
   const [generating, setGenerating] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [publishConfirmStep, setPublishConfirmStep] = useState<"preview" | "confirm">("preview");
+  const [publishing, setPublishing] = useState(false);
   const autosave = useRef<number>();
 
   // Auto-save draft 2s after typing stops (only once a title exists)
@@ -227,6 +230,54 @@ function BlogGenerator() {
     setKeywords(post.keywords);
     setBody(post.body);
     setStatus(post.status);
+  };
+
+  const publishToWixEdgeFunction = async () => {
+    if (!title.trim()) {
+      toast.error("Add a title first");
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/publish-to-wix`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          },
+          body: JSON.stringify({
+            title,
+            body,
+            excerpt: body.substring(0, 160),
+            featured: false,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to publish: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "published" });
+      setPosts(next);
+      setShowPublishConfirm(false);
+      setPublishConfirmStep("preview");
+      resetForm();
+      toast.success(`Published to Wix! ✨`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Wix publish error:", message);
+      toast.error(`Publishing failed: ${message}`);
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -345,15 +396,12 @@ function BlogGenerator() {
           </button>
           <button
             onClick={() => {
-              handlePublish();
-              toast.promise(
-                new Promise(resolve => setTimeout(resolve, 800)),
-                {
-                  loading: "Syncing to website...",
-                  success: "Live on website! ✨",
-                  error: "Sync unavailable",
-                }
-              );
+              if (!title.trim()) {
+                toast.error("Add a title first");
+                return;
+              }
+              setPublishConfirmStep("preview");
+              setShowPublishConfirm(true);
             }}
             className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
@@ -396,6 +444,70 @@ function BlogGenerator() {
           </div>
         )}
       </div>
+
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-2xl max-w-lg w-full max-h-96 overflow-y-auto space-y-4 p-6">
+            {publishConfirmStep === "preview" ? (
+              <>
+                <div>
+                  <h2 className="font-display text-2xl text-foreground">Publish to Wix</h2>
+                  <p className="text-sm text-muted-foreground font-body mt-1">Preview your post before publishing</p>
+                </div>
+                <div className="space-y-3 bg-muted/20 p-4 rounded-lg border border-border">
+                  <div>
+                    <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">Title</p>
+                    <p className="font-body text-foreground font-semibold">{title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">Preview</p>
+                    <p className="text-sm font-body text-foreground line-clamp-3">{body}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowPublishConfirm(false)}
+                    className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/30 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setPublishConfirmStep("confirm")}
+                    className="flex-1 rounded-lg bg-secondary text-secondary-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="font-display text-2xl text-foreground">Publish to Live Site?</h2>
+                  <p className="text-sm text-muted-foreground font-body mt-1">This will publish your post to tinytulipcoffee.com immediately</p>
+                </div>
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                  <p className="text-sm font-body text-destructive font-semibold">⚠️ This action cannot be undone</p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setPublishConfirmStep("preview")}
+                    className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/30 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={publishToWixEdgeFunction}
+                    disabled={publishing}
+                    className="flex-1 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {publishing ? "Publishing..." : "Publish to Live"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
