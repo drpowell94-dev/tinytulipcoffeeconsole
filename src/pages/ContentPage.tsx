@@ -67,32 +67,29 @@ function SocialManager() {
             </div>
           </div>
           <button
-            onClick={() => {
-              const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
-              const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
-
-              if (!clientId || !redirectUri) {
-                toast.error(
-                  "Instagram not configured. Add VITE_INSTAGRAM_CLIENT_ID and VITE_INSTAGRAM_REDIRECT_URI to .env"
-                );
-                return;
-              }
-
-              const authUrl = generateInstagramAuthUrl();
-              if (!authUrl) {
-                toast.error("Failed to generate Instagram auth URL");
-                return;
-              }
-
+            onClick={async () => {
               try {
-                const url = new URL(authUrl);
-                if (url.hostname === "graph.instagram.com" && url.pathname.includes("oauth")) {
-                  window.location.href = authUrl;
-                } else {
+                const authUrl = await generateInstagramAuthUrl();
+                if (!authUrl) {
+                  toast.error("Failed to generate Instagram auth URL. Check server configuration.");
+                  return;
+                }
+
+                // Validate the URL format
+                try {
+                  const url = new URL(authUrl);
+                  // Ensure it's the real Instagram OAuth endpoint
+                  if (url.hostname === "www.instagram.com" && url.pathname.includes("oauth")) {
+                    window.location.href = authUrl;
+                  } else {
+                    toast.error("Invalid Instagram authorization URL");
+                  }
+                } catch {
                   toast.error("Invalid Instagram authorization URL");
                 }
-              } catch {
-                toast.error("Invalid Instagram authorization URL");
+              } catch (error) {
+                console.error("Instagram auth error:", error);
+                toast.error("Failed to connect Instagram. Try again later.");
               }
             }}
             className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0 whitespace-nowrap"
@@ -168,12 +165,19 @@ function BlogGenerator() {
     // Generate content variants from backend (optional)
     setGenerating(true);
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        console.warn("Supabase URL not configured for content generation");
+        setGenerating(false);
+        toast.success("Draft written — give it your voice and publish");
+        return;
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/content-generator`,
+        `${supabaseUrl}/functions/v1/content-generator`,
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${import.meta.env.VITE_WIX_WEBHOOK_SECRET || "demo"}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -185,11 +189,15 @@ function BlogGenerator() {
       );
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.generatedContent) {
-          setGeneratedContent(data.generatedContent);
-          setShowGenerated(true);
-          toast.success("Content variants generated!");
+        try {
+          const data = await response.json();
+          if (data.generatedContent) {
+            setGeneratedContent(data.generatedContent);
+            setShowGenerated(true);
+            toast.success("Content variants generated!");
+          }
+        } catch (parseErr) {
+          console.warn("Failed to parse content generation response:", parseErr);
         }
       } else {
         console.warn("Content generation failed:", response.status);
@@ -199,9 +207,8 @@ function BlogGenerator() {
       toast.error("Failed to generate content variants. Try again later.");
     } finally {
       setGenerating(false);
+      toast.success("Draft written — give it your voice and publish");
     }
-
-    toast.success("Draft written — give it your voice and publish");
   };
 
   const handlePublish = () => {

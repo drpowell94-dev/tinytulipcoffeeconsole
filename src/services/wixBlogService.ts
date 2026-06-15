@@ -7,7 +7,8 @@ const WIX_SITE_ID = "ee97a2c1-f67d-495c-a09b-ef7b100310d6"; // Tiny Tulip Coffee
 const WIX_API_BASE = "https://www.wixapis.com/blog/v3";
 
 /**
- * Publish a blog post to Wix by creating a draft and publishing it.
+ * Publish a blog post to Wix via secure edge function.
+ * The Wix API token is managed server-side and never exposed to the client.
  */
 export async function publishToWix(post: {
   title: string;
@@ -16,64 +17,39 @@ export async function publishToWix(post: {
   featured?: boolean;
 }): Promise<{ success: boolean; postId?: string; error?: string }> {
   try {
-    // Step 1: Create a draft post
-    const draftResponse = await fetch(`${WIX_API_BASE}/draft-posts`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getWixToken()}`,
-      },
-      body: JSON.stringify({
-        draftPost: {
-          title: post.title,
-          excerpt: post.excerpt || extractExcerpt(post.body, 160),
-          body: post.body,
-          featured: post.featured ?? false,
-        },
-      }),
-    });
+    const supabaseUrl = getSupabaseUrl();
 
-    if (!draftResponse.ok) {
-      const errorData = await draftResponse.json().catch(() => ({}));
-      throw new Error(
-        `Failed to create draft: ${draftResponse.statusText} - ${JSON.stringify(errorData)}`
-      );
-    }
-
-    const draftData = await draftResponse.json();
-    const draftPostId = draftData.draftPost?.id;
-
-    if (!draftPostId) {
-      throw new Error("No draft post ID returned from Wix");
-    }
-
-    // Step 2: Publish the draft post
-    const publishResponse = await fetch(
-      `${WIX_API_BASE}/draft-posts/${draftPostId}/publish`,
+    // Call the edge function which handles Wix API calls securely server-side
+    const response = await fetch(
+      `${supabaseUrl}/functions/v1/publish-to-wix`,
       {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${getWixToken()}`,
         },
+        body: JSON.stringify({
+          title: post.title,
+          body: post.body,
+          excerpt: post.excerpt || extractExcerpt(post.body, 160),
+          featured: post.featured ?? false,
+        }),
       }
     );
 
-    if (!publishResponse.ok) {
-      const errorData = await publishResponse.json().catch(() => ({}));
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
       throw new Error(
-        `Failed to publish: ${publishResponse.statusText} - ${JSON.stringify(errorData)}`
+        errorData.error || `HTTP ${response.status}: ${response.statusText}`
       );
     }
 
-    const publishData = await publishResponse.json();
-    const postId = publishData.postId;
+    const data = await response.json();
 
-    if (!postId) {
-      throw new Error("No post ID returned from publish");
+    if (!data.success || !data.postId) {
+      throw new Error(data.error || "Failed to publish post");
     }
 
-    return { success: true, postId };
+    return { success: true, postId: data.postId };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error("Wix blog publish error:", message);
@@ -103,34 +79,14 @@ function extractExcerpt(body: string, maxLength: number = 160): string {
 }
 
 /**
- * Get the Wix API token from environment or storage.
- * In production, this should come from secure OAuth flow with Wix.
+ * Get the Supabase URL for calling edge functions.
+ * The Wix API token is managed server-side in edge functions.
  */
-function getWixToken(): string {
-  // Try environment variable first
-  const envToken = import.meta.env.VITE_WIX_API_TOKEN as string | undefined;
-  if (envToken) return envToken;
-
-  // Fall back to localStorage for user-provided token
-  const storedToken = localStorage.getItem("wix-api-token");
-  if (storedToken) return storedToken;
-
-  // No token available
-  throw new Error(
-    "Wix API token not configured. Set VITE_WIX_API_TOKEN or authenticate via Wix OAuth."
-  );
+function getSupabaseUrl(): string {
+  const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  if (!url) {
+    throw new Error("Supabase URL not configured. Set VITE_SUPABASE_URL.");
+  }
+  return url;
 }
 
-/**
- * Store a Wix API token (for OAuth flow).
- */
-export function setWixToken(token: string): void {
-  localStorage.setItem("wix-api-token", token);
-}
-
-/**
- * Clear stored Wix token.
- */
-export function clearWixToken(): void {
-  localStorage.removeItem("wix-api-token");
-}
