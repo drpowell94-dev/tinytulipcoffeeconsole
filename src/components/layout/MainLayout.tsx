@@ -32,7 +32,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-background min-h-screen sticky top-0">
         <div className="px-6 py-8">
           <div className="flex items-center gap-3">
-            <TulipLogo size={36} />
+            <TulipLogo size={52} />
             <div>
               <h1 className="font-display text-xl leading-tight text-foreground">Tiny Tulip</h1>
               <p className="text-xs text-muted-foreground font-body mt-0.5">Coffee Console</p>
@@ -68,7 +68,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
           <div className="flex items-center gap-3">
-            <TulipLogo size={28} />
+            <TulipLogo size={40} />
             <div>
               <h1 className="font-display text-lg leading-tight">Tiny Tulip</h1>
               <p className="text-[10px] text-muted-foreground font-body leading-none">Coffee Console</p>
