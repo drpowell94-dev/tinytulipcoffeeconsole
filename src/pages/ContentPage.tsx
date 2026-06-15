@@ -157,6 +157,8 @@ function BlogGenerator() {
     keywords?: string[];
   }>({});
   const [generating, setGenerating] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [publishConfirmStep, setPublishConfirmStep] = useState<"preview" | "confirm">("preview");
   const autosave = useRef<number>();
 
   // Auto-save draft 2s after typing stops (only once a title exists)
@@ -254,6 +256,34 @@ function BlogGenerator() {
     setKeywords(post.keywords);
     setBody(post.body);
     setStatus(post.status);
+  };
+
+  // Publish confirmation handler
+  const handleConfirmPublishToWix = async () => {
+    if (publishConfirmStep === "preview") {
+      // Move to final confirmation
+      setPublishConfirmStep("confirm");
+      return;
+    }
+
+    // Final confirmation - actually publish
+    setShowPublishConfirm(false);
+    handlePublish();
+
+    toast.promise(
+      publishToWixEdgeFunction({
+        title: title.trim(),
+        body: body.trim(),
+        excerpt: keywords.trim() ? `Tags: ${keywords}` : undefined,
+        featured: true,
+      }),
+      {
+        loading: "Publishing to tinytulipcoffee.com...",
+        success: "✨ Live on your website!",
+        error: (err) =>
+          `Failed to publish: ${err instanceof Error ? err.message : String(err)}`,
+      }
+    );
   };
 
   return (
@@ -371,30 +401,13 @@ function BlogGenerator() {
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
           <button
-            onClick={async () => {
+            onClick={() => {
               if (!title.trim()) {
                 toast.error("Add a title first");
                 return;
               }
-
-              // Publish locally first
-              handlePublish();
-
-              // Then sync to Wix via Edge Function
-              toast.promise(
-                publishToWixEdgeFunction({
-                  title: title.trim(),
-                  body: body.trim(),
-                  excerpt: keywords.trim() ? `Tags: ${keywords}` : undefined,
-                  featured: true,
-                }),
-                {
-                  loading: "Publishing to tinytulipcoffee.com...",
-                  success: "✨ Live on your website!",
-                  error: (err) =>
-                    `Failed to publish: ${err instanceof Error ? err.message : String(err)}`,
-                }
-              );
+              setPublishConfirmStep("preview");
+              setShowPublishConfirm(true);
             }}
             className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
@@ -437,6 +450,103 @@ function BlogGenerator() {
           </div>
         )}
       </div>
+
+      {/* Publish to Wix Confirmation Modal */}
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-background rounded-lg shadow-lg max-w-md w-full p-6 space-y-4">
+            {publishConfirmStep === "preview" ? (
+              <>
+                <div>
+                  <h2 className="font-display text-xl text-foreground mb-2">
+                    Review Before Publishing
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    This will be published live on tinytulipcoffee.com
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-muted/30 p-4 space-y-3 border border-border">
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">
+                      Title
+                    </p>
+                    <p className="text-sm font-body text-foreground mt-1">
+                      {title.trim()}
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">
+                      Preview
+                    </p>
+                    <p className="text-sm font-body text-foreground mt-1 line-clamp-3">
+                      {body.trim().substring(0, 150)}...
+                    </p>
+                  </div>
+                  {keywords.trim() && (
+                    <div className="pt-2 border-t border-border">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">
+                        Tags
+                      </p>
+                      <p className="text-sm font-body text-foreground mt-1">
+                        {keywords}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setShowPublishConfirm(false)}
+                    className="flex-1 rounded-lg bg-muted/30 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmPublishToWix}
+                    className="flex-1 rounded-lg bg-secondary text-secondary-foreground px-4 py-2.5 font-body font-semibold text-sm hover:opacity-90 transition-opacity"
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="font-display text-xl text-foreground mb-2">
+                    ⚠️ Final Confirmation
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    This post will be published immediately to your live website.
+                    This action cannot be undone from the app.
+                  </p>
+                </div>
+
+                <div className="rounded-lg bg-destructive/10 border border-destructive/30 p-3">
+                  <p className="text-sm font-body text-destructive font-semibold">
+                    Publishing: <span className="font-normal">{title.trim()}</span>
+                  </p>
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <button
+                    onClick={() => setShowPublishConfirm(false)}
+                    className="flex-1 rounded-lg bg-muted/30 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmPublishToWix}
+                    className="flex-1 rounded-lg bg-primary text-primary-foreground px-4 py-2.5 font-body font-semibold text-sm hover:opacity-90 transition-opacity"
+                  >
+                    Yes, Publish
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
