@@ -46,54 +46,54 @@ export function generateBlogDraft(
   const kws = keywordList(keywords);
   const theme = kws[0] ?? "";
 
-  if (templateId === "coffee-origin") {
-    const origin = theme || "our newest single origin";
-    const notes = weave(kws.slice(1), "dark chocolate, toasted hazelnut, and a honeyed finish");
+  if (templateId === "canned-latte-feature") {
+    const flavor = theme || "our signature canned latte";
+    const profile = weave(kws.slice(1), "smooth, cold-crafted, and ready to drink");
     return {
-      title: `Origin Spotlight: ${theme ? theme : "Our Newest Beans"}`,
+      title: `${theme || "Premium Canned Latte"}: Cold Crafted, Always Ready`,
       body: [
-        `## Meet ${origin}`,
+        `## ${flavor}`,
         "",
-        `${voice.opener} This month we're pouring something special: beans from ${origin}. Every batch is small-lot and roasted the week we serve it, so what hits your cup is as fresh as it gets${voice.exclaim}`,
+        `${voice.opener} We've perfected the art of the canned latte — ${profile}${voice.exclaim}`,
         "",
-        "### Tasting Notes",
+        "### What's Inside",
         "",
-        `Expect ${notes}. It shines as a pour-over, and it holds its own against oat milk in a latte.`,
+        `Premium espresso, high-quality dairy, and nothing artificial. Every can delivers the same smooth, cold-brew excellence you'd expect from our pop-ups.`,
         "",
-        "### Why We Chose It",
+        "### Why We Went Canned",
         "",
-        `We pick coffees the same way we pick our pop-up spots — by chasing what feels right. This one stopped us at first sip, and we think it'll do the same to you.`,
+        `Convenience meets craftsmanship. Grab one before your day starts, share one with a friend, or stock your fridge. No preparation. No compromise.`,
         "",
-        "### How We Brew It",
+        "### Where to Find",
         "",
-        "At our events we pull it as espresso and batch it for cold brew. At home, try 1:16 with water just off the boil, and let it bloom for 30 seconds.",
+        "Shop online, grab at our next pop-up, or ask your local retailer.",
         "",
         voice.closer + " 🌷",
       ].join("\n"),
     };
   }
 
-  if (templateId === "seasonal-launch") {
-    const drink = theme || "our new seasonal drink";
-    const ingredients = weave(kws.slice(1), "real fruit, house-made syrup, and our signature espresso");
+  if (templateId === "popup-event-announcement") {
+    const event = theme || "our next pop-up";
+    const vibe = weave(kws.slice(1), "cold iced coffee, graffiti culture, and street style");
     return {
-      title: `New on the Menu: ${theme || "A Seasonal Favorite"}`,
+      title: `${theme || "Pop-Up Alert"}: Where Coffee Meets Culture`,
       body: [
-        `## Introducing ${drink}`,
+        `## We're Popping Up Near You`,
         "",
-        `${voice.opener} The seasonal board just got a new headliner — ${drink} is officially here${voice.exclaim}`,
+        `${voice.opener} Bringing mobile iced coffee excellence and graffiti streetwear vibes to ${event}${voice.exclaim}`,
         "",
-        "### What's In It",
+        "### What's On Tap",
         "",
-        `We build it with ${ingredients}. No shortcuts, no artificial anything — the same way we make everything at the cart.`,
+        `Cold-crafted espresso drinks, premium canned lattes, and seasonal ice-cold creations. All built for the moment.`,
         "",
-        "### Our Honest Review",
+        "### The Vibe",
         "",
-        "We test every seasonal drink on ourselves (tough job) until it earns a spot on the menu. This one didn't take long.",
+        `${vibe}. This isn't just coffee—it's an experience.`,
         "",
-        "### Where to Find It",
+        "### Find Us",
         "",
-        "It's pouring at every pop-up and market while the season lasts. Follow along to see where the cart lands next.",
+        `Check our calendar for exact dates and locations. Follow along for surprise drops and limited collabs.`,
         "",
         voice.closer + " 🌷",
       ].join("\n"),
@@ -101,7 +101,7 @@ export function generateBlogDraft(
   }
 
   // community-update (default)
-  const focus = weave(kws, "markets, pop-ups, and new faces");
+  const focus = weave(kws, "pop-ups, collabs, and the graffiti coffee culture");
   return {
     title: "What's Brewing at Tiny Tulip",
     body: [
@@ -111,15 +111,15 @@ export function generateBlogDraft(
       "",
       "### Lately",
       "",
-      "The cart has been everywhere — early markets, afternoon pop-ups, and a few events that sold out before we finished setting up the tent. Thank you for that.",
+      "Our mobile iced coffee pop-ups have been hitting new neighborhoods, our canned lattes are in new hands, and the community keeps showing up strong.",
       "",
       "### Coming Up",
       "",
-      "More dates are landing on the calendar every week. Keep an eye on the schedule so you know where to find us.",
+      "New flavors launching, bigger pop-ups planned, and some exciting partnerships in the works. Stay tuned.",
       "",
       "### Thank You",
       "",
-      "Purely a pop-up, where the people are — and you keep showing up. It means everything.",
+      "To everyone grabbing a cold one, rolling through our pop-ups, and keeping the culture alive. Purely a pop-up, where the people are.",
       "",
       voice.closer + " 🌷",
     ].join("\n"),
