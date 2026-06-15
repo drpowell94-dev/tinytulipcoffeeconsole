@@ -15,7 +15,6 @@ import {
 import { generateBlogDraft } from "@/lib/blogWriter";
 import { generateInstagramAuthUrl } from "@/services/instagramService";
 import { isSupabaseEnabled } from "@/services/supabase";
-import { publishToWix } from "@/services/wixBlogService";
 
 type Tab = "blog" | "website" | "social";
 
@@ -339,37 +338,18 @@ function BlogGenerator() {
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
           <button
-            onClick={async () => {
+            onClick={() => {
               if (!title.trim()) {
                 toast.error("Add a title first");
                 return;
               }
 
-              // First publish locally
+              // Publish locally
               handlePublish();
 
-              // Then sync to Wix
-              toast.promise(
-                (async () => {
-                  const result = await publishToWix({
-                    title: title.trim(),
-                    body: body.trim(),
-                    excerpt: keywords.trim() ? `Tags: ${keywords}` : undefined,
-                  });
-
-                  if (!result.success) {
-                    throw new Error(result.error || "Failed to publish to Wix");
-                  }
-                  return result;
-                })(),
-                {
-                  loading: "Syncing to Tiny Tulip website...",
-                  success: `Live on tinytulipcoffee.com! ✨ (Post ID: ${(await publishToWix({
-                    title: title.trim(),
-                    body: body.trim(),
-                  })).postId?.substring(0, 8)}...)`,
-                  error: (err) => `Wix sync failed: ${err instanceof Error ? err.message : String(err)}`,
-                }
+              // Show info about Wix sync
+              toast.info(
+                "📱 Ready to sync to tinytulipcoffee.com! Let Claude know to publish this post via Wix MCP."
               );
             }}
             className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
