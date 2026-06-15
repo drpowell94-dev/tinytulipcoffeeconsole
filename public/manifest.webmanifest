@@ -1,6 +1,6 @@
 {
   "name": "Tiny Tulip Coffee Console",
-  "short_name": "Tiny Tulip",
+  "short_name": "Tiny Tulip Coffee Console",
   "description": "Operations, events, and drink tracking for Tiny Tulip Coffee",
   "start_url": "/",
   "scope": "/",
