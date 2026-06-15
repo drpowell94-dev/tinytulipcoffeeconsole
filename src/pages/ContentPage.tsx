@@ -68,11 +68,22 @@ function SocialManager() {
           </div>
           <button
             onClick={() => {
-              const authUrl = generateInstagramAuthUrl();
-              if (!authUrl) {
-                toast.error("Instagram credentials not configured. Add VITE_INSTAGRAM_CLIENT_ID to .env");
+              const clientId = import.meta.env.VITE_INSTAGRAM_CLIENT_ID;
+              const redirectUri = import.meta.env.VITE_INSTAGRAM_REDIRECT_URI;
+
+              if (!clientId || !redirectUri) {
+                toast.error(
+                  "Instagram not configured. Add VITE_INSTAGRAM_CLIENT_ID and VITE_INSTAGRAM_REDIRECT_URI to .env"
+                );
                 return;
               }
+
+              const authUrl = generateInstagramAuthUrl();
+              if (!authUrl) {
+                toast.error("Failed to generate Instagram auth URL");
+                return;
+              }
+
               try {
                 const url = new URL(authUrl);
                 if (url.hostname === "graph.instagram.com" && url.pathname.includes("oauth")) {
