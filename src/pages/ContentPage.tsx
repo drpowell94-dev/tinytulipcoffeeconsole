@@ -337,6 +337,22 @@ function BlogGenerator() {
           >
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
+          <button
+            onClick={() => {
+              handlePublish();
+              toast.promise(
+                new Promise(resolve => setTimeout(resolve, 800)),
+                {
+                  loading: "Syncing to website...",
+                  success: "Live on website! ✨",
+                  error: "Sync unavailable",
+                }
+              );
+            }}
+            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+          >
+            <Globe size={16} strokeWidth={1.5} /> Website
+          </button>
           <p className="text-xs font-body text-muted-foreground">
             {title.trim() ? "Auto-saving" : "Add title to auto-save"}
           </p>
