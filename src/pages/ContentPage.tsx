@@ -15,6 +15,7 @@ import {
 import { generateBlogDraft } from "@/lib/blogWriter";
 import { generateInstagramAuthUrl } from "@/services/instagramService";
 import { isSupabaseEnabled } from "@/services/supabase";
+import { publishToWix } from "@/services/wixBlogService";
 
 type Tab = "blog" | "website" | "social";
 
@@ -338,14 +339,36 @@ function BlogGenerator() {
             <Save size={16} strokeWidth={1.5} /> Publish
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
+              if (!title.trim()) {
+                toast.error("Add a title first");
+                return;
+              }
+
+              // First publish locally
               handlePublish();
+
+              // Then sync to Wix
               toast.promise(
-                new Promise(resolve => setTimeout(resolve, 800)),
+                (async () => {
+                  const result = await publishToWix({
+                    title: title.trim(),
+                    body: body.trim(),
+                    excerpt: keywords.trim() ? `Tags: ${keywords}` : undefined,
+                  });
+
+                  if (!result.success) {
+                    throw new Error(result.error || "Failed to publish to Wix");
+                  }
+                  return result;
+                })(),
                 {
-                  loading: "Syncing to website...",
-                  success: "Live on website! ✨",
-                  error: "Sync unavailable",
+                  loading: "Syncing to Tiny Tulip website...",
+                  success: `Live on tinytulipcoffee.com! ✨ (Post ID: ${(await publishToWix({
+                    title: title.trim(),
+                    body: body.trim(),
+                  })).postId?.substring(0, 8)}...)`,
+                  error: (err) => `Wix sync failed: ${err instanceof Error ? err.message : String(err)}`,
                 }
               );
             }}
