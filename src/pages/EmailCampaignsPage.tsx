@@ -177,20 +177,20 @@ export default function EmailCampaignsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0 pl-2">
                 {campaign.isActive ? (
-                  <span className="px-2 py-1 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-xs font-semibold">
+                  <span className="px-2 py-1 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-xs font-semibold whitespace-nowrap">
                     Active
                   </span>
                 ) : (
-                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold">
+                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold whitespace-nowrap">
                     Inactive
                   </span>
                 )}
                 <ChevronDown
                   size={18}
                   className={cn(
-                    "transition-transform",
+                    "shrink-0 transition-transform",
                     expandedId === campaign.id && "rotate-180"
                   )}
                 />
