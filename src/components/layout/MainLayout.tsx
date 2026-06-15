@@ -88,10 +88,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         {sidebarOpen && (
           <>
             <div
-              className="fixed inset-0 bg-black/20 md:hidden z-10"
+              className="fixed inset-0 bg-black/20 md:hidden z-40"
               onClick={() => setSidebarOpen(false)}
             />
-            <aside className="md:hidden fixed top-0 left-0 h-screen w-64 bg-background flex flex-col z-20 pt-20">
+            <aside className="md:hidden fixed top-0 left-0 h-screen w-64 bg-background flex flex-col z-50 pt-20">
               <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                 {NAV_ITEMS.map(item => (
                   <NavLink
@@ -119,20 +119,20 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
+        <main className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
           {children}
         </main>
       </div>
 
       {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card/80 backdrop-blur-sm flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card/80 backdrop-blur-sm flex justify-around py-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
         {NAV_ITEMS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-body font-semibold transition-all duration-200",
+                "flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg text-[10px] font-body font-semibold transition-all duration-200",
                 isActive ? "text-accent" : "text-muted-foreground"
               )
             }

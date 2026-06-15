@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const input =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>(() => loadInventory());
@@ -134,7 +134,7 @@ export default function InventoryPage() {
               <div className="flex items-center gap-2 sm:gap-3 shrink-0 justify-between sm:justify-end">
                 <button
                   onClick={() => adjust(item, -1)}
-                  className="w-10 h-10 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all shrink-0"
+                  className="w-11 h-11 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all shrink-0"
                   aria-label={`Decrease ${item.name}`}
                 >
                   <Minus size={18} strokeWidth={1.5} />
@@ -144,7 +144,7 @@ export default function InventoryPage() {
                 </span>
                 <button
                   onClick={() => adjust(item, 1)}
-                  className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all shrink-0"
+                  className="w-11 h-11 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all shrink-0"
                   aria-label={`Increase ${item.name}`}
                 >
                   <Plus size={18} strokeWidth={1.5} />

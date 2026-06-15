@@ -22,10 +22,9 @@ export function TapButton({ product, count, onTap }: TapButtonProps) {
     <button
       onClick={handleTap}
       className={cn(
-        "tap-ripple relative flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/20 hover:bg-muted/35 p-5 shadow-sm-elevation transition-all select-none hover-scale",
+        "tap-ripple relative flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/20 hover:bg-muted/35 p-4 sm:p-5 shadow-sm-elevation transition-all select-none hover-scale min-h-[120px] sm:min-h-[140px]",
         animating && "tapped animate-tap-spring"
       )}
-      style={{ minHeight: 140 }}
     >
       <DrinkIcon id={product.id} size={48} className="text-foreground" />
       <div className="flex flex-col items-center gap-1">

@@ -18,7 +18,7 @@ import { generateInstagramAuthUrl } from "@/services/instagramService";
 type Tab = "blog" | "website" | "social";
 
 const input =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function ContentPage() {
   const [tab, setTab] = useState<Tab>("blog");
