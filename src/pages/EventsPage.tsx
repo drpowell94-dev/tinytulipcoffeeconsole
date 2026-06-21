@@ -59,21 +59,31 @@ export default function EventsPage() {
   // receiver) and merge them into the local store.
   useEffect(() => {
     syncEventsFromSupabase().then(result => {
-      if (result && result.created > 0) {
+      if (result) {
         setEvents(loadEvents());
-        toast.success(`Synced ${result.created} event(s) from Wix`);
+        if (result.created > 0 || result.updated > 0) {
+          toast.success(`Synced: ${result.created} new, ${result.updated} updated`);
+        }
       }
     });
   }, []);
 
   const handleImportWix = () => {
     setImporting(true);
-    const { created, updated } = importBundledWixEvents();
+    const { created, updated, errors } = importBundledWixEvents();
     setEvents(loadEvents());
     setImporting(false);
-    toast.success(
-      `Imported ${created} new event(s)${updated ? `, updated ${updated}` : ""} from Wix`
-    );
+
+    if (created === 0 && updated === 0) {
+      toast.info("All Wix events already imported");
+    } else {
+      const msg = `Imported ${created} new${updated ? `, updated ${updated}` : ""}. Events sorted by most recent.`;
+      toast.success(msg);
+    }
+
+    if (errors > 0) {
+      toast.error(`Skipped ${errors} invalid record(s) — check console`);
+    }
   };
 
   const handleCreate = (e: React.FormEvent) => {

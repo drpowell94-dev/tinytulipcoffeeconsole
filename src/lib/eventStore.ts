@@ -72,7 +72,7 @@ export function deleteEvent(id: string): TulipEvent[] {
 /**
  * Merge a batch of events into the store, keyed by wixEventId when present
  * (falling back to id). Existing rows are updated in place; new rows are added.
- * Returns the number of events created vs. updated.
+ * Persists sorted by most recent date. Returns the number of events created vs. updated.
  */
 export function importEvents(incoming: TulipEvent[]): { created: number; updated: number } {
   const existing = loadEvents();
@@ -94,6 +94,9 @@ export function importEvents(incoming: TulipEvent[]): { created: number; updated
       updated++;
     }
   }
+
+  // Sort by most recent date (descending) for consistent storage
+  existing.sort((a, b) => b.dateStart.localeCompare(a.dateStart));
   saveEvents(existing);
   return { created, updated };
 }
