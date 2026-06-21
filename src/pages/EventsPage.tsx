@@ -192,9 +192,9 @@ export default function EventsPage() {
                 {event.preOrders === 30 && (
                   <Link
                     to={`/events/${event.id}/counter`}
-                    className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all flex-1 sm:flex-none sm:justify-start"
                   >
-                    <Coffee size={16} strokeWidth={1.5} />
+                    <Coffee size={14} strokeWidth={1.5} />
                     <span className="hidden sm:inline">Counter</span>
                   </Link>
                 )}

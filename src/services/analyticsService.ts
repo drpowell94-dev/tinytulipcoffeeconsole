@@ -275,21 +275,24 @@ function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | nu
 export async function generateInsights(): Promise<DashboardInsight[]> {
   const insights: DashboardInsight[] = [];
 
-  // Check for upcoming events
-  const upcoming = await getUpcomingEventCount(7);
-  if (upcoming && upcoming.upcomingEventCount === 0) {
-    // Try Supabase first, fall back to localStorage
-    let pastMetrics = await getPastEventsByVenue(90);
-    if (!pastMetrics || pastMetrics.topVenues.length === 0) {
-      pastMetrics = getLocalPastEventsByVenue(90);
-    }
-    const topVenue = pastMetrics?.topVenues?.[0];
+  // Always show top venue recommendations based on completed events
+  let pastMetrics = await getPastEventsByVenue(90);
+  if (!pastMetrics || pastMetrics.topVenues.length === 0) {
+    pastMetrics = getLocalPastEventsByVenue(90);
+  }
+
+  if (pastMetrics && pastMetrics.topVenues.length > 0) {
+    const topVenue = pastMetrics.topVenues[0];
+
+    // Check for upcoming events to tailor the message
+    const upcoming = await getUpcomingEventCount(7);
+    const hasUpcoming = upcoming && upcoming.upcomingEventCount > 0;
 
     insights.push({
       type: "no_upcoming_events",
-      actionableNextStep: topVenue
-        ? `Suggest outreach to ${topVenue.location || "top performing venue"} (avg $${topVenue.avgRevenue.toFixed(0)}/event)`
-        : "Schedule upcoming events to maintain momentum",
+      actionableNextStep: hasUpcoming
+        ? `${topVenue.location} is your best venue (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`
+        : `Suggest outreach to ${topVenue.location} (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`,
       relatedVenueName: topVenue?.location,
       priority: "high",
     });
