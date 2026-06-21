@@ -103,15 +103,12 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
       ? record.eventType
       : "other";
   const status = deriveStatus(record);
-  const durationMinutes = endDate ? (endDate.getTime() - startDate.getTime()) / (1000 * 60) : 120;
 
-  // Determine service type and included coffee count
-  let preOrders = 30; // Default to Pop-Up
-  if (durationMinutes <= 30) {
-    preOrders = 25; // Grab & Go
-  }
-
-  const estimatedRevenue = status === "completed" ? estimateRevenueFromDuration(startDate, endDate) : 0;
+  // Detect service type from title/description
+  const titleAndDesc = `${record.title} ${record.description}`.toLowerCase();
+  const isGrabAndGo = titleAndDesc.includes("grab") || titleAndDesc.includes("grab & go");
+  const preOrders = isGrabAndGo ? 25 : 30; // 25 for Grab & Go, 30 for Pop-Up
+  const estimatedRevenue = status === "completed" ? (isGrabAndGo ? 200 : 300) : 0;
 
   return {
     id: record.wixEventId, // stable id so re-imports converge
@@ -121,8 +118,8 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     dateStart: startDate.toISOString(),
     dateEnd: endDate?.toISOString(),
     location: (record.location?.trim() || "TBD").substring(0, 255),
-    preOrders, // Included coffees: 25 (Grab & Go) or 30 (Pop-Up)
-    estimatedRevenue,
+    preOrders, // Included drinks: 25 (Grab & Go) or 30 (Pop-Up)
+    estimatedRevenue, // $200 for Grab & Go, $300 for Pop-Up
     status,
     depositStatus: "pending",
     notes: (record.description?.trim() || undefined)?.substring(0, 1024),
