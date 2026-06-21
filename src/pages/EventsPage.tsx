@@ -178,7 +178,7 @@ export default function EventsPage() {
               )}
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
+          <div className="flex flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
             {event.status === "inquiry" ? (
               <>
                 <button
@@ -200,7 +200,7 @@ export default function EventsPage() {
                 {event.preOrders === 30 && (
                   <Link
                     to={`/events/${event.id}/counter`}
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all flex-1"
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all flex-1 sm:flex-initial"
                   >
                     <Coffee size={14} strokeWidth={1.5} />
                     <span className="hidden sm:inline">Counter</span>
@@ -208,7 +208,7 @@ export default function EventsPage() {
                 )}
                 <button
                   onClick={() => handleDelete(event)}
-                  className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs flex-1 sm:flex-none"
+                  className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs flex-1 sm:flex-initial"
                   aria-label={`Delete ${event.name}`}
                 >
                   <Trash2 size={16} strokeWidth={1.5} />
