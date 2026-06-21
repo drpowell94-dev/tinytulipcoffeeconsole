@@ -117,9 +117,9 @@ export default function EventsPage() {
   const input =
     "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
-  // Split into upcoming (today or later) and past, each sensibly sorted.
+  // Split into upcoming (today or later, not completed/cancelled) and past, each sensibly sorted.
   const upcoming = events
-    .filter(e => daysUntil(e.dateStart) >= 0)
+    .filter(e => daysUntil(e.dateStart) >= 0 && e.status !== "completed" && e.status !== "cancelled")
     .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
   const past = events
     .filter(e => daysUntil(e.dateStart) < 0)

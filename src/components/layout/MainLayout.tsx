@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, CalendarDays, FileText, Package, Menu, X, Mail } from "lucide-react";
+import { Home, CalendarDays, FileText, Package, Menu, X, Mail, Building2 } from "lucide-react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: "/content", label: "Content", icon: FileText },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
+  { to: "/properties", label: "Properties", icon: Building2 },
 ];
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
