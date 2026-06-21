@@ -324,10 +324,13 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
 
   if (pastMetrics && pastMetrics.topVenues.length > 0) {
     const topVenue = pastMetrics.topVenues[0];
-    // Try to find a property for this venue
-    const propertyForVenue = Array.from(propertyMap.values()).find(
-      p => p.name === topVenue.location || p.address?.includes(topVenue.location)
-    );
+    // Try to find a property for this venue by matching events with propertyId
+    const eventsAtVenue = allEvents.filter(e => e.location === topVenue.location && e.propertyId);
+    const propertyForVenue = eventsAtVenue.length > 0
+      ? propertyMap.get(eventsAtVenue[0].propertyId!)
+      : Array.from(propertyMap.values()).find(
+          p => p.name === topVenue.location || p.address?.includes(topVenue.location)
+        );
     const venueName = propertyForVenue?.name || topVenue.location;
 
     insights.push({
