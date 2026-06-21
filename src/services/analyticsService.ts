@@ -274,12 +274,15 @@ function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | nu
  * Find venues that haven't had an event in X days.
  */
 function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
-  location: string;
+  venueName: string;
   daysAgo: number;
   lastEventDate: string;
 }> {
   const events = loadEvents().filter(e => e.status === "completed");
   if (events.length === 0) return [];
+
+  const properties = getCharlotteApartments();
+  const propertyNameMap = new Map(properties.map(p => [p.name, p]));
 
   const cutoffDate = new Date(Date.now() - daysWithoutEvent * 24 * 60 * 60 * 1000);
   const venueMap = new Map<string, string>();
@@ -294,7 +297,7 @@ function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
 
   return Array.from(venueMap.entries())
     .map(([location, lastDate]) => ({
-      location,
+      venueName: propertyNameMap.has(location) ? location : location,
       lastEventDate: lastDate,
       daysAgo: Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24)),
     }))
@@ -309,6 +312,9 @@ function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
  */
 export async function generateInsights(): Promise<DashboardInsight[]> {
   const insights: DashboardInsight[] = [];
+  const properties = getCharlotteApartments();
+  const propertyMap = new Map(properties.map(p => [p.id, p]));
+  const allEvents = loadEvents();
 
   // ALWAYS show top venue recommendations based on completed events
   let pastMetrics = await getPastEventsByVenue(90);
@@ -318,10 +324,17 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
 
   if (pastMetrics && pastMetrics.topVenues.length > 0) {
     const topVenue = pastMetrics.topVenues[0];
+    // Try to find a property for this venue
+    const propertyForVenue = Array.from(propertyMap.values()).find(
+      p => p.name === topVenue.location || p.address?.includes(topVenue.location)
+    );
+    const venueName = propertyForVenue?.name || topVenue.location;
+
     insights.push({
       type: "no_upcoming_events",
-      actionableNextStep: `${topVenue.location} is your best venue (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`,
-      relatedVenueName: topVenue?.location,
+      actionableNextStep: `${venueName} is your best venue (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`,
+      relatedVenueName: venueName,
+      relatedPropertyId: propertyForVenue?.id,
       priority: "high",
     });
   }
@@ -330,16 +343,20 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
   const inactiveVenues = findInactiveVenues(60);
   if (inactiveVenues.length > 0) {
     const venue = inactiveVenues[0];
+    const propertyForVenue = Array.from(propertyMap.values()).find(
+      p => p.name === venue.venueName
+    );
+
     insights.push({
       type: "low_revenue_trend",
-      actionableNextStep: `${venue.location} hasn't hosted in ${venue.daysAgo}d. Time for a check-in?`,
-      relatedVenueName: venue.location,
+      actionableNextStep: `${venue.venueName} hasn't hosted in ${venue.daysAgo}d. Time for a check-in?`,
+      relatedVenueName: venue.venueName,
+      relatedPropertyId: propertyForVenue?.id,
       priority: "medium",
     });
   }
 
   // Recommend outreach to new Instagram followers without bookings
-  const allEvents = loadEvents();
   const bookedPropertyIds = new Set(
     allEvents
       .filter(e => e.propertyId)
@@ -359,8 +376,7 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
 
   // Fallback: Suggest exploring all properties if insights are thin
   if (insights.length < 3) {
-    const properties = loadProperties();
-    const allProperties = properties.filter(p => p.category === "charlotte_apartment");
+    const allProperties = properties;
     if (allProperties.length > 0) {
       insights.push({
         type: "inventory_low",
