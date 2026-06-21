@@ -1,4 +1,5 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
+import { loadEvents } from "@/lib/eventStore";
 
 export interface UpcomingEventMetrics {
   upcomingEventCount: number;
@@ -208,6 +209,66 @@ export async function calculateRevenueMetrics(
 }
 
 /**
+ * Get past events from localStorage (for local Wix imports and app events).
+ * Used to drive recommendations even without Supabase sync.
+ */
+function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | null {
+  const events = loadEvents().filter(e => e.status === "completed");
+
+  if (events.length === 0) {
+    return {
+      totalEvents: 0,
+      highestRevenueEvent: null,
+      topVenues: [],
+    };
+  }
+
+  // Group by venue
+  const venueMap = new Map<
+    string,
+    { location: string; events: number; revenue: number }
+  >();
+
+  events.forEach((e: any) => {
+    const key = e.location || "Unknown";
+    const current = venueMap.get(key) || {
+      location: e.location,
+      events: 0,
+      revenue: 0,
+    };
+    current.events += 1;
+    current.revenue += e.estimatedRevenue ?? 0;
+    venueMap.set(key, current);
+  });
+
+  const topVenues = Array.from(venueMap.values())
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, 5)
+    .map((v) => ({
+      zipCode: undefined,
+      location: v.location,
+      eventCount: v.events,
+      totalRevenue: v.revenue,
+      avgRevenue: v.revenue / v.events,
+    }));
+
+  const highestRevenueEvent = events.sort((a, b) => (b.estimatedRevenue ?? 0) - (a.estimatedRevenue ?? 0))[0]
+    ? {
+        eventId: events[0].id,
+        eventName: events[0].name,
+        location: events[0].location || "Unknown",
+        revenue: events[0].estimatedRevenue ?? 0,
+      }
+    : null;
+
+  return {
+    totalEvents: events.length,
+    highestRevenueEvent,
+    topVenues,
+  };
+}
+
+/**
  * Generate actionable insights for dashboard based on current business state.
  * Returns a list of insights prioritized by impact.
  */
@@ -217,7 +278,11 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
   // Check for upcoming events
   const upcoming = await getUpcomingEventCount(7);
   if (upcoming && upcoming.upcomingEventCount === 0) {
-    const pastMetrics = await getPastEventsByVenue(90);
+    // Try Supabase first, fall back to localStorage
+    let pastMetrics = await getPastEventsByVenue(90);
+    if (!pastMetrics || pastMetrics.topVenues.length === 0) {
+      pastMetrics = getLocalPastEventsByVenue(90);
+    }
     const topVenue = pastMetrics?.topVenues?.[0];
 
     insights.push({
@@ -230,22 +295,33 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
     });
   }
 
-  // Check for revenue decline (month-over-month)
+  // Check for revenue decline (month-over-month) - use localStorage as fallback
   const lastMonth = new Date();
   lastMonth.setMonth(lastMonth.getMonth() - 1);
-  const monthKey = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, "0")}`;
 
-  if (!isSupabaseEnabled || !supabase) {
-    return insights;
+  let monthlyData: any[] | null = null;
+
+  // Try Supabase first
+  if (isSupabaseEnabled && supabase) {
+    const { data, error } = await supabase
+      .from("events")
+      .select("estimated_revenue, date_start")
+      .eq("status", "completed")
+      .gte("date_start", lastMonth.toISOString());
+
+    if (!error && data) {
+      monthlyData = data;
+    }
   }
 
-  const { data: monthlyData, error } = await supabase
-    .from("events")
-    .select("estimated_revenue, date_start")
-    .eq("status", "completed")
-    .gte("date_start", lastMonth.toISOString());
+  // Fall back to localStorage
+  if (!monthlyData) {
+    monthlyData = loadEvents()
+      .filter(e => e.status === "completed" && new Date(e.dateStart) >= lastMonth)
+      .map(e => ({ estimated_revenue: e.estimatedRevenue, date_start: e.dateStart }));
+  }
 
-  if (!error && monthlyData && monthlyData.length > 0) {
+  if (monthlyData && monthlyData.length > 0) {
     const thisMonthRevenue = (monthlyData as any[])
       .filter((e: any) => {
         const d = new Date(e.date_start);
@@ -267,6 +343,10 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
         priority: "high",
       });
     }
+  }
+
+  if (!isSupabaseEnabled || !supabase) {
+    return insights;
   }
 
   // Check for pending checklists (items unchecked 24hrs before event)
