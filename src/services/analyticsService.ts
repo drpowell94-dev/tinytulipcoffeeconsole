@@ -275,6 +275,7 @@ function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | nu
  */
 function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
   venueName: string;
+  propertyId?: string;
   daysAgo: number;
   lastEventDate: string;
 }> {
@@ -282,22 +283,37 @@ function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
   if (events.length === 0) return [];
 
   const properties = getCharlotteApartments();
-  const propertyNameMap = new Map(properties.map(p => [p.name, p]));
+  const propertyMap = new Map(properties.map(p => [p.id, p]));
 
-  const cutoffDate = new Date(Date.now() - daysWithoutEvent * 24 * 60 * 60 * 1000);
-  const venueMap = new Map<string, string>();
+  const venueMap = new Map<string, { lastDate: string; propertyId?: string }>();
 
   events
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart))
     .forEach(e => {
-      if (!venueMap.has(e.location)) {
-        venueMap.set(e.location, e.dateStart);
+      if (!venueMap.has(e.id)) {
+        venueMap.set(e.id, { lastDate: e.dateStart, propertyId: e.propertyId });
       }
     });
 
-  return Array.from(venueMap.entries())
-    .map(([location, lastDate]) => ({
-      venueName: propertyNameMap.has(location) ? location : location,
+  // Group by property ID first if available
+  const groupedByProperty = new Map<string, { property: any; lastDate: string }>();
+  events.forEach(e => {
+    if (e.propertyId && propertyMap.has(e.propertyId)) {
+      const key = e.propertyId;
+      const current = groupedByProperty.get(key);
+      if (!current || e.dateStart > current.lastDate) {
+        groupedByProperty.set(key, {
+          property: propertyMap.get(e.propertyId),
+          lastDate: e.dateStart,
+        });
+      }
+    }
+  });
+
+  return Array.from(groupedByProperty.values())
+    .map(({ property, lastDate }) => ({
+      venueName: property.name,
+      propertyId: property.id,
       lastEventDate: lastDate,
       daysAgo: Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24)),
     }))
@@ -315,31 +331,36 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
   const properties = getCharlotteApartments();
   const propertyMap = new Map(properties.map(p => [p.id, p]));
   const allEvents = loadEvents();
+  const completedEvents = allEvents.filter(e => e.status === "completed" && e.propertyId);
 
-  // ALWAYS show top venue recommendations based on completed events
-  let pastMetrics = await getPastEventsByVenue(90);
-  if (!pastMetrics || pastMetrics.topVenues.length === 0) {
-    pastMetrics = getLocalPastEventsByVenue(90);
-  }
-
-  if (pastMetrics && pastMetrics.topVenues.length > 0) {
-    const topVenue = pastMetrics.topVenues[0];
-    // Try to find a property for this venue by matching events with propertyId
-    const eventsAtVenue = allEvents.filter(e => e.location === topVenue.location && e.propertyId);
-    const propertyForVenue = eventsAtVenue.length > 0
-      ? propertyMap.get(eventsAtVenue[0].propertyId!)
-      : Array.from(propertyMap.values()).find(
-          p => p.name === topVenue.location || p.address?.includes(topVenue.location)
-        );
-    const venueName = propertyForVenue?.name || topVenue.location;
-
-    insights.push({
-      type: "no_upcoming_events",
-      actionableNextStep: `${venueName} is your best venue (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`,
-      relatedVenueName: venueName,
-      relatedPropertyId: propertyForVenue?.id,
-      priority: "high",
+  // ALWAYS show top property venue recommendations based on completed events with propertyId
+  if (completedEvents.length > 0) {
+    // Group events by propertyId and find top by revenue
+    const propertyStats = new Map<string, { revenue: number; count: number }>();
+    completedEvents.forEach(e => {
+      const key = e.propertyId!;
+      const current = propertyStats.get(key) || { revenue: 0, count: 0 };
+      current.revenue += e.estimatedRevenue || 0;
+      current.count += 1;
+      propertyStats.set(key, current);
     });
+
+    const topProperty = Array.from(propertyStats.entries())
+      .sort((a, b) => b[1].revenue - a[1].revenue)[0];
+
+    if (topProperty) {
+      const [propertyId, stats] = topProperty;
+      const property = propertyMap.get(propertyId);
+      if (property) {
+        insights.push({
+          type: "no_upcoming_events",
+          actionableNextStep: `${property.name} is your best venue (avg $${(stats.revenue / stats.count).toFixed(0)}/event, ${stats.count} bookings)`,
+          relatedVenueName: property.name,
+          relatedPropertyId: property.id,
+          priority: "high",
+        });
+      }
+    }
   }
 
   // Recommend re-engagement with inactive venues (no event in 60+ days)

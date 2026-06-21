@@ -601,71 +601,42 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Past sessions at bottom */}
-        <section className="space-y-4 border-t border-border/50 pt-8">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History size={18} className="text-accent" />
-              <h2 className="font-display text-lg text-foreground">Past Sessions ({history.length})</h2>
+        {/* Past events at bottom */}
+        {past.length > 0 && (
+          <section className="space-y-4 border-t border-border/50 pt-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History size={18} className="text-accent" />
+                <h2 className="font-display text-lg text-foreground">Past Events ({past.length})</h2>
+              </div>
             </div>
-          </div>
-          {history.length === 0 ? (
-            <div className="rounded-lg bg-muted/15 p-8 text-center">
-              <p className="font-body text-muted-foreground">No past sessions yet. Use the drink counter at an event to start tracking sessions.</p>
-            </div>
-          ) : (
             <div className="grid sm:grid-cols-2 gap-4">
-              {history.map(s => (
-                <div key={s.id} className="rounded-lg bg-muted/20 p-5 space-y-3 hover:bg-muted/30 transition-colors">
+              {past.slice(0, 6).map(event => (
+                <div key={event.id} className="rounded-lg bg-muted/20 p-5 space-y-3 hover:bg-muted/30 transition-colors">
                   <div>
-                    <p className="font-body font-semibold text-foreground">{s.eventName}</p>
+                    <p className="font-body font-semibold text-foreground">{event.name}</p>
                     <p className="text-xs text-muted-foreground font-body mt-1">
-                      {new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                      {formatDate(event.dateStart)}
                     </p>
                   </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-border/30">
-                    <div>
-                      <p className="text-sm font-body text-muted-foreground">Drinks</p>
-                      <p className="font-display text-xl text-foreground">{s.totalDrinks}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-body text-muted-foreground">Revenue</p>
-                      <p className="font-display text-lg text-accent">{formatCurrency(s.totalRevenue)}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 pt-2">
-                    <button
-                      onClick={() => {
-                        const recap = generateEventRecap(s);
-                        savePost({
-                          title: recap.title,
-                          template: "community-update",
-                          tone: "friendly",
-                          keywords: "",
-                          body: recap.body,
-                          status: "draft",
-                        });
-                        toast.success("Recap draft created — find it in Content");
-                      }}
-                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors font-body text-xs font-semibold"
-                      aria-label="Draft a recap post"
-                    >
-                      <Sparkles size={14} strokeWidth={1.75} />
-                      Recap
-                    </button>
-                    <button
-                      onClick={() => setHistory(deleteFromHistory(s.id))}
-                      className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                      aria-label="Delete session"
-                    >
-                      <Trash2 size={16} strokeWidth={1.5} />
-                    </button>
+                  <div className="space-y-2">
+                    {event.location && (
+                      <p className="text-xs font-body text-muted-foreground">
+                        <MapPin size={12} className="inline mr-1" />
+                        {event.location}
+                      </p>
+                    )}
+                    {event.preOrders > 0 && (
+                      <p className="text-xs font-body text-foreground">
+                        {event.preOrders} drinks · {formatCurrency(event.estimatedRevenue || 0)}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </section>
+          </section>
+        )}
       </div>
     </div>
   );
