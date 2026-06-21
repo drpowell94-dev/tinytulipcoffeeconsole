@@ -363,19 +363,15 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
     }
   }
 
-  // Recommend re-engagement with inactive venues (no event in 60+ days)
+  // Recommend re-engagement with inactive venues (using propertyId-matched properties)
   const inactiveVenues = findInactiveVenues(60);
-  if (inactiveVenues.length > 0) {
+  if (inactiveVenues.length > 0 && insights.length < 3) {
     const venue = inactiveVenues[0];
-    const propertyForVenue = Array.from(propertyMap.values()).find(
-      p => p.name === venue.venueName
-    );
-
     insights.push({
       type: "low_revenue_trend",
       actionableNextStep: `${venue.venueName} hasn't hosted in ${venue.daysAgo}d. Time for a check-in?`,
       relatedVenueName: venue.venueName,
-      relatedPropertyId: propertyForVenue?.id,
+      relatedPropertyId: venue.propertyId,
       priority: "medium",
     });
   }
@@ -387,7 +383,7 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
       .map(e => e.propertyId!)
   );
   const instagramFollows = getInstagramFollowsWithoutBooking(Array.from(bookedPropertyIds));
-  if (instagramFollows.length > 0) {
+  if (instagramFollows.length > 0 && insights.length < 3) {
     const property = instagramFollows[0];
     insights.push({
       type: "inventory_low",
@@ -398,16 +394,28 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
     });
   }
 
-  // Fallback: Suggest exploring all properties if insights are thin
+  // Fallback: Show other properties not yet booked
   if (insights.length < 3) {
-    const allProperties = properties;
-    if (allProperties.length > 0) {
+    const unbookedProperties = properties.filter(p => !bookedPropertyIds.has(p.id));
+    if (unbookedProperties.length > 0) {
+      const property = unbookedProperties[0];
       insights.push({
         type: "inventory_low",
-        actionableNextStep: `Manage ${allProperties.length} Charlotte properties in your database. Add events to generate venue insights.`,
+        actionableNextStep: `${property.name} isn't booked yet. Consider reaching out.`,
+        relatedVenueName: property.name,
+        relatedPropertyId: property.id,
         priority: "low",
       });
     }
+  }
+
+  // Last resort: suggest exploring properties
+  if (insights.length < 3) {
+    insights.push({
+      type: "inventory_low",
+      actionableNextStep: `Add more Charlotte properties and link events to generate personalized recommendations.`,
+      priority: "low",
+    });
   }
 
   // Check for revenue decline (month-over-month) - use localStorage as fallback

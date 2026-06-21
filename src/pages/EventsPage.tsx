@@ -208,7 +208,7 @@ export default function EventsPage() {
                 )}
                 <button
                   onClick={() => handleDelete(event)}
-                  className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs flex-1 sm:flex-initial"
+                  className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs flex-1 sm:flex-initial border border-border hover:border-destructive"
                   aria-label={`Delete ${event.name}`}
                 >
                   <Trash2 size={16} strokeWidth={1.5} />
