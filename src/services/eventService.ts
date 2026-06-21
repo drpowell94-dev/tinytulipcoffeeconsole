@@ -67,23 +67,31 @@ function deriveStatus(record: {
 }
 
 /**
- * Generate realistic estimated revenue based on event duration.
- * Used for Wix historical events to enable Smart Recommendations.
- * Duration-based estimates: 30min=$100, 2hr=$350, 4hr=$600, 6hr=$900
+ * Generate estimated revenue based on event duration using actual Tiny Tulip Coffee pricing.
+ * Grab & Go: 15 min from $200
+ * Pop-Up: 2 hr from $300
+ * Additional per-hour rates extrapolated from pricing structure
  */
 function estimateRevenueFromDuration(startDate: Date, endDate?: Date): number {
   if (!endDate) {
-    return 350; // 2-hour equivalent default
+    return 300; // 2-hour Pop-Up default
   }
-  const durationHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+  const durationMinutes = (endDate.getTime() - startDate.getTime()) / (1000 * 60);
 
-  if (durationHours <= 0.5) return 100;
-  if (durationHours <= 1) return 200;
-  if (durationHours <= 2) return 350;
-  if (durationHours <= 3) return 500;
-  if (durationHours <= 4) return 600;
-  if (durationHours <= 5) return 750;
-  return 900; // 6+ hours
+  // Grab & Go tier: up to 30 minutes
+  if (durationMinutes <= 30) return 200;
+
+  // Short event tier: 30 min to 90 min
+  if (durationMinutes <= 90) return 250;
+
+  // Standard Pop-Up: 90 min to 180 min (2-3 hours)
+  if (durationMinutes <= 180) return 300;
+
+  // Extended Pop-Up: 180 min to 240 min (3-4 hours)
+  if (durationMinutes <= 240) return 400;
+
+  // Large event: 4+ hours
+  return 500;
 }
 
 /** Map a raw Wix record to the app's TulipEvent shape. */
