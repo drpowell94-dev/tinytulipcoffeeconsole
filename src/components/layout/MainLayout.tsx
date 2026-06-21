@@ -8,7 +8,6 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
-  { to: "/logistics", label: "Logistics", icon: ClipboardCheck },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];

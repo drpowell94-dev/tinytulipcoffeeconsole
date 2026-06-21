@@ -287,25 +287,31 @@ export default function EventsPage() {
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-start sm:justify-end">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-muted/50 text-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Download size={16} strokeWidth={2} /> Import from Wix
+            <Download size={14} strokeWidth={2} />
+            <span className="hidden sm:inline">Import from Wix</span>
+            <span className="sm:hidden">Import</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
-            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-secondary-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
-            <Plus size={16} strokeWidth={2} /> Add Lead
+            <Plus size={14} strokeWidth={2} />
+            <span className="hidden sm:inline">Add Lead</span>
+            <span className="sm:hidden">Lead</span>
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
-            <Plus size={16} strokeWidth={2} /> New Event
+            <Plus size={14} strokeWidth={2} />
+            <span className="hidden sm:inline">New Event</span>
+            <span className="sm:hidden">Event</span>
           </button>
         </div>
       </div>
