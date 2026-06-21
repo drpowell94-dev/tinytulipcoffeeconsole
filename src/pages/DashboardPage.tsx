@@ -13,13 +13,16 @@ export default function DashboardPage() {
   const lowStock = lowStockItems();
   const history = loadHistory();
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
+  const [insightsError, setInsightsError] = useState(false);
 
   useEffect(() => {
+    setInsightsError(false);
     generateInsights()
       .then(data => setInsights(data || []))
       .catch(err => {
         console.error("Failed to generate insights:", err);
         setInsights([]);
+        setInsightsError(true);
       });
   }, []);
 
@@ -120,7 +123,13 @@ export default function DashboardPage() {
             Smart Recommendations
           </h2>
         </div>
-        {insights.length > 0 ? (
+        {insightsError ? (
+          <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-4">
+            <p className="text-sm font-body text-foreground">
+              Unable to load recommendations. Please try refreshing the page.
+            </p>
+          </div>
+        ) : insights.length > 0 ? (
           <div className="space-y-3">
             {insights.map((insight, idx) => (
               <InsightCard key={idx} insight={insight} />

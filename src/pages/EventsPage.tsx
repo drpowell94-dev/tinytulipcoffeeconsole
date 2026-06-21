@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -230,10 +230,15 @@ export default function EventsPage() {
                   }
                 }}
                 disabled={loadingLogistics[event.id]}
-                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity disabled:opacity-50"
               >
                 <span className="flex items-center gap-1">
-                  <Zap size={14} strokeWidth={2} /> Supplies
+                  {loadingLogistics[event.id] ? (
+                    <Loader size={14} strokeWidth={2} className="animate-spin" />
+                  ) : (
+                    <Zap size={14} strokeWidth={2} />
+                  )}
+                  Supplies
                 </span>
                 <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
               </button>
