@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
+  { to: "/checklists", label: "Checklists", icon: ClipboardCheck },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];
@@ -116,29 +117,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto">
           {children}
         </main>
       </div>
-
-      {/* Mobile bottom nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card/80 backdrop-blur-sm flex justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
-        {NAV_ITEMS.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex flex-col items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-body font-semibold transition-all duration-200",
-                isActive ? "text-accent" : "text-muted-foreground"
-              )
-            }
-          >
-            <item.icon size={20} strokeWidth={1.5} />
-            <span>{item.label}</span>
-          </NavLink>
-        ))}
-      </nav>
     </div>
   );
 }

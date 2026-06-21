@@ -6,6 +6,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import EventsPage from "@/pages/EventsPage";
 import DrinkCounterPage from "@/pages/DrinkCounterPage";
 import ContentPage from "@/pages/ContentPage";
+import ChecklistsPage from "@/pages/ChecklistsPage";
 import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
@@ -32,7 +33,8 @@ export default function App() {
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:eventId/counter" element={<DrinkCounterPage />} />
           <Route path="/content" element={<ContentPage />} />
-          <Route path="/logistics" element={<LogisticsPage />} />
+          <Route path="/checklists" element={<ChecklistsPage />} />
+          <Route path="/logistics" element={<Navigate to="/checklists" replace />} />
           <Route path="/email-campaigns" element={<EmailCampaignsPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
