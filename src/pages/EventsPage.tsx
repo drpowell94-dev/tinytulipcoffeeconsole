@@ -15,6 +15,7 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
+import { persistEventToSupabase, deleteEventFromSupabase } from "@/services/eventPersistence";
 import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
@@ -98,6 +99,7 @@ export default function EventsPage() {
     if (form.status === "confirmed") {
       createChecklistForEvent(event.id, event.name, event.eventType);
     }
+    persistEventToSupabase(event);
     setEvents(loadEvents());
     setForm(EMPTY_FORM);
     setShowForm(false);
@@ -106,6 +108,7 @@ export default function EventsPage() {
   };
 
   const handleDelete = (event: TulipEvent) => {
+    deleteEventFromSupabase(event.id);
     setEvents(deleteEvent(event.id));
     toast(`Deleted "${event.name}"`);
   };
@@ -116,13 +119,15 @@ export default function EventsPage() {
   // Split into upcoming (today or later) and past, each sensibly sorted.
   const upcoming = events
     .filter(e => daysUntil(e.dateStart) >= 0)
-    .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
+    .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
   const past = events
     .filter(e => daysUntil(e.dateStart) < 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
   const handleConvertLead = (lead: TulipEvent) => {
-    updateEvent(lead.id, { status: "confirmed" });
+    const updated = updateEvent(lead.id, { status: "confirmed" });
+    const convertedEvent = updated.find(e => e.id === lead.id);
+    if (convertedEvent) persistEventToSupabase(convertedEvent);
     setEvents(loadEvents());
     toast.success(`"${lead.name}" moved to confirmed`);
   };
@@ -324,6 +329,7 @@ export default function EventsPage() {
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
             });
+            persistEventToSupabase(event);
             setEvents(loadEvents());
             setForm(EMPTY_FORM);
             setShowLeadForm(false);
