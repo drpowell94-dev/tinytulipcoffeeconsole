@@ -166,6 +166,34 @@ export default function DashboardPage() {
         </section>
       )}
 
+      {/* Past Sessions */}
+      {history.length > 0 && (
+        <section className="space-y-4">
+          <div className="flex items-baseline justify-between">
+            <h2 className="font-display text-lg text-foreground">Past Sessions</h2>
+            <Link to="/events" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
+              View all →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {history.slice(0, 5).map((session, idx) => (
+              <div key={idx} className="flex items-center justify-between gap-4 px-4 py-3 rounded-lg bg-muted/15 hover:bg-muted/25 transition-colors">
+                <div className="min-w-0 flex-1">
+                  <p className="font-body font-semibold text-sm text-foreground truncate">{session.eventName}</p>
+                  <p className="text-xs text-muted-foreground font-body mt-0.5">
+                    {new Date(session.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="font-display text-sm text-foreground">{session.totalDrinks}</p>
+                  <p className="text-xs text-accent font-body">{formatCurrency(session.totalRevenue)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Quick actions */}
       <section className="space-y-6">
         <h2 className="font-display text-lg text-foreground">Quick Actions</h2>
