@@ -1,4 +1,7 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
+import { upcomingEvents, loadEvents } from "@/lib/eventStore";
+import { lowStockItems } from "@/lib/inventoryStore";
+import { loadChecklists } from "@/lib/checklistStore";
 
 export interface UpcomingEventMetrics {
   upcomingEventCount: number;
@@ -214,21 +217,56 @@ export async function calculateRevenueMetrics(
 export async function generateInsights(): Promise<DashboardInsight[]> {
   const insights: DashboardInsight[] = [];
 
-  // Check for upcoming events
-  const upcoming = await getUpcomingEventCount(7);
-  if (upcoming && upcoming.upcomingEventCount === 0) {
-    const pastMetrics = await getPastEventsByVenue(90);
-    const topVenue = pastMetrics?.topVenues?.[0];
+  // --- Local insights (computed from localStorage, work fully offline) ---
 
+  // No events booked in the next 7 days. When a backend is connected we can
+  // enrich this with a top-venue outreach suggestion.
+  const upcoming = upcomingEvents(7);
+  if (upcoming.length === 0) {
+    let actionableNextStep = "No events in the next 7 days — line up a pop-up to keep momentum.";
+    let relatedVenueName: string | undefined;
+    if (isSupabaseEnabled) {
+      const pastMetrics = await getPastEventsByVenue(90);
+      const topVenue = pastMetrics?.topVenues?.[0];
+      if (topVenue) {
+        actionableNextStep = `Suggest outreach to ${topVenue.location || "your top venue"} (avg $${topVenue.avgRevenue.toFixed(0)}/event)`;
+        relatedVenueName = topVenue.location;
+      }
+    }
+    insights.push({ type: "no_upcoming_events", actionableNextStep, relatedVenueName, priority: "high" });
+  }
+
+  // Inventory at/below reorder level.
+  const low = lowStockItems();
+  if (low.length > 0) {
     insights.push({
-      type: "no_upcoming_events",
-      actionableNextStep: topVenue
-        ? `Suggest outreach to ${topVenue.location || "top performing venue"} (avg $${topVenue.avgRevenue.toFixed(0)}/event)`
-        : "Schedule upcoming events to maintain momentum",
-      relatedVenueName: topVenue?.location,
-      priority: "high",
+      type: "inventory_low",
+      actionableNextStep: `${low.length} item${low.length > 1 ? "s" : ""} at or below reorder level — restock before your next event.`,
+      priority: "medium",
     });
   }
+
+  // Packing checklists with unchecked items for events within 24 hours.
+  const now = Date.now();
+  const checklists = loadChecklists();
+  loadEvents()
+    .filter(e => {
+      const t = new Date(e.dateStart).getTime();
+      return t >= now && t <= now + 24 * 60 * 60 * 1000 && e.status !== "cancelled";
+    })
+    .forEach(ev => {
+      const checklist = checklists.find(c => c.eventId === ev.id);
+      if (checklist && checklist.items.some(i => !i.checked)) {
+        insights.push({
+          type: "pending_checklists",
+          actionableNextStep: `${ev.name} is within 24h — finish the packing checklist.`,
+          relatedEventId: ev.id,
+          priority: "high",
+        });
+      }
+    });
+
+  // --- Backend-only insights below this point ---
 
   // Check for revenue decline (month-over-month)
   const lastMonth = new Date();
@@ -264,31 +302,6 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
       insights.push({
         type: "low_revenue_trend",
         actionableNextStep: `Revenue down ${Math.round(((lastMonthRevenue - thisMonthRevenue) / lastMonthRevenue) * 100)}% vs last month. Launch seasonal drink or event promo?`,
-        priority: "high",
-      });
-    }
-  }
-
-  // Check for pending checklists (items unchecked 24hrs before event)
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const { data: soonEvents, error: checklistError } = await supabase
-    .from("events")
-    .select("id, name, date_start, checklists(id, checklist_items(is_completed))")
-    .gte("date_start", new Date().toISOString())
-    .lte("date_start", tomorrow.toISOString());
-
-  if (!checklistError && soonEvents) {
-    const uncheckedEvent = (soonEvents as any[]).find((e: any) =>
-      e.checklists?.some((c: any) =>
-        c.checklist_items?.some((ci: any) => !ci.is_completed)
-      )
-    );
-
-    if (uncheckedEvent) {
-      insights.push({
-        type: "pending_checklists",
-        actionableNextStep: `${uncheckedEvent.name} is tomorrow! Complete prep checklist`,
-        relatedEventId: uncheckedEvent.id,
         priority: "high",
       });
     }

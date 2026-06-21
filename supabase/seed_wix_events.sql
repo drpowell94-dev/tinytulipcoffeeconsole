@@ -47,7 +47,7 @@ VALUES
    '2026-02-07T13:00:00Z', '2026-02-07T17:00:00Z', '1532 East Blvd, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('cf720f94-c301-4b3b-8424-079234e387e9', '704 At The Quarter - Grab & Go', NULL, 'other',
+  ('cf720f94-c301-4b3b-8424-079234e387e9', '704 At The Quarter- Grab & Go', NULL, 'other',
    '2026-02-10T00:00:00Z', '2026-02-10T00:05:00Z', '704 W Tremont Ave, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
@@ -63,59 +63,59 @@ VALUES
    '2026-02-16T13:00:00Z', '2026-02-16T15:00:00Z', 'The ellis apt, 512 N College St, Charlotte, NC 28202, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('90ddd2d7-2ca4-47b7-b94f-66e683a7dbf2', 'Pop Up Event', NULL, 'popup',
+  ('90ddd2d7-2ca4-47b7-b94f-66e683a7dbf2', 'Ashton South End', NULL, 'popup',
    '2026-02-27T13:00:00Z', '2026-02-27T15:00:00Z', '125 W Tremont Ave, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('f20e551c-6911-40e1-81e8-d71334f27584', 'Pop Up Event', 'We''re excited to se you at the North Tower!', 'popup',
+  ('f20e551c-6911-40e1-81e8-d71334f27584', 'The Ascher Uptown Apartments - North', 'We''re excited to se you at the North Tower!', 'popup',
    '2026-03-04T13:00:00Z', '2026-03-04T17:00:00Z', '640 N Church St, Charlotte, NC 28202, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('e776c063-4447-4d67-806c-69fd96059504', 'Grab & Go Event', NULL, 'other',
+  ('e776c063-4447-4d67-806c-69fd96059504', 'Camden Southline', NULL, 'other',
    '2026-03-05T10:00:00Z', '2026-03-05T12:00:00Z', '2317 South Blvd, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('d3e9d316-37ae-4422-b285-e4418cf60ddf', 'Pop Up Event', 'We''re excited to see you at the South Tower!', 'popup',
+  ('d3e9d316-37ae-4422-b285-e4418cf60ddf', 'The Ascher Uptown Apartments - South', 'We''re excited to see you at the South Tower!', 'popup',
    '2026-03-06T13:00:00Z', '2026-03-06T16:00:00Z', '640 N Church St, Charlotte, NC 28202, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('3dd4abf3-ccd9-4664-87ff-56509153296d', 'Pop Up Event', NULL, 'popup',
+  ('3dd4abf3-ccd9-4664-87ff-56509153296d', 'Bradham at New Bern', NULL, 'popup',
    '2026-03-10T11:00:00Z', '2026-03-10T14:00:00Z', '145 New Bern St, Charlotte, NC 28209, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('83184da3-578b-4cda-9404-f641e29f9522', 'Pop Up Event', NULL, 'popup',
+  ('83184da3-578b-4cda-9404-f641e29f9522', 'Savoy', NULL, 'popup',
    '2026-03-17T12:00:00Z', '2026-03-17T14:00:00Z', '650 E Brooklyn Vlg Ave, Charlotte, NC 28202, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('851283a5-cafa-4c72-a08a-6060e812150f', 'Pop Up Event', NULL, 'popup',
+  ('851283a5-cafa-4c72-a08a-6060e812150f', 'Bradham at New Bern', NULL, 'popup',
    '2026-03-18T11:00:00Z', '2026-03-18T13:00:00Z', '145 New Bern St, Charlotte, NC 28209, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('972e2e45-a7ae-49d6-99f5-8c2d23ab4b17', 'Grab & Go Event', NULL, 'other',
+  ('972e2e45-a7ae-49d6-99f5-8c2d23ab4b17', 'Indigo at Berewick', NULL, 'other',
    '2026-04-01T13:00:00Z', '2026-04-01T13:30:00Z', '3010 Furr court, Charlotte, NC 28273, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('5d7c2564-7231-486f-b35e-b41eae62db75', 'Pop Up Event', NULL, 'popup',
+  ('5d7c2564-7231-486f-b35e-b41eae62db75', 'Ashton South End', NULL, 'popup',
    '2026-04-09T12:00:00Z', '2026-04-09T14:00:00Z', '125 W Tremont Ave, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('eb372083-5e2d-48f9-9909-71e19aba11ad', 'Pop Up Event', NULL, 'popup',
+  ('eb372083-5e2d-48f9-9909-71e19aba11ad', 'Bradham at New Bern', NULL, 'popup',
    '2026-04-15T11:00:00Z', '2026-04-15T13:00:00Z', '145 New Bern St, Charlotte, NC 28209, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('cb3812fd-37f8-4bd4-a99b-87c9c85e0424', 'Pop Up Event', NULL, 'popup',
+  ('cb3812fd-37f8-4bd4-a99b-87c9c85e0424', 'Enclave at Radius Dilworth', NULL, 'popup',
    '2026-04-17T12:00:00Z', '2026-04-17T14:00:00Z', '515 Royal Ct, Charlotte, NC 28202, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('19ab7ff3-81f1-45b7-b854-cac4c282d51b', 'Grab & Go Event', NULL, 'other',
+  ('19ab7ff3-81f1-45b7-b854-cac4c282d51b', 'Ayrsley Lofts', NULL, 'other',
    '2026-04-21T13:00:00Z', '2026-04-21T13:30:00Z', '9336 Kings Parade Blvd, Charlotte, NC 28273, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('cbf8fe8f-a599-4eb1-b138-a6ab8cc8e578', 'Pop Up Event', NULL, 'popup',
+  ('cbf8fe8f-a599-4eb1-b138-a6ab8cc8e578', 'The Penrose', NULL, 'popup',
    '2026-04-22T14:30:00Z', '2026-04-22T16:30:00Z', '327 W Tremont Ave, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1'),
 
-  ('c0e643ff-4d05-40d2-8e24-819b5472c40d', 'Pop Up Event', NULL, 'popup',
+  ('c0e643ff-4d05-40d2-8e24-819b5472c40d', 'Vestique', NULL, 'popup',
    '2026-04-25T14:00:00Z', '2026-04-25T17:00:00Z', '1532 East Blvd, Charlotte, NC 28203, USA', 'completed',
    true, '00000000-0000-0000-0000-0000000000a1')
 

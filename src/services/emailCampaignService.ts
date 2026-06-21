@@ -19,25 +19,28 @@ export const DEFAULT_CAMPAIGNS = {
     subject: "Thanks for Your Interest in Tiny Tulip Catering! ☕",
     body: `Hi {{clientName}},
 
-Thank you so much for your interest in Tiny Tulip Coffee catering for your {{eventType}} on {{eventDate}}.
+Thank you for your interest in Tiny Tulip Coffee
+catering! We're excited to help make your
+{{eventType}} special.
 
-We're excited to help make your event special! Here's what we offer:
+WHAT WE OFFER
 • Fresh-brewed coffee & espresso
 • Custom drink options
 • Full barista setup
 • Flexible service options
 
-Your event details:
-📅 Date: {{eventDate}}
-👥 Guests: {{guestCount}}
-📍 Location: {{location}}
+YOUR EVENT
+Date: {{eventDate}}
+Guests: {{guestCount}}
+Location: {{location}}
 
-Next steps:
+NEXT STEPS
 1. Reply to this email with any questions
-2. We'll send you a custom quote within 24 hours
-3. Let's discuss timing and your drink preferences
+2. We'll send a custom quote within 24 hours
+3. Let's discuss timing & drink preferences
 
-Questions? Call us or reply to this email - we're here to help!
+Questions? Reply anytime — we're here to help!
+
 
 Best,
 The Tiny Tulip Team ☕`,
@@ -48,23 +51,29 @@ The Tiny Tulip Team ☕`,
     subject: "Still Interested in {{eventName}}? Let's Chat! 💬",
     body: `Hi {{clientName}},
 
-Just checking in on your {{eventType}} for {{eventDate}}!
+Just checking in on your {{eventType}} for
+{{eventDate}}!
 
-We haven't heard back yet, and we'd love to help make your event amazing.
+We haven't heard back and would love to help
+make your event amazing.
 
-Quick questions:
-✓ Are you still moving forward?
-✓ Do you have any questions about our service?
-✓ Would a phone call be easier?
+QUICK QUESTIONS
+• Are you still moving forward?
+• Do you have questions about our service?
+• Would a phone call be easier?
 
-We're flexible and happy to work around your needs. Either way, we appreciate you thinking of us!
+We're flexible and happy to work around your
+needs. Either way, we appreciate you thinking
+of us!
 
 Looking forward to hearing from you.
+
 
 Best,
 The Tiny Tulip Team ☕
 
-P.S. Worried about availability? Don't be - we keep space open for special events. Just let us know!`,
+P.S. Worried about availability? We keep space
+open for special events. Just let us know!`,
   },
   follow_up_day7: {
     name: "Final Follow-up (7 Days)",
@@ -72,19 +81,25 @@ P.S. Worried about availability? Don't be - we keep space open for special event
     subject: "Last Chance: {{eventName}} Booking",
     body: `Hi {{clientName}},
 
-This is our last message about your {{eventType}} on {{eventDate}}.
+This is our last message about your {{eventType}}
+on {{eventDate}}.
 
-We understand if your plans changed, and that's totally okay! But if you're still interested, now's the time to book.
+We understand if your plans changed — that's
+totally okay! But if you're still interested,
+now's the time to book.
 
-Here's why we're perfect for your event:
-✓ Experienced team (served 1000+ events)
-✓ Customizable drink options
-✓ Professional setup & cleanup
-✓ Same-day flexibility
+WHY CHOOSE TINY TULIP
+• Experienced team (served 1000+ events)
+• Customizable drink options
+• Professional setup & cleanup
+• Same-day flexibility
 
 Ready to book? Just reply or call us today.
 
-Not right now? No problem - save our contact info for next time. We'd love to work with you in the future!
+Not right now? No problem — save our info for
+next time. We'd love to work with you in the
+future!
+
 
 Best,
 The Tiny Tulip Team ☕`,
@@ -95,23 +110,30 @@ The Tiny Tulip Team ☕`,
     subject: "How Did We Do? We'd Love Your Feedback! ⭐",
     body: `Hi {{clientName}},
 
-Thank you so much for choosing Tiny Tulip Coffee for {{eventName}}!
+Thank you for choosing Tiny Tulip Coffee for
+{{eventName}}!
 
-We had a blast serving {{guestCount}} people at your event. Your feedback helps us improve and means the world to us.
+We had a blast serving {{guestCount}} people.
+Your feedback helps us improve and means the
+world to us.
 
-Would you mind taking 2 minutes to answer a few quick questions?
-→ {{feedbackFormLink}}
+SHARE YOUR FEEDBACK (2 minutes)
+{{feedbackFormLink}}
 
-As a thank you, here's a special offer:
-🎁 15% off your next event booking
-Use code: GRATEFUL15
+THANK YOU BONUS
+15% off your next event booking
+Code: GRATEFUL15
 
-Questions or special requests? Feel free to reach out - we'd love to hear from you!
+Have questions or special requests? Reply
+anytime — we'd love to hear from you!
+
 
 Best,
 The Tiny Tulip Team ☕
 
-P.S. Know someone planning an event? Tell them about us! We offer referral discounts for both you and your friends.`,
+P.S. Know someone planning an event? Tell them
+about us! We offer referral discounts for you
+and your friends.`,
   },
 };
 

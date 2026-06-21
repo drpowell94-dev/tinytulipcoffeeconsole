@@ -1,22 +1,37 @@
 import { useState, useEffect } from "react";
-import { Mail, Edit2, Send, ChevronDown, Save, X } from "lucide-react";
+import { Mail, Edit2, Send, ChevronDown, Save, X, Play, Pause } from "lucide-react";
 import { toast } from "sonner";
 import {
   getEmailCampaigns,
   saveEmailCampaign,
+  sendEmailViaCampaign,
   DEFAULT_CAMPAIGNS,
   type EmailCampaign,
 } from "@/services/emailCampaignService";
+import { isSupabaseEnabled } from "@/services/supabase";
 import { cn } from "@/lib/utils";
 
+// Sample data used when sending a test so {{variables}} render to something real.
+const SAMPLE_VARS: Record<string, string> = {
+  clientName: "Jordan",
+  eventName: "Summer Garden Party",
+  eventType: "pop-up",
+  eventDate: "Aug 15, 2026",
+  guestCount: "50",
+  location: "Riverside Park",
+  feedbackFormLink: "https://tinytulipcoffee.com/feedback",
+};
+
 const input =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function EmailCampaignsPage() {
   const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Partial<EmailCampaign> | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [sendForm, setSendForm] = useState<{ campaignId: string; name: string; email: string } | null>(null);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadCampaigns();
@@ -24,7 +39,62 @@ export default function EmailCampaignsPage() {
 
   const loadCampaigns = async () => {
     const data = await getEmailCampaigns("default-user"); // TODO: Use actual userId
-    setCampaigns(data || []);
+    if (data && data.length > 0) {
+      setCampaigns(data);
+    } else {
+      // No backend yet — fall back to the default templates so the campaigns
+      // can still be reviewed, edited, and started.
+      setCampaigns(
+        Object.values(DEFAULT_CAMPAIGNS).map(t => ({
+          id: `default-${t.triggerType}`,
+          name: t.name,
+          triggerType: t.triggerType,
+          subject: t.subject,
+          body: t.body,
+          isActive: true,
+        }))
+      );
+    }
+  };
+
+  const handleToggleActive = async (campaign: EmailCampaign) => {
+    const nextActive = !campaign.isActive;
+    setCampaigns(prev =>
+      prev.map(c => (c.id === campaign.id ? { ...c, isActive: nextActive } : c))
+    );
+    await saveEmailCampaign("default-user", { ...campaign, isActive: nextActive });
+    toast.success(
+      nextActive
+        ? `"${campaign.name}" started — it'll send automatically on its trigger`
+        : `"${campaign.name}" paused`
+    );
+  };
+
+  const handleSendTest = async (campaign: EmailCampaign) => {
+    if (!sendForm || !sendForm.email.trim()) {
+      toast.error("Recipient email is required");
+      return;
+    }
+    if (!isSupabaseEnabled) {
+      toast.info("Connect Supabase + Resend to send live emails — your template is ready to go.");
+      setSendForm(null);
+      return;
+    }
+    setSending(true);
+    const result = await sendEmailViaCampaign(
+      campaign.id,
+      sendForm.email.trim(),
+      sendForm.name.trim() || "there",
+      "",
+      { ...SAMPLE_VARS, clientName: sendForm.name.trim() || SAMPLE_VARS.clientName }
+    );
+    setSending(false);
+    if (result.success) {
+      toast.success(`Test email sent to ${sendForm.email.trim()}`);
+      setSendForm(null);
+    } else {
+      toast.error(result.error || "Failed to send test email");
+    }
   };
 
   const handleEdit = (campaign: EmailCampaign) => {
@@ -68,25 +138,25 @@ export default function EmailCampaignsPage() {
       </div>
 
       {/* Available variables info */}
-      <div className="rounded-lg bg-accent/8 border border-accent/20 p-5">
-        <p className="text-sm font-body font-semibold text-foreground mb-2">
+      <div className="rounded-lg bg-accent/8 border border-accent/20 p-4">
+        <p className="text-sm font-body font-semibold text-foreground mb-3">
           📧 Available Template Variables:
         </p>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs font-mono text-muted-foreground">
-          <span>{'{{clientName}}'}</span>
-          <span>{'{{eventName}}'}</span>
-          <span>{'{{eventType}}'}</span>
-          <span>{'{{eventDate}}'}</span>
-          <span>{'{{guestCount}}'}</span>
-          <span>{'{{location}}'}</span>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-mono text-muted-foreground">
+          <span className="break-all">{'{{clientName}}'}</span>
+          <span className="break-all">{'{{eventName}}'}</span>
+          <span className="break-all">{'{{eventType}}'}</span>
+          <span className="break-all">{'{{eventDate}}'}</span>
+          <span className="break-all">{'{{guestCount}}'}</span>
+          <span className="break-all">{'{{location}}'}</span>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-2">
+        <p className="text-[10px] text-muted-foreground mt-3">
           These will be automatically filled from your lead information
         </p>
       </div>
 
       {/* Campaign list */}
-      <div className="space-y-4">
+      <div className="space-y-2">
         {campaigns.map(campaign => (
           <div
             key={campaign.id}
@@ -94,11 +164,11 @@ export default function EmailCampaignsPage() {
           >
             <button
               onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
-              className="w-full flex items-center justify-between p-5 hover:bg-muted/30 transition-colors"
+              className="w-full flex items-center justify-between pl-4 pr-4 py-3 gap-3 hover:bg-muted/30 transition-colors"
             >
-              <div className="flex items-center gap-3 flex-1 text-left">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
                 <Mail size={18} className="text-accent shrink-0" />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-body font-semibold text-foreground truncate">
                     {campaign.name}
                   </h3>
@@ -107,20 +177,20 @@ export default function EmailCampaignsPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 shrink-0">
                 {campaign.isActive ? (
-                  <span className="px-2 py-1 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-xs font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-green-600/20 text-green-600 dark:text-green-400 text-[10px] font-semibold whitespace-nowrap">
                     Active
                   </span>
                 ) : (
-                  <span className="px-2 py-1 rounded-full bg-muted text-muted-foreground text-xs font-semibold">
+                  <span className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold whitespace-nowrap">
                     Inactive
                   </span>
                 )}
                 <ChevronDown
                   size={18}
                   className={cn(
-                    "transition-transform",
+                    "shrink-0 transition-transform",
                     expandedId === campaign.id && "rotate-180"
                   )}
                 />
@@ -128,7 +198,7 @@ export default function EmailCampaignsPage() {
             </button>
 
             {expandedId === campaign.id && (
-              <div className="border-t border-border p-5 space-y-4 bg-background/50">
+              <div className="border-t border-border px-4 py-4 space-y-3 bg-background/50">
                 {editingId === campaign.id && editingCampaign ? (
                   // Edit mode
                   <div className="space-y-4">
@@ -217,17 +287,88 @@ export default function EmailCampaignsPage() {
                       </p>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => handleToggleActive(campaign)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all",
+                          campaign.isActive
+                            ? "bg-muted/50 text-foreground hover:bg-muted/70"
+                            : "bg-primary text-primary-foreground"
+                        )}
+                      >
+                        {campaign.isActive ? (
+                          <>
+                            <Pause size={14} /> Pause
+                          </>
+                        ) : (
+                          <>
+                            <Play size={14} /> Start Campaign
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() =>
+                          setSendForm(
+                            sendForm?.campaignId === campaign.id
+                              ? null
+                              : { campaignId: campaign.id, name: "", email: "" }
+                          )
+                        }
+                        className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                      >
+                        <Send size={14} /> Send test
+                      </button>
                       <button
                         onClick={() => handleEdit(campaign)}
-                        className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                        className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2 font-body font-semibold text-sm hover:bg-muted/70 transition-colors"
                       >
                         <Edit2 size={14} /> Edit
                       </button>
-                      <button className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2 font-body font-semibold text-sm hover:bg-muted/70 transition-colors">
-                        <Send size={14} /> Preview Send
-                      </button>
                     </div>
+
+                    {sendForm?.campaignId === campaign.id && (
+                      <div className="rounded-lg border border-border bg-background/50 p-4 space-y-3">
+                        <p className="text-xs font-body font-semibold text-muted-foreground uppercase">
+                          Send a test of this email
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <input
+                            className={input}
+                            placeholder="Recipient name (optional)"
+                            value={sendForm.name}
+                            onChange={e => setSendForm({ ...sendForm, name: e.target.value })}
+                          />
+                          <input
+                            className={input}
+                            type="email"
+                            placeholder="Recipient email *"
+                            value={sendForm.email}
+                            onChange={e => setSendForm({ ...sendForm, email: e.target.value })}
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSendTest(campaign)}
+                            disabled={sending}
+                            className="flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            <Send size={14} /> {sending ? "Sending…" : "Send test"}
+                          </button>
+                          <button
+                            onClick={() => setSendForm(null)}
+                            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2 font-body font-semibold text-sm hover:bg-muted/70 transition-colors"
+                          >
+                            <X size={14} /> Cancel
+                          </button>
+                        </div>
+                        {!isSupabaseEnabled && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Live sending requires Supabase + Resend to be configured.
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </>
                 )}
               </div>

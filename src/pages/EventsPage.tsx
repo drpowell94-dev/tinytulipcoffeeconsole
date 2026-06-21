@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, ClipboardCheck } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
+import EventChecklist from "@/components/events/EventChecklist";
 import { toast } from "sonner";
 import {
   loadEvents,
@@ -36,6 +37,7 @@ const EMPTY_FORM = {
   eventType: "popup" as EventType,
   dateStart: "",
   location: "",
+  guestCount: 0,
   preOrders: 0,
   estimatedRevenue: 0,
   contactName: "",
@@ -55,6 +57,7 @@ export default function EventsPage() {
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [checklistEvent, setChecklistEvent] = useState<TulipEvent | null>(null);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -88,6 +91,7 @@ export default function EventsPage() {
       eventType: form.eventType,
       dateStart: new Date(form.dateStart).toISOString(),
       location: form.location.trim() || "TBD",
+      guestCount: form.guestCount || undefined,
       preOrders: form.preOrders,
       estimatedRevenue: form.estimatedRevenue || undefined,
       status: form.status,
@@ -114,7 +118,7 @@ export default function EventsPage() {
   };
 
   const input =
-    "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+    "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
   // Split into upcoming (today or later) and past, each sensibly sorted.
   const upcoming = events
@@ -186,11 +190,18 @@ export default function EventsPage() {
               <>
                 <Link
                   to={`/events/${event.id}/counter`}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
+                  className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
                 >
                   <Coffee size={16} strokeWidth={1.5} />
-                  <span className="hidden sm:inline">Counter</span>
+                  <span>Counter</span>
                 </Link>
+                <button
+                  onClick={() => setChecklistEvent(event)}
+                  className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-muted/50 text-foreground px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/70 active:scale-95 transition-all sm:justify-start"
+                >
+                  <ClipboardCheck size={16} strokeWidth={1.5} />
+                  <span>Checklist</span>
+                </button>
                 <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors sm:ml-auto"
@@ -275,30 +286,32 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-baseline sm:justify-between">
         <div>
-          <h1 className="font-display text-4xl text-foreground">Events</h1>
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground">Events</h1>
           <p className="text-sm text-muted-foreground font-body mt-1">
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Download size={16} strokeWidth={2} /> Import from Wix
+            <Download size={16} strokeWidth={2} />
+            <span className="sm:hidden">Import</span>
+            <span className="hidden sm:inline">Import from Wix</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
-            className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
             <Plus size={16} strokeWidth={2} /> Add Lead
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex flex-1 sm:flex-none items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
           >
             <Plus size={16} strokeWidth={2} /> New Event
           </button>
@@ -310,8 +323,16 @@ export default function EventsPage() {
 
       {/* Quick lead form - always accessible */}
       {showLeadForm && (
-        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
-          <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-4">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-body font-semibold text-foreground">New Lead / Booking Inquiry</h3>
+            <button
+              onClick={() => setShowLeadForm(false)}
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ✕
+            </button>
+          </div>
           <form onSubmit={(e) => {
             e.preventDefault();
             if (!form.name.trim()) {
@@ -320,12 +341,14 @@ export default function EventsPage() {
             }
             const event = createEvent({
               name: form.name.trim(),
-              eventType: "popup",
-              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              eventType: (form.eventType as EventType) || "popup",
+              dateStart: form.dateStart ? new Date(form.dateStart).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim() || "TBD",
-              preOrders: 0,
+              preOrders: form.preOrders || 0,
+              estimatedRevenue: form.estimatedRevenue || 0,
               status: "inquiry",
               depositStatus: "pending",
+              contactName: form.contactName.trim() || undefined,
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
             });
@@ -333,40 +356,80 @@ export default function EventsPage() {
             setEvents(loadEvents());
             setForm(EMPTY_FORM);
             setShowLeadForm(false);
-            toast.success(`Lead "${event.name}" created`);
-          }} className="space-y-3">
-            <input
-              className={input}
-              placeholder="Lead name or company *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              autoFocus
-            />
-            <input
-              className={input}
-              placeholder="Phone (optional)"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Location (optional)"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
+            toast.success(`Lead "${event.name}" created — view in Leads tab to accept or decline`);
+          }} className="space-y-4">
+            <div className="grid sm:grid-cols-2 gap-3">
+              <input
+                className={input}
+                placeholder="Client name or company *"
+                value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                autoFocus
+                required
+              />
+              <input
+                className={input}
+                type="email"
+                placeholder="Email (optional)"
+                value={form.contactName}
+                onChange={e => setForm({ ...form, contactName: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Phone"
+                value={form.contactPhone}
+                onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+              />
+              <input
+                className={input}
+                type="number"
+                min={1}
+                placeholder="Guest count"
+                value={form.preOrders || ""}
+                onChange={e => {
+                  const num = parseInt(e.target.value, 10);
+                  setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+                }}
+              />
+              <input
+                className={input}
+                type="datetime-local"
+                placeholder="Event date"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              />
+              <select
+                className={input}
+                value={form.eventType}
+                onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+              >
+                <option value="popup">Pop-up</option>
+                <option value="farmers_market">Farmers Market</option>
+                <option value="catering">Catering</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div>
+              <input
+                className={input}
+                placeholder="Location (address or neighborhood)"
+                value={form.location}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+              />
+            </div>
             <textarea
               className={input}
-              placeholder="Notes (optional)"
+              placeholder="Special requests or notes"
               rows={2}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
             />
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-2">
               <button
                 type="submit"
-                className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                className="flex-1 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
               >
-                Add Lead
+                Create Lead
               </button>
               <button
                 type="button"
@@ -374,7 +437,7 @@ export default function EventsPage() {
                   setShowLeadForm(false);
                   setForm(EMPTY_FORM);
                 }}
-                className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+                className="rounded-lg bg-muted/50 px-4 py-2.5 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
               >
                 Cancel
               </button>
@@ -424,6 +487,17 @@ export default function EventsPage() {
               placeholder="Location"
               value={form.location}
               onChange={e => setForm({ ...form, location: e.target.value })}
+            />
+            <input
+              className={input}
+              type="number"
+              min={0}
+              placeholder="Guest count (for supply estimates)"
+              value={form.guestCount || ""}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, guestCount: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
             />
             <input
               className={input}
@@ -618,6 +692,10 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+
+      {checklistEvent && (
+        <EventChecklist event={checklistEvent} onClose={() => setChecklistEvent(null)} />
+      )}
     </div>
   );
 }

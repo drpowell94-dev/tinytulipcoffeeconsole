@@ -47,53 +47,69 @@ export interface InstagramWebhookPayload {
 }
 
 /**
- * Generate Instagram OAuth authorization URL
+ * Get Instagram OAuth authorization URL from secure edge function.
+ * Client IDs and secrets are managed server-side only.
  */
-export function generateInstagramAuthUrl(): string {
-  const clientId = process.env.VITE_INSTAGRAM_CLIENT_ID;
-  const redirectUri = process.env.VITE_INSTAGRAM_REDIRECT_URI;
-  const scopes = [
-    "instagram_business_basic",
-    "instagram_business_content_publish",
-    "instagram_business_manage_messages",
-    "pages_read_engagement",
-    "pages_manage_metadata",
-  ].join(",");
-
-  return `${INSTAGRAM_GRAPH_URL}/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scopes}&response_type=code`;
-}
-
-/**
- * Exchange authorization code for access token
- */
-export async function exchangeCodeForToken(code: string): Promise<InstagramToken | null> {
+export async function generateInstagramAuthUrl(): Promise<string> {
   try {
-    const clientId = process.env.VITE_INSTAGRAM_CLIENT_ID;
-    const clientSecret = process.env.VITE_INSTAGRAM_CLIENT_SECRET;
-    const redirectUri = process.env.VITE_INSTAGRAM_REDIRECT_URI;
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error("Supabase URL not configured");
+      return "";
+    }
 
-    const response = await fetch(`${INSTAGRAM_GRAPH_URL}/v18.0/oauth/access_token`, {
+    const response = await fetch(`${supabaseUrl}/functions/v1/instagram-auth`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId || "",
-        client_secret: clientSecret || "",
-        grant_type: "authorization_code",
-        redirect_uri: redirectUri || "",
-        code,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "get-auth-url" }),
     });
 
     if (!response.ok) {
-      console.error("Token exchange failed:", await response.text());
+      console.error("Failed to get Instagram auth URL:", response.statusText);
+      return "";
+    }
+
+    const data = await response.json();
+    return data.authUrl || "";
+  } catch (error) {
+    console.error("Error generating Instagram auth URL:", error);
+    return "";
+  }
+}
+
+/**
+ * Exchange authorization code for access token via secure edge function.
+ * Token exchange and client secret are managed server-side only.
+ */
+export async function exchangeCodeForToken(code: string, userId: string): Promise<InstagramToken | null> {
+  try {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    if (!supabaseUrl) {
+      console.error("Supabase URL not configured");
       return null;
     }
 
-    const data = await response.json() as any;
+    const response = await fetch(`${supabaseUrl}/functions/v1/instagram-callback`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, userId }),
+    });
+
+    if (!response.ok) {
+      console.error("Token exchange failed:", response.statusText);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.success) {
+      console.error("Token exchange error:", data.error);
+      return null;
+    }
+
     return {
-      accessToken: data.access_token,
-      businessAccountId: data.user_id,
-      username: data.user_id, // Will be fetched later
+      accessToken: data.accessToken || data.access_token,
+      businessAccountId: data.businessAccountId,
+      username: data.username,
     };
   } catch (error) {
     console.error("Error exchanging code for token:", error);
@@ -254,6 +270,7 @@ async function handleCommentWebhook(
 
 /**
  * Send direct message via Instagram Messaging API
+ * Message is constructed safely with sanitized user input
  */
 export async function sendInstagramDM(
   userId: string,
@@ -267,25 +284,31 @@ export async function sendInstagramDM(
       return { success: false, error: "No Instagram integration found" };
     }
 
-    // Generate booking link (mock - would be real in production)
-    const bookingLink = `https://tinytulipcoffee.com/booking?source=instagram_dm`;
+    // Sanitize username - remove special characters that could be used for injection
+    const safeUsername = sanitizeUsername(recipientUsername);
+    if (!safeUsername) {
+      return { success: false, error: "Invalid recipient username" };
+    }
 
-    // Prepare message
-    const messageText = `Hi ${recipientUsername}! 👋 Thanks for your interest! Check out our catering menu and booking: ${bookingLink}`;
+    // Generate booking link with validated URL parameters
+    const bookingLink = buildSafeBookingLink(safeUsername);
+
+    // Prepare message with sanitized data
+    const messageText = `Hi @${safeUsername}! 👋 Thanks for your interest in catering! Check out our services and book here: ${bookingLink}`;
 
     // Mock API call - in production, this would call Instagram Messaging API
-    console.log(`[MOCK DM] Sending to ${recipientUsername}:`, messageText);
+    console.log(`[MOCK DM] Sending to ${safeUsername}:`, messageText);
 
     if (!isSupabaseEnabled || !supabase) {
       return { success: false, error: "Database unavailable" };
     }
 
-    // Store conversation
+    // Store conversation with sanitized data
     const { error } = await supabase.from("instagram_dm_conversations").upsert(
       {
         user_id: userId,
         instagram_user_id: recipientInstagramId,
-        instagram_username: recipientUsername,
+        instagram_username: safeUsername,
         last_message_at: new Date().toISOString(),
         conversation_history: [
           {
@@ -310,6 +333,30 @@ export async function sendInstagramDM(
     console.error("Error sending Instagram DM:", error);
     return { success: false, error: String(error) };
   }
+}
+
+/**
+ * Sanitize Instagram username to prevent injection attacks
+ * Only allows alphanumeric, dots, and underscores
+ */
+function sanitizeUsername(username: string | undefined): string {
+  if (!username || typeof username !== "string") return "";
+  // Remove any characters that aren't alphanumeric, dots, or underscores
+  const sanitized = username.replace(/[^a-zA-Z0-9._]/g, "").trim();
+  // Instagram usernames must be 1-30 characters
+  return sanitized.length > 0 && sanitized.length <= 30 ? sanitized : "";
+}
+
+/**
+ * Build a safe booking link with proper URL encoding
+ */
+function buildSafeBookingLink(username: string): string {
+  const baseUrl = "https://tinytulipcoffee.com/booking";
+  const params = new URLSearchParams({
+    source: "instagram_dm",
+    ref: username,
+  });
+  return `${baseUrl}?${params.toString()}`;
 }
 
 /**
@@ -397,6 +444,6 @@ Link in bio to book! 🎉`;
  * Verify webhook token from Instagram
  */
 export function verifyInstagramWebhook(token: string): boolean {
-  const verifyToken = process.env.VITE_INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
+  const verifyToken = import.meta.env.VITE_INSTAGRAM_WEBHOOK_VERIFY_TOKEN;
   return token === verifyToken;
 }

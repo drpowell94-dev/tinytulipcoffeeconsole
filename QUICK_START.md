@@ -1,4 +1,4 @@
-# Quick Start Guide - Tiny Tulip Console
+# Quick Start Guide - Tiny Tulip Coffee Console
 
 Get up and running with all features in 5 minutes.
 

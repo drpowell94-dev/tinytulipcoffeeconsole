@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 
 const input =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>(() => loadInventory());
@@ -113,7 +113,7 @@ export default function InventoryPage() {
             <div
               key={item.id}
               className={cn(
-                "rounded-lg p-5 flex items-center gap-4 transition-colors",
+                "rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 transition-colors",
                 isLow ? "bg-destructive/8" : "bg-muted/20 hover:bg-muted/35"
               )}
             >
@@ -131,31 +131,31 @@ export default function InventoryPage() {
                   {item.lastRestocked && ` • restocked ${new Date(item.lastRestocked).toLocaleDateString()}`}
                 </p>
               </div>
-              <div className="flex items-center gap-3 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0 justify-between sm:justify-end">
                 <button
                   onClick={() => adjust(item, -1)}
-                  className="w-10 h-10 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all"
+                  className="w-11 h-11 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all shrink-0"
                   aria-label={`Decrease ${item.name}`}
                 >
                   <Minus size={18} strokeWidth={1.5} />
                 </button>
-                <span className={cn("font-display text-3xl w-16 text-center", isLow && "text-destructive")}>
+                <span className={cn("font-display text-3xl w-14 sm:w-16 text-center tabular-nums", isLow && "text-destructive")}>
                   {item.quantity}
                 </span>
                 <button
                   onClick={() => adjust(item, 1)}
-                  className="w-10 h-10 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all"
+                  className="w-11 h-11 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all shrink-0"
                   aria-label={`Increase ${item.name}`}
                 >
                   <Plus size={18} strokeWidth={1.5} />
                 </button>
-                <span className="text-xs font-body text-muted-foreground w-14 text-center">{item.unit}</span>
+                <span className="hidden sm:block text-xs font-body text-muted-foreground w-14 text-center">{item.unit}</span>
                 <button
                   onClick={() => {
                     setItems(removeItem(item.id));
                     toast(`Removed "${item.name}"`);
                   }}
-                  className="p-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                  className="p-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
                   aria-label={`Delete ${item.name}`}
                 >
                   <Trash2 size={16} strokeWidth={1.5} />

@@ -1,4 +1,51 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
+import { loadEvents } from "@/lib/eventStore";
+
+/**
+ * Local pipeline funnel computed from the localStorage event store. Leads that
+ * are accepted become "confirmed" and delivered events become "completed", so
+ * we read the funnel off the current pipeline. Declines aren't tracked locally.
+ */
+function localFunnel(): ConversionFunnel {
+  const events = loadEvents();
+  const pending = events.filter(e => e.status === "inquiry").length;
+  const booked = events.filter(e => e.status === "confirmed" || e.status === "completed").length;
+  const completed = events.filter(e => e.status === "completed").length;
+  const total = pending + booked;
+  return {
+    totalLeads: total,
+    acceptedLeads: booked,
+    declinedLeads: 0,
+    convertedLeads: completed,
+    acceptanceRate: total > 0 ? Math.round((booked / total) * 100) : 0,
+    conversionRate: booked > 0 ? Math.round((completed / booked) * 100) : 0,
+    averageResponseTime: 0,
+    bySource: {},
+  };
+}
+
+const RESPONSE_THRESHOLD_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function localPendingLeads(): Array<{
+  leadId: string;
+  leadName: string;
+  hoursOverdue: number;
+  createdAt: string;
+}> {
+  const now = Date.now();
+  return loadEvents()
+    .filter(e => e.status === "inquiry")
+    .map(e => ({
+      leadId: e.id,
+      leadName: e.name,
+      hoursOverdue: Math.max(
+        0,
+        Math.floor((now - new Date(e.createdAt).getTime() - RESPONSE_THRESHOLD_MS) / (60 * 60 * 1000))
+      ),
+      createdAt: e.createdAt,
+    }))
+    .filter(l => l.hoursOverdue > 0);
+}
 
 export interface LeadMetric {
   leadId: string;
@@ -55,7 +102,7 @@ export async function trackLeadResponse(
  * Get conversion funnel metrics for dashboard
  */
 export async function getConversionFunnel(userId: string): Promise<ConversionFunnel | null> {
-  if (!isSupabaseEnabled || !supabase) return null;
+  if (!isSupabaseEnabled || !supabase) return localFunnel();
 
   try {
     // Get all leads for this user
@@ -68,24 +115,30 @@ export async function getConversionFunnel(userId: string): Promise<ConversionFun
     if (leadsError || !leads) return null;
 
     // Get metrics for these leads
-    const { data: metrics, error: metricsError } = await supabase
+    const { data: metricsData, error: metricsError } = await supabase
       .from("lead_metrics")
       .select("*")
       .in("lead_id", leads.map(l => l.id));
 
-    if (metricsError) return null;
+    if (metricsError) {
+      console.error("Failed to fetch lead metrics:", metricsError.message);
+      return null;
+    }
+
+    // Ensure metrics is always an array (could be null/undefined if no results)
+    const metrics = metricsData || [];
 
     // Calculate funnel
     const totalLeads = leads.length;
-    const acceptedLeads = metrics?.filter(m => m.conversion_status === "accepted").length ?? 0;
-    const declinedLeads = metrics?.filter(m => m.conversion_status === "declined").length ?? 0;
-    const convertedLeads = metrics?.filter(m => m.conversion_status === "converted").length ?? 0;
-    const pendingLeads = metrics?.filter(m => m.conversion_status === "pending").length ?? 0;
+    const acceptedLeads = metrics.filter(m => m.conversion_status === "accepted").length;
+    const declinedLeads = metrics.filter(m => m.conversion_status === "declined").length;
+    const convertedLeads = metrics.filter(m => m.conversion_status === "converted").length;
+    const pendingLeads = metrics.filter(m => m.conversion_status === "pending").length;
 
     // Calculate response times
     const responseTimes = metrics
-      ?.filter(m => m.response_time_minutes)
-      .map(m => m.response_time_minutes) ?? [];
+      .filter(m => m.response_time_minutes)
+      .map(m => m.response_time_minutes);
     const averageResponseTime =
       responseTimes.length > 0
         ? Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length)
@@ -98,8 +151,8 @@ export async function getConversionFunnel(userId: string): Promise<ConversionFun
       if (!bySource[source]) bySource[source] = { total: 0, conversion: 0, rate: 0 };
       bySource[source].total += 1;
 
-      const leadMetric = metrics?.find(m => m.lead_id === lead.id);
-      if (leadMetric?.conversion_status === "accepted") {
+      const leadMetric = metrics.find(m => m.lead_id === lead.id);
+      if (leadMetric && leadMetric.conversion_status === "accepted") {
         bySource[source].conversion += 1;
       }
     });
@@ -139,7 +192,7 @@ export async function getPendingLeadsWithAlerts(userId: string): Promise<
     createdAt: string;
   }>
 > {
-  if (!isSupabaseEnabled || !supabase) return [];
+  if (!isSupabaseEnabled || !supabase) return localPendingLeads();
 
   try {
     const { data: leads, error } = await supabase
