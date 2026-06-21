@@ -342,7 +342,7 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
   const bookedPropertyIds = new Set(
     allEvents
       .filter(e => e.propertyId)
-      .map(e => e.propertyId)
+      .map(e => e.propertyId!)
   );
   const instagramFollows = getInstagramFollowsWithoutBooking(Array.from(bookedPropertyIds));
   if (instagramFollows.length > 0) {
