@@ -14,6 +14,7 @@ import {
   type EventType,
   type EventStatus,
 } from "@/lib/eventStore";
+import { getCharlotteApartments } from "@/lib/propertyStore";
 import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
 import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
@@ -41,6 +42,7 @@ const EMPTY_FORM = {
   contactPhone: "",
   notes: "",
   status: "confirmed" as EventStatus,
+  propertyId: "" as string,
 };
 
 export default function EventsPage() {
@@ -104,6 +106,7 @@ export default function EventsPage() {
       contactName: form.contactName.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
+      propertyId: form.propertyId || undefined,
     });
     if (form.status === "confirmed") {
       createChecklistForEvent(event.id, event.name, event.eventType);
@@ -168,6 +171,11 @@ export default function EventsPage() {
                 {event.guestCount && ` • ${event.guestCount} guests`}
                 {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
               </span>
+              {event.propertyId && (
+                <span className="block text-accent/70">
+                  📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
+                </span>
+              )}
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
@@ -476,6 +484,18 @@ export default function EventsPage() {
               value={form.contactPhone}
               onChange={e => setForm({ ...form, contactPhone: e.target.value })}
             />
+            <select
+              className={input}
+              value={form.propertyId}
+              onChange={e => setForm({ ...form, propertyId: e.target.value })}
+            >
+              <option value="">No property</option>
+              {getCharlotteApartments().map(property => (
+                <option key={property.id} value={property.id}>
+                  {property.name}
+                </option>
+              ))}
+            </select>
           </div>
           <textarea
             className={input}
