@@ -12,8 +12,19 @@ import { cn } from "@/lib/utils";
 const input =
   "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
+const DEFAULT_CAMPAIGN_LIST: EmailCampaign[] = Object.entries(DEFAULT_CAMPAIGNS).map(
+  ([key, template]) => ({
+    id: key,
+    name: template.name,
+    triggerType: template.triggerType,
+    subject: template.subject,
+    body: template.body,
+    isActive: true,
+  })
+);
+
 export default function EmailCampaignsPage() {
-  const [campaigns, setCampaigns] = useState<EmailCampaign[]>([]);
+  const [campaigns, setCampaigns] = useState<EmailCampaign[]>(DEFAULT_CAMPAIGN_LIST);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingCampaign, setEditingCampaign] = useState<Partial<EmailCampaign> | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -24,7 +35,8 @@ export default function EmailCampaignsPage() {
 
   const loadCampaigns = async () => {
     const data = await getEmailCampaigns("default-user"); // TODO: Use actual userId
-    setCampaigns(data || []);
+    // If no saved campaigns, show defaults
+    setCampaigns(data && data.length > 0 ? data : DEFAULT_CAMPAIGN_LIST);
   };
 
   const handleEdit = (campaign: EmailCampaign) => {

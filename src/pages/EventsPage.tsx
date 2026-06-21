@@ -148,18 +148,18 @@ export default function EventsPage() {
     const days = daysUntil(event.dateStart);
     return (
       <div key={event.id} className="space-y-3">
-        <div className="rounded-lg bg-muted/20 p-5 hover:bg-muted/30 transition-colors space-y-3">
+        <div className="rounded-lg bg-muted/20 p-6 hover:bg-muted/30 transition-colors space-y-4">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap mb-2">
+            <div className="flex items-center gap-2 flex-wrap mb-3">
               <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
               <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                 {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
             </div>
-            <p className="text-xs text-muted-foreground font-body space-y-1">
-              <span>{formatDate(event.dateStart)}</span>
+            <p className="text-xs text-muted-foreground font-body space-y-1.5">
+              <span className="block">{formatDate(event.dateStart)}</span>
               {days >= 0 && event.status !== "completed" && (
-                <span className="text-accent font-semibold ml-2">
+                <span className="text-accent font-semibold">
                   {days === 0 ? "Today" : `${days}d away`}
                 </span>
               )}
@@ -170,7 +170,7 @@ export default function EventsPage() {
               </span>
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
             {event.status === "inquiry" ? (
               <>
                 <button
@@ -280,10 +280,10 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
+      <div className="flex items-baseline justify-between gap-4">
         <div>
           <h1 className="font-display text-4xl text-foreground">Events</h1>
-          <p className="text-sm text-muted-foreground font-body mt-1">
+          <p className="text-sm text-muted-foreground font-body mt-2">
             Pop-ups, farmers markets, catering with live counting
           </p>
         </div>
@@ -494,7 +494,7 @@ export default function EventsPage() {
         {/* Main event list */}
         <div className="space-y-6">
           {/* Filter buttons */}
-          <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-4 sm:-mx-0 px-4 sm:px-0">
+          <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 -mx-4 sm:-mx-0 px-4 sm:px-0">
             <Filter size={16} className="text-muted-foreground shrink-0" />
             {[
               { id: "all" as const, label: "All", count: events.length },
@@ -505,7 +505,7 @@ export default function EventsPage() {
               <button
                 key={f.id}
                 onClick={() => setFilter(f.id)}
-                className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-body font-semibold transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-body font-semibold transition-colors whitespace-nowrap shrink-0 ${
                   filter === f.id
                     ? "bg-accent text-accent-foreground"
                     : "bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/35"
@@ -517,7 +517,7 @@ export default function EventsPage() {
           </div>
 
           {/* Unified event+lead list */}
-          <div className="space-y-4">
+          <div className="space-y-5">
             {filter === "all" && events.length > 0 && (
               <div className="space-y-4">
                 {events

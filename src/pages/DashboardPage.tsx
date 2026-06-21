@@ -112,22 +112,28 @@ export default function DashboardPage() {
       {/* Conversion Funnel Widget - moved higher for visibility */}
       <ConversionFunnelWidget userId="default-user" />
 
-      {/* Insights always visible */}
-      {insights.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-foreground flex items-center gap-2">
-              <Zap size={20} className="text-accent" />
-              Smart Recommendations
-            </h2>
-          </div>
+      {/* Smart Recommendations - always visible */}
+      <section className="space-y-4">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-display text-lg text-foreground flex items-center gap-2">
+            <Zap size={20} className="text-accent" />
+            Smart Recommendations
+          </h2>
+        </div>
+        {insights.length > 0 ? (
           <div className="space-y-3">
             {insights.map((insight, idx) => (
               <InsightCard key={idx} insight={insight} />
             ))}
           </div>
-        </section>
-      )}
+        ) : (
+          <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
+            <p className="text-sm font-body text-foreground">
+              Add upcoming events and leads to see personalized recommendations.
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* Inventory alerts */}
       {lowStock.length > 0 && (

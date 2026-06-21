@@ -17,7 +17,17 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
     loadFunnel();
   }, [userId]);
 
-  if (!funnel) return null;
+  // Show empty state even without data
+  const displayFunnel = funnel || {
+    totalLeads: 0,
+    acceptedLeads: 0,
+    declinedLeads: 0,
+    convertedLeads: 0,
+    acceptanceRate: 0,
+    conversionRate: 0,
+    averageResponseTime: 0,
+    bySource: {},
+  };
 
   return (
     <div className="rounded-lg bg-muted/20 p-5 space-y-6">
@@ -31,28 +41,28 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
         <MetricCard
           icon={<Users size={18} />}
           label="Total Leads"
-          value={funnel.totalLeads}
-          sublabel={`${funnel.totalLeads} this month`}
+          value={displayFunnel.totalLeads}
+          sublabel={`${displayFunnel.totalLeads} this month`}
         />
         <MetricCard
           icon={<CheckCircle2 size={18} />}
           label="Accepted"
-          value={funnel.acceptedLeads}
-          sublabel={`${funnel.acceptanceRate}% acceptance`}
+          value={displayFunnel.acceptedLeads}
+          sublabel={`${displayFunnel.acceptanceRate}% acceptance`}
           highlight="success"
         />
         <MetricCard
           icon={<XCircle size={18} />}
           label="Declined"
-          value={funnel.declinedLeads}
-          sublabel={`${100 - funnel.acceptanceRate}% decline`}
+          value={displayFunnel.declinedLeads}
+          sublabel={`${100 - displayFunnel.acceptanceRate}% decline`}
           highlight="destructive"
         />
         <MetricCard
           icon={<TrendingUp size={18} />}
           label="Converted"
-          value={funnel.convertedLeads}
-          sublabel={`${funnel.conversionRate}% conversion`}
+          value={displayFunnel.convertedLeads}
+          sublabel={`${displayFunnel.conversionRate}% conversion`}
           highlight="accent"
         />
       </div>
@@ -61,26 +71,26 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
       <div className="space-y-2">
         <FunnelBar
           label="Leads Received"
-          count={funnel.totalLeads}
+          count={displayFunnel.totalLeads}
           percentage={100}
           color="muted"
         />
         <FunnelBar
           label="Accepted & Pending"
-          count={funnel.acceptedLeads}
-          percentage={funnel.acceptanceRate}
+          count={displayFunnel.acceptedLeads}
+          percentage={displayFunnel.acceptanceRate}
           color="accent"
         />
         <FunnelBar
           label="Converted to Booking"
-          count={funnel.convertedLeads}
-          percentage={funnel.conversionRate}
+          count={displayFunnel.convertedLeads}
+          percentage={displayFunnel.conversionRate}
           color="success"
         />
       </div>
 
       {/* Response time */}
-      {funnel.averageResponseTime > 0 && (
+      {displayFunnel.averageResponseTime > 0 && (
         <div className="flex items-center gap-2 rounded-lg bg-muted/50 p-3">
           <Clock size={16} className="text-muted-foreground" />
           <div>
@@ -88,21 +98,21 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
               Avg Response Time
             </p>
             <p className="text-sm font-body font-bold text-foreground">
-              {Math.floor(funnel.averageResponseTime / 60)} hours{" "}
-              {funnel.averageResponseTime % 60} min
+              {Math.floor(displayFunnel.averageResponseTime / 60)} hours{" "}
+              {displayFunnel.averageResponseTime % 60} min
             </p>
           </div>
         </div>
       )}
 
       {/* By source breakdown */}
-      {Object.keys(funnel.bySource).length > 0 && (
+      {Object.keys(displayFunnel.bySource).length > 0 && (
         <div className="space-y-2 border-t border-border pt-4">
           <p className="text-xs font-body font-semibold text-muted-foreground uppercase">
             By Source
           </p>
           <div className="space-y-1">
-            {Object.entries(funnel.bySource).map(([source, stats]) => (
+            {Object.entries(displayFunnel.bySource).map(([source, stats]) => (
               <div
                 key={source}
                 className="flex items-center justify-between text-sm font-body"
@@ -119,13 +129,13 @@ export default function ConversionFunnelWidget({ userId }: { userId?: string }) 
 
       {/* Recommendations */}
       <div className="rounded-lg bg-accent/8 p-3 text-xs font-body text-foreground space-y-1">
-        {funnel.acceptanceRate < 70 && (
+        {displayFunnel.acceptanceRate < 70 && (
           <p>💡 Responding within 2 hours increases acceptance by 35%</p>
         )}
-        {funnel.conversionRate < 50 && funnel.acceptedLeads > 0 && (
+        {displayFunnel.conversionRate < 50 && displayFunnel.acceptedLeads > 0 && (
           <p>💡 Follow up with accepted leads within 24 hours for faster conversions</p>
         )}
-        {funnel.totalLeads === 0 && (
+        {displayFunnel.totalLeads === 0 && (
           <p>💡 No leads yet. Share your booking link on Instagram and Wix to start receiving inquiries.</p>
         )}
       </div>
