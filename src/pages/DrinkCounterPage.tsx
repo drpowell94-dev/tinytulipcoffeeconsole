@@ -134,6 +134,19 @@ export default function DrinkCounterPage() {
     );
   }
 
+  // Drink counter only for Pop-Ups (30 included coffees)
+  if (preOrders !== 30) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 p-4">
+        <p className="font-body text-muted-foreground">Drink counter is only for Pop-Up events.</p>
+        <p className="text-sm text-muted-foreground">This event is a Grab & Go service.</p>
+        <Link to="/events" className="text-accent font-body font-semibold underline">
+          Back to events
+        </Link>
+      </div>
+    );
+  }
+
   const pct = preOrders > 0 ? Math.min(Math.round((total / preOrders) * 100), 100) : 0;
 
   return (

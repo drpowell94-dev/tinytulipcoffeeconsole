@@ -189,13 +189,15 @@ export default function EventsPage() {
               </>
             ) : (
               <>
-                <Link
-                  to={`/events/${event.id}/counter`}
-                  className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
-                >
-                  <Coffee size={16} strokeWidth={1.5} />
-                  <span className="hidden sm:inline">Counter</span>
-                </Link>
+                {event.preOrders === 30 && (
+                  <Link
+                    to={`/events/${event.id}/counter`}
+                    className="flex items-center justify-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all sm:justify-start"
+                  >
+                    <Coffee size={16} strokeWidth={1.5} />
+                    <span className="hidden sm:inline">Counter</span>
+                  </Link>
+                )}
                 <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors sm:ml-auto"

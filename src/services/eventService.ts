@@ -103,6 +103,14 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
       ? record.eventType
       : "other";
   const status = deriveStatus(record);
+  const durationMinutes = endDate ? (endDate.getTime() - startDate.getTime()) / (1000 * 60) : 120;
+
+  // Determine service type and included coffee count
+  let preOrders = 30; // Default to Pop-Up
+  if (durationMinutes <= 30) {
+    preOrders = 25; // Grab & Go
+  }
+
   const estimatedRevenue = status === "completed" ? estimateRevenueFromDuration(startDate, endDate) : 0;
 
   return {
@@ -113,7 +121,7 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     dateStart: startDate.toISOString(),
     dateEnd: endDate?.toISOString(),
     location: (record.location?.trim() || "TBD").substring(0, 255),
-    preOrders: 0,
+    preOrders, // Included coffees: 25 (Grab & Go) or 30 (Pop-Up)
     estimatedRevenue,
     status,
     depositStatus: "pending",
