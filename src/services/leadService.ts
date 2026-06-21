@@ -131,8 +131,8 @@ export async function createLeadEvent(
       .from("events")
       .insert([
         {
-          name: `Catering Request - ${payload.clientName}`,
-          event_type: payload.eventType ?? "catering",
+          name: `Coffee Request - ${payload.clientName}`,
+          event_type: payload.eventType ?? "popup",
           date_start: eventDate.toISOString(),
           location: payload.location,
           guest_count: payload.guestCount,

@@ -3,7 +3,7 @@
  */
 
 export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[a-zA-Z]{2,}$/;
   return emailRegex.test(email) && email.length <= 254;
 }
 

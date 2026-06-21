@@ -21,6 +21,7 @@ export function TapButton({ product, count, onTap }: TapButtonProps) {
   return (
     <button
       onClick={handleTap}
+      aria-label={`Add ${product.name} - $${product.price}`}
       className={cn(
         "tap-ripple relative flex flex-col items-center justify-center gap-2 rounded-lg bg-muted/20 hover:bg-muted/35 p-5 shadow-sm-elevation transition-all select-none hover-scale",
         animating && "tapped animate-tap-spring"

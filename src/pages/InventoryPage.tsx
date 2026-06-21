@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Minus, Trash2 } from "lucide-react";
+import { Plus, Minus, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadInventory,
@@ -107,63 +107,72 @@ export default function InventoryPage() {
       )}
 
       <div className="space-y-3 sm:space-y-4">
-        {items.map(item => {
-          const isLow = item.quantity <= item.reorderLevel;
-          return (
-            <div
-              key={item.id}
-              className={cn(
-                "rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-colors",
-                isLow ? "bg-destructive/8" : "bg-muted/20 hover:bg-muted/35"
-              )}
-            >
-              <div className="flex-1 min-w-0 w-full sm:w-auto">
-                <p className={cn("font-body font-semibold text-sm sm:text-base", isLow ? "text-destructive" : "text-foreground")}>
-                  {item.name}
-                  {isLow && (
-                    <span className="ml-2 align-middle inline-block rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
-                      Low
-                    </span>
-                  )}
-                </p>
-                <p className="text-xs font-body text-muted-foreground mt-1">
-                  Reorder at {item.reorderLevel} {item.unit}
-                  {item.lastRestocked && ` • restocked ${new Date(item.lastRestocked).toLocaleDateString()}`}
-                </p>
+        {items.length === 0 ? (
+          <div className="rounded-lg bg-muted/20 p-8 sm:p-12 text-center space-y-3">
+            <Package size={32} className="mx-auto text-muted-foreground sm:w-[40px] sm:h-[40px]" />
+            <p className="font-body text-xs sm:text-sm text-muted-foreground">
+              No inventory items yet. Add supplies to track stock levels and get low-stock alerts.
+            </p>
+          </div>
+        ) : (
+          items.map(item => {
+            const isLow = item.quantity <= item.reorderLevel;
+            return (
+              <div
+                key={item.id}
+                className={cn(
+                  "rounded-lg p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 transition-colors",
+                  isLow ? "bg-destructive/8" : "bg-muted/20 hover:bg-muted/35"
+                )}
+              >
+                <div className="flex-1 min-w-0 w-full sm:w-auto">
+                  <p className={cn("font-body font-semibold text-sm sm:text-base", isLow ? "text-destructive" : "text-foreground")}>
+                    {item.name}
+                    {isLow && (
+                      <span className="ml-2 align-middle inline-block rounded-md bg-destructive/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-destructive">
+                        Low
+                      </span>
+                    )}
+                  </p>
+                  <p className="text-xs font-body text-muted-foreground mt-1">
+                    Reorder at {item.reorderLevel} {item.unit}
+                    {item.lastRestocked && ` • restocked ${new Date(item.lastRestocked).toLocaleDateString()}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 w-full sm:w-auto">
+                  <button
+                    onClick={() => adjust(item, -1)}
+                    className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all"
+                    aria-label={`Decrease ${item.name}`}
+                  >
+                    <Minus size={16} strokeWidth={1.5} />
+                  </button>
+                  <span className={cn("font-display text-2xl sm:text-3xl w-12 sm:w-16 text-center", isLow && "text-destructive")}>
+                    {item.quantity}
+                  </span>
+                  <button
+                    onClick={() => adjust(item, 1)}
+                    className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all"
+                    aria-label={`Increase ${item.name}`}
+                  >
+                    <Plus size={16} strokeWidth={1.5} />
+                  </button>
+                  <span className="text-xs font-body text-muted-foreground w-10 sm:w-14 text-center">{item.unit}</span>
+                  <button
+                    onClick={() => {
+                      setItems(removeItem(item.id));
+                      toast(`Removed "${item.name}"`);
+                    }}
+                    className="p-2 sm:p-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+                    aria-label={`Delete ${item.name}`}
+                  >
+                    <Trash2 size={14} strokeWidth={1.5} />
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-3 shrink-0 w-full sm:w-auto">
-                <button
-                  onClick={() => adjust(item, -1)}
-                  className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-muted/40 flex items-center justify-center text-foreground hover:bg-muted/70 active:scale-90 transition-all"
-                  aria-label={`Decrease ${item.name}`}
-                >
-                  <Minus size={16} strokeWidth={1.5} />
-                </button>
-                <span className={cn("font-display text-2xl sm:text-3xl w-12 sm:w-16 text-center", isLow && "text-destructive")}>
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={() => adjust(item, 1)}
-                  className="w-9 sm:w-10 h-9 sm:h-10 rounded-lg bg-accent/20 flex items-center justify-center text-accent hover:bg-accent hover:text-accent-foreground active:scale-90 transition-all"
-                  aria-label={`Increase ${item.name}`}
-                >
-                  <Plus size={16} strokeWidth={1.5} />
-                </button>
-                <span className="text-xs font-body text-muted-foreground w-10 sm:w-14 text-center">{item.unit}</span>
-                <button
-                  onClick={() => {
-                    setItems(removeItem(item.id));
-                    toast(`Removed "${item.name}"`);
-                  }}
-                  className="p-2 sm:p-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                  aria-label={`Delete ${item.name}`}
-                >
-                  <Trash2 size={14} strokeWidth={1.5} />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
