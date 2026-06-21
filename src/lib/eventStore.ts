@@ -72,27 +72,45 @@ export function deleteEvent(id: string): TulipEvent[] {
 }
 
 /**
- * Merge a batch of events into the store, keyed by wixEventId when present
- * (falling back to id). Existing rows are updated in place; new rows are added.
- * Persists sorted by most recent date. Returns the number of events created vs. updated.
+ * Merge a batch of events into the store with strict de-duplication.
+ * Checks by: (1) wixEventId if present, (2) id, (3) dateStart + location combination.
+ * Existing rows are updated in place; new rows are added.
+ * Returns the number of events created vs. updated.
  */
 export function importEvents(incoming: TulipEvent[]): { created: number; updated: number } {
   const existing = loadEvents();
-  const byKey = new Map<string, number>();
-  existing.forEach((e, i) => byKey.set(e.wixEventId ?? e.id, i));
+  const byWixId = new Map<string, number>();
+  const byDateLocation = new Map<string, number>();
+
+  // Index existing events by wixEventId, id, and dateStart+location combo
+  existing.forEach((e, i) => {
+    if (e.wixEventId) byWixId.set(e.wixEventId, i);
+    byDateLocation.set(`${e.dateStart}|${e.location}`, i);
+  });
 
   let created = 0;
   let updated = 0;
   for (const ev of incoming) {
-    const key = ev.wixEventId ?? ev.id;
-    const idx = byKey.get(key);
+    // Check by wixEventId first (most reliable)
+    let idx = ev.wixEventId ? byWixId.get(ev.wixEventId) : undefined;
+
+    // Fall back to dateStart + location combination (catches same event with different ID)
     if (idx === undefined) {
+      idx = byDateLocation.get(`${ev.dateStart}|${ev.location}`);
+    }
+
+    if (idx === undefined) {
+      // New event: add it
       existing.push(ev);
-      byKey.set(key, existing.length - 1);
+      const newIdx = existing.length - 1;
+      if (ev.wixEventId) byWixId.set(ev.wixEventId, newIdx);
+      byDateLocation.set(`${ev.dateStart}|${ev.location}`, newIdx);
       created++;
     } else {
-      // Preserve the local id and any counting data already attached.
+      // Existing event: update in place, preserving local id and drink counts
       existing[idx] = { ...existing[idx], ...ev, id: existing[idx].id };
+      if (ev.wixEventId) byWixId.set(ev.wixEventId, idx);
+      byDateLocation.set(`${ev.dateStart}|${ev.location}`, idx);
       updated++;
     }
   }

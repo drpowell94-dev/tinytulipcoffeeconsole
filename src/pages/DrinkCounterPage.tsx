@@ -71,9 +71,13 @@ export default function DrinkCounterPage() {
   const handleExport = () => {
     if (!event) return;
     const summary = generateSummary(event.name, preOrders, orders);
-    navigator.clipboard.writeText(summary).then(() => {
-      toast.success("Summary copied to clipboard");
-    });
+    navigator.clipboard.writeText(summary)
+      .then(() => {
+        toast.success("Summary copied to clipboard");
+      })
+      .catch(() => {
+        toast.error("Failed to copy to clipboard");
+      });
     const today = new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
     const subject = encodeURIComponent(`${event.name}, ${today}`);
     const body = encodeURIComponent(summary);

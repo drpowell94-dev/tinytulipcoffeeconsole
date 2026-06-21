@@ -18,7 +18,7 @@ import { generateInstagramAuthUrl } from "@/services/instagramService";
 type Tab = "blog" | "website" | "social";
 
 const input =
-  "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+  "w-full rounded-lg border border-border bg-background px-4 py-3 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function ContentPage() {
   const [tab, setTab] = useState<Tab>("blog");
@@ -67,21 +67,29 @@ function SocialManager() {
             </div>
           </div>
           <button
-            onClick={() => {
-              const authUrl = generateInstagramAuthUrl();
-              if (!authUrl) {
-                toast.error("Instagram credentials not configured. Add VITE_INSTAGRAM_CLIENT_ID to .env");
-                return;
-              }
+            onClick={async () => {
               try {
-                const url = new URL(authUrl);
-                if (url.hostname === "graph.instagram.com" && url.pathname.includes("oauth")) {
-                  window.location.href = authUrl;
-                } else {
+                const authUrl = await generateInstagramAuthUrl();
+                if (!authUrl) {
+                  toast.error("Failed to generate Instagram auth URL. Check server configuration.");
+                  return;
+                }
+
+                // Validate the URL format
+                try {
+                  const url = new URL(authUrl);
+                  // Ensure it's the real Instagram OAuth endpoint
+                  if (url.hostname === "www.instagram.com" && url.pathname.includes("oauth")) {
+                    window.location.href = authUrl;
+                  } else {
+                    toast.error("Invalid Instagram authorization URL");
+                  }
+                } catch {
                   toast.error("Invalid Instagram authorization URL");
                 }
-              } catch {
-                toast.error("Invalid Instagram authorization URL");
+              } catch (error) {
+                console.error("Instagram auth error:", error);
+                toast.error("Failed to connect Instagram. Try again later.");
               }
             }}
             className="flex items-center gap-2 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all shrink-0 whitespace-nowrap"
@@ -115,6 +123,7 @@ function BlogGenerator() {
   const [tone, setTone] = useState<BlogTone>("friendly");
   const [keywords, setKeywords] = useState("");
   const [body, setBody] = useState(BLOG_TEMPLATES[0].starter);
+  const [status, setStatus] = useState<"draft" | "published">("draft");
   const [showGenerated, setShowGenerated] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<{
     socialCaption?: string;
@@ -122,19 +131,32 @@ function BlogGenerator() {
     keywords?: string[];
   }>({});
   const [generating, setGenerating] = useState(false);
+  const [showPublishConfirm, setShowPublishConfirm] = useState(false);
+  const [publishConfirmStep, setPublishConfirmStep] = useState<"preview" | "confirm">("preview");
+  const [publishing, setPublishing] = useState(false);
   const autosave = useRef<number>();
 
   // Auto-save draft 2s after typing stops (only once a title exists)
+  // Note: Avoid including editingId in deps to prevent race conditions when setting new post ID
   useEffect(() => {
     window.clearTimeout(autosave.current);
     if (!title.trim()) return;
+
     autosave.current = window.setTimeout(() => {
-      const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "draft" });
-      setPosts(next);
-      if (!editingId) setEditingId(next[0].id);
+      try {
+        const next = savePost({ id: editingId, title, template, tone, keywords, body, status });
+        setPosts(next);
+        // Only set ID if this is a new post (no editingId yet)
+        if (!editingId && next.length > 0 && next[0].id) {
+          setEditingId(next[0].id);
+        }
+      } catch (error) {
+        console.error("Autosave failed:", error);
+      }
     }, 2000);
+
     return () => window.clearTimeout(autosave.current);
-  }, [title, template, tone, keywords, body, editingId]);
+  }, [title, template, tone, keywords, body, status]);
 
   const applyTemplate = (id: string) => {
     setTemplate(id);
@@ -148,16 +170,24 @@ function BlogGenerator() {
     const draft = generateBlogDraft(template, tone, keywords);
     if (!title.trim()) setTitle(draft.title);
     setBody(draft.body);
+    if (!keywords.trim()) setKeywords(draft.seoKeywords);
 
     // Generate content variants from backend (optional)
     setGenerating(true);
     try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        console.warn("Supabase URL not configured for content generation");
+        setGenerating(false);
+        toast.success("Draft written — give it your voice and publish");
+        return;
+      }
+
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/content-generator`,
+        `${supabaseUrl}/functions/v1/content-generator`,
         {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${import.meta.env.VITE_WIX_WEBHOOK_SECRET || "demo"}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -169,11 +199,15 @@ function BlogGenerator() {
       );
 
       if (response.ok) {
-        const data = await response.json();
-        if (data.generatedContent) {
-          setGeneratedContent(data.generatedContent);
-          setShowGenerated(true);
-          toast.success("Content variants generated!");
+        try {
+          const data = await response.json();
+          if (data.generatedContent) {
+            setGeneratedContent(data.generatedContent);
+            setShowGenerated(true);
+            toast.success("Content variants generated!");
+          }
+        } catch (parseErr) {
+          console.warn("Failed to parse content generation response:", parseErr);
         }
       } else {
         console.warn("Content generation failed:", response.status);
@@ -183,9 +217,8 @@ function BlogGenerator() {
       toast.error("Failed to generate content variants. Try again later.");
     } finally {
       setGenerating(false);
+      toast.success("Draft written — give it your voice and publish");
     }
-
-    toast.success("Draft written — give it your voice and publish");
   };
 
   const handlePublish = () => {
@@ -204,6 +237,7 @@ function BlogGenerator() {
     setTitle("");
     setKeywords("");
     setBody(BLOG_TEMPLATES.find(t => t.id === template)?.starter ?? "");
+    setStatus("draft");
   };
 
   const handleEdit = (post: BlogPost) => {
@@ -213,6 +247,54 @@ function BlogGenerator() {
     setTone(post.tone);
     setKeywords(post.keywords);
     setBody(post.body);
+    setStatus(post.status);
+  };
+
+  const publishToWixEdgeFunction = async () => {
+    if (!title.trim()) {
+      toast.error("Add a title first");
+      return;
+    }
+
+    setPublishing(true);
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/publish-to-wix`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title,
+            body,
+            excerpt: body.substring(0, 160),
+            featured: false,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to publish: ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "published" });
+      setPosts(next);
+      setShowPublishConfirm(false);
+      setPublishConfirmStep("preview");
+      resetForm();
+      toast.success(`Published to Wix! ✨`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      console.error("Wix publish error:", message);
+      toast.error(`Publishing failed: ${message}`);
+    } finally {
+      setPublishing(false);
+    }
   };
 
   return (
@@ -331,15 +413,12 @@ function BlogGenerator() {
           </button>
           <button
             onClick={() => {
-              handlePublish();
-              toast.promise(
-                new Promise(resolve => setTimeout(resolve, 800)),
-                {
-                  loading: "Syncing to website...",
-                  success: "Live on website! ✨",
-                  error: "Sync unavailable",
-                }
-              );
+              if (!title.trim()) {
+                toast.error("Add a title first");
+                return;
+              }
+              setPublishConfirmStep("preview");
+              setShowPublishConfirm(true);
             }}
             className="flex items-center gap-2 rounded-lg bg-secondary text-secondary-foreground px-5 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
           >
@@ -382,6 +461,70 @@ function BlogGenerator() {
           </div>
         )}
       </div>
+
+      {showPublishConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-2xl max-w-lg w-full max-h-96 overflow-y-auto space-y-4 p-6">
+            {publishConfirmStep === "preview" ? (
+              <>
+                <div>
+                  <h2 className="font-display text-2xl text-foreground">Publish to Wix</h2>
+                  <p className="text-sm text-muted-foreground font-body mt-1">Preview your post before publishing</p>
+                </div>
+                <div className="space-y-3 bg-muted/20 p-4 rounded-lg border border-border">
+                  <div>
+                    <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">Title</p>
+                    <p className="font-body text-foreground font-semibold">{title}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest mb-1">Preview</p>
+                    <p className="text-sm font-body text-foreground line-clamp-3">{body}</p>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setShowPublishConfirm(false)}
+                    className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/30 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setPublishConfirmStep("confirm")}
+                    className="flex-1 rounded-lg bg-secondary text-secondary-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="font-display text-2xl text-foreground">Publish to Live Site?</h2>
+                  <p className="text-sm text-muted-foreground font-body mt-1">This will publish your post to tinytulipcoffee.com immediately</p>
+                </div>
+                <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
+                  <p className="text-sm font-body text-destructive font-semibold">⚠️ This action cannot be undone</p>
+                </div>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    onClick={() => setPublishConfirmStep("preview")}
+                    className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 font-body font-semibold text-sm hover:bg-muted/30 transition-colors"
+                  >
+                    Back
+                  </button>
+                  <button
+                    onClick={publishToWixEdgeFunction}
+                    disabled={publishing}
+                    className="flex-1 rounded-lg bg-accent text-accent-foreground px-4 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all disabled:opacity-50"
+                  >
+                    {publishing ? "Publishing..." : "Publish to Live"}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

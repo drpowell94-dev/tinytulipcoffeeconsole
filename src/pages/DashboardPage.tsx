@@ -36,7 +36,10 @@ export default function DashboardPage() {
     .filter(s => new Date(s.date) >= monthStart)
     .reduce((sum, s) => sum + s.totalDrinks, 0);
 
-  const today = new Date().toLocaleDateString("en-US", {
+  const now = new Date();
+  const hour = now.getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const today = now.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -45,7 +48,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-12">
       <div className="pt-2">
-        <h1 className="font-display text-4xl text-foreground leading-tight">Good morning</h1>
+        <h1 className="font-display text-4xl text-foreground leading-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground font-body mt-1">{today}</p>
       </div>
 

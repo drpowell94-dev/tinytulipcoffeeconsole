@@ -1,16 +1,13 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X, Mail, Building2 } from "lucide-react";
+import { Home, CalendarDays, FileText, Package, Menu, X, Mail } from "lucide-react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
-import BottomNav from "@/components/layout/BottomNav";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
-  { to: "/checklists", label: "Checklists", icon: ClipboardCheck },
-  { to: "/properties", label: "Properties", icon: Building2 },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];
@@ -35,7 +32,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       <aside className="hidden md:flex w-64 shrink-0 flex-col bg-background min-h-screen sticky top-0">
         <div className="px-6 py-8">
           <div className="flex items-center gap-3">
-            <TulipLogo size={36} />
+            <TulipLogo size={52} />
             <div>
               <h1 className="font-display text-xl leading-tight text-foreground">Tiny Tulip</h1>
               <p className="text-xs text-muted-foreground font-body mt-0.5">Coffee Console</p>
@@ -69,29 +66,32 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+        <header className="md:hidden flex items-center justify-between px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <TulipLogo size={40} />
+            <div>
+              <h1 className="font-display text-lg leading-tight">Tiny Tulip</h1>
+              <p className="text-[10px] text-muted-foreground font-body leading-none">Coffee Console</p>
+            </div>
+          </div>
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={sidebarOpen}
-            className="p-2 rounded-lg hover:bg-muted/30 transition-colors shrink-0"
+            className="p-2 rounded-lg hover:bg-muted/30 transition-colors"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <div className="flex items-center gap-2 min-w-0">
-            <TulipLogo size={24} className="shrink-0" />
-            <h1 className="font-display text-sm truncate">Tiny Tulip Coffee Console</h1>
-          </div>
         </header>
 
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
           <>
             <div
-              className="fixed inset-0 bg-black/20 md:hidden z-10"
+              className="fixed inset-0 bg-black/20 md:hidden z-40"
               onClick={() => setSidebarOpen(false)}
             />
-            <aside className="md:hidden fixed top-0 left-0 h-screen w-64 bg-background flex flex-col z-20 pt-20">
+            <aside className="md:hidden fixed top-0 left-0 h-screen w-64 bg-background flex flex-col z-50 pt-20">
               <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
                 {NAV_ITEMS.map(item => (
                   <NavLink
@@ -119,11 +119,29 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto pb-20 md:pb-0">
+        <main className="flex-1 px-6 py-4 sm:p-5 md:p-6 lg:p-8 pb-24 md:pb-8 max-w-6xl w-full mx-auto">
           {children}
         </main>
       </div>
-      <BottomNav />
+
+      {/* Mobile bottom nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-20 bg-card/80 backdrop-blur-sm flex justify-around py-3 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        {NAV_ITEMS.map(item => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            className={({ isActive }) =>
+              cn(
+                "flex flex-col items-center gap-1 px-3 py-2.5 rounded-lg text-[10px] font-body font-semibold transition-all duration-200",
+                isActive ? "text-accent" : "text-muted-foreground"
+              )
+            }
+          >
+            <item.icon size={20} strokeWidth={1.5} />
+            <span>{item.label}</span>
+          </NavLink>
+        ))}
+      </nav>
     </div>
   );
 }

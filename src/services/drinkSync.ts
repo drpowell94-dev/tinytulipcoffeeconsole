@@ -6,7 +6,7 @@ let pending: number | undefined;
 /**
  * Debounced background sync of live drink counts to Supabase.
  * No-op when Supabase isn't configured. Never blocks the tap UI —
- * failures are silent and the next tap retries.
+ * failures are logged but don't interrupt the session.
  */
 export function scheduleSync(eventId: string, orders: OrderItem[]) {
   if (!supabase) return;
@@ -21,8 +21,11 @@ export function scheduleSync(eventId: string, orders: OrderItem[]) {
     }));
     try {
       await supabase!.from("event_drink_counts").upsert(rows, { onConflict: "event_id,drink_type" });
-    } catch {
-      // Offline or table missing — localStorage remains source of truth.
+    } catch (error) {
+      // Log error for debugging, but don't break the session
+      // localStorage remains source of truth if sync fails
+      const message = error instanceof Error ? error.message : String(error);
+      console.warn(`[Drink Sync] Failed to sync event ${eventId}:`, message);
     }
   }, 2500);
 }
@@ -48,7 +51,10 @@ export async function archiveSessionRemote(session: {
       extra_sales: session.extraSales,
       product_counts: session.productCounts,
     });
-  } catch {
-    // Silent — local history already saved.
+  } catch (error) {
+    // Log error for debugging
+    // Local history is already saved, so this is not critical
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[Archive Session] Failed to archive session ${session.eventId}:`, message);
   }
 }

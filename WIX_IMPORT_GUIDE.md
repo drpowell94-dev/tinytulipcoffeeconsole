@@ -1,6 +1,6 @@
 # Importing Existing Events from Wix
 
-This guide helps you bulk import all your existing Wix events into the Tiny Tulip console.
+This guide helps you bulk import all your existing Wix events into the Tiny Tulip Coffee Console.
 
 ## Quick Start (Easiest)
 
