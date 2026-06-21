@@ -67,18 +67,18 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center justify-between px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+        <header className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
             aria-expanded={sidebarOpen}
-            className="p-2 rounded-lg hover:bg-muted/30 transition-colors"
+            className="p-2 rounded-lg hover:bg-muted/30 transition-colors shrink-0"
           >
             {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
-          <div className="flex items-center gap-3">
-            <TulipLogo size={28} />
-            <h1 className="font-display text-lg">Tiny Tulip</h1>
+          <div className="flex items-center gap-2 min-w-0">
+            <TulipLogo size={24} className="shrink-0" />
+            <h1 className="font-display text-sm truncate">Tiny Tulip Coffee Console</h1>
           </div>
         </header>
 

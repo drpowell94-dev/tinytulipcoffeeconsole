@@ -102,13 +102,15 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     record.eventType && VALID_TYPES.includes(record.eventType)
       ? record.eventType
       : "other";
-  const status = deriveStatus(record);
+
+  // Wix events are treated as historical/completed sessions
+  const status: EventStatus = record.status === "cancelled" ? "cancelled" : "completed";
 
   // Detect service type from title/description
   const titleAndDesc = `${record.title} ${record.description}`.toLowerCase();
   const isGrabAndGo = titleAndDesc.includes("grab") || titleAndDesc.includes("grab & go");
   const preOrders = isGrabAndGo ? 25 : 30; // 25 for Grab & Go, 30 for Pop-Up
-  const estimatedRevenue = status === "completed" ? (isGrabAndGo ? 200 : 300) : 0;
+  const estimatedRevenue = isGrabAndGo ? 200 : 300; // $200 for Grab & Go, $300 for Pop-Up
 
   return {
     id: record.wixEventId, // stable id so re-imports converge
@@ -120,7 +122,7 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     location: (record.location?.trim() || "TBD").substring(0, 255),
     preOrders, // Included drinks: 25 (Grab & Go) or 30 (Pop-Up)
     estimatedRevenue, // $200 for Grab & Go, $300 for Pop-Up
-    status,
+    status, // All Wix imports are "completed" to drive analytics/recommendations
     depositStatus: "pending",
     notes: (record.description?.trim() || undefined)?.substring(0, 1024),
     createdAt: new Date().toISOString(),
