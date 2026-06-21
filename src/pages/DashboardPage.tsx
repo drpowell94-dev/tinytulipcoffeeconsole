@@ -198,6 +198,20 @@ function InsightCard({ insight }: { insight: DashboardInsight }) {
     high: "border-l-4 border-accent bg-accent/12",
   };
 
+  let actionLink = null;
+  let actionLabel = null;
+
+  if (insight.relatedPropertyId) {
+    actionLink = `/properties`;
+    actionLabel = "View Properties";
+  } else if (insight.relatedEventId) {
+    actionLink = `/events/${insight.relatedEventId}`;
+    actionLabel = "Draft pitch";
+  } else if (insight.type === "inventory_low" && !insight.relatedPropertyId) {
+    actionLink = `/properties`;
+    actionLabel = "Manage Properties";
+  }
+
   return (
     <div className={`rounded-lg p-5 flex items-start gap-4 ${priorityStyles[insight.priority]}`}>
       <Zap className="shrink-0 mt-1 text-accent" size={18} strokeWidth={1.75} />
@@ -205,12 +219,12 @@ function InsightCard({ insight }: { insight: DashboardInsight }) {
         <p className="font-body text-sm text-foreground font-semibold">
           {insight.actionableNextStep}
         </p>
-        {insight.relatedEventId && (
+        {actionLink && (
           <Link
-            to={`/events/${insight.relatedEventId}`}
+            to={actionLink}
             className="inline-flex items-center gap-1 mt-2 text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity"
           >
-            Draft pitch <ExternalLink size={12} />
+            {actionLabel} <ExternalLink size={12} />
           </Link>
         )}
       </div>

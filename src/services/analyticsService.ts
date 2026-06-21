@@ -1,6 +1,6 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
 import { loadEvents } from "@/lib/eventStore";
-import { loadProperties, getInstagramFollowsWithoutBooking } from "@/lib/propertyStore";
+import { loadProperties, getInstagramFollowsWithoutBooking, getCharlotteApartments } from "@/lib/propertyStore";
 
 export interface UpcomingEventMetrics {
   upcomingEventCount: number;
@@ -41,6 +41,7 @@ export interface DashboardInsight {
   actionableNextStep: string;
   relatedEventId?: string;
   relatedVenueName?: string;
+  relatedPropertyId?: string;
   priority: "low" | "medium" | "high";
 }
 
@@ -351,8 +352,22 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
       type: "inventory_low",
       actionableNextStep: `${property.name} follows on Instagram. Reach out about hosting?`,
       relatedVenueName: property.name,
+      relatedPropertyId: property.id,
       priority: "medium",
     });
+  }
+
+  // Fallback: Suggest exploring all properties if insights are thin
+  if (insights.length < 3) {
+    const properties = loadProperties();
+    const allProperties = properties.filter(p => p.category === "charlotte_apartment");
+    if (allProperties.length > 0) {
+      insights.push({
+        type: "inventory_low",
+        actionableNextStep: `Manage ${allProperties.length} Charlotte properties in your database. Add events to generate venue insights.`,
+        priority: "low",
+      });
+    }
   }
 
   // Check for revenue decline (month-over-month) - use localStorage as fallback
