@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import MainLayout from "@/components/layout/MainLayout";
@@ -8,8 +9,19 @@ import ContentPage from "@/pages/ContentPage";
 import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
+import { importBundledWixEvents } from "@/services/eventService";
 
 export default function App() {
+  useEffect(() => {
+    const initialized = localStorage.getItem("tt-bundled-events-imported");
+    if (!initialized) {
+      const { created, updated } = importBundledWixEvents();
+      if (created > 0 || updated > 0) {
+        localStorage.setItem("tt-bundled-events-imported", "true");
+      }
+    }
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />
