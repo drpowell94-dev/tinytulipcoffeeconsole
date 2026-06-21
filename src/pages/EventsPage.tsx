@@ -295,36 +295,36 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between gap-4">
-        <div>
-          <h1 className="font-display text-4xl text-foreground">Events</h1>
-          <p className="text-sm text-muted-foreground font-body mt-2">
-            Pop-ups, farmers markets, catering with live counting
+      <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
+        <div className="flex-1">
+          <h1 className="font-display text-3xl sm:text-4xl text-foreground leading-tight">Events</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground font-body mt-2">
+            Pop-ups, farmers markets, catering with live drink counting
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-start sm:justify-end">
           <button
             onClick={handleImportWix}
             disabled={importing}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-muted/50 text-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
+            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 hover:from-muted/70 hover:to-muted/50 text-foreground px-3 sm:px-4 py-2.5 sm:py-3 font-body font-semibold text-xs sm:text-sm active:scale-95 transition-all disabled:opacity-50 border border-border/30"
           >
-            <Download size={14} strokeWidth={2} />
+            <Download size={16} strokeWidth={2} />
             <span className="hidden sm:inline">Import from Wix</span>
             <span className="sm:hidden">Import</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-secondary text-secondary-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-blue-500/80 to-blue-600 hover:from-blue-500 hover:to-blue-700 text-white px-3 sm:px-4 py-2.5 sm:py-3 font-body font-semibold text-xs sm:text-sm active:scale-95 transition-all hover-scale"
           >
-            <Plus size={14} strokeWidth={2} />
+            <Plus size={16} strokeWidth={2} />
             <span className="hidden sm:inline">Add Lead</span>
             <span className="sm:hidden">Lead</span>
           </button>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-2.5 sm:px-3 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
+            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-accent to-orange-600 hover:from-orange-500 hover:to-orange-700 text-accent-foreground px-3 sm:px-4 py-2.5 sm:py-3 font-body font-semibold text-xs sm:text-sm active:scale-95 transition-all hover-scale shadow-lg shadow-accent/20"
           >
-            <Plus size={14} strokeWidth={2} />
+            <Plus size={16} strokeWidth={2} />
             <span className="hidden sm:inline">New Event</span>
             <span className="sm:hidden">Event</span>
           </button>
@@ -522,9 +522,9 @@ export default function EventsPage() {
         </form>
       )}
 
-      {/* Event list with session history sidebar */}
-      <div className="grid lg:grid-cols-[1fr_320px] gap-6">
-        {/* Main event list */}
+      {/* Events and past sessions */}
+      <div className="space-y-12">
+        {/* Event list */}
         <div className="space-y-6">
           {/* Filter buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1.5 -mx-4 sm:-mx-0 px-4 sm:px-0">
@@ -600,28 +600,35 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Session history sidebar */}
-        <div className="rounded-lg bg-muted/20 p-5 h-fit space-y-3">
-          <div className="flex items-center gap-2">
-            <History size={16} className="text-muted-foreground" />
-            <p className="text-xs font-body font-semibold text-muted-foreground uppercase tracking-widest">
-              Past Sessions ({history.length})
-            </p>
-          </div>
-          {history.length === 0 ? (
-            <p className="text-sm font-body text-muted-foreground">None yet</p>
-          ) : (
-            <div className="space-y-2 max-h-96 overflow-y-auto">
+        {/* Past sessions at bottom */}
+        {history.length > 0 && (
+          <section className="space-y-4 border-t border-border/50 pt-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History size={18} className="text-accent" />
+                <h2 className="font-display text-lg text-foreground">Past Sessions ({history.length})</h2>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
               {history.map(s => (
-                <div key={s.id} className="rounded-lg bg-background/50 p-3 border border-border">
-                  <p className="font-body font-semibold text-xs text-foreground truncate">{s.eventName}</p>
-                  <p className="text-[10px] font-body text-muted-foreground mt-1">
-                    {new Date(s.date).toLocaleDateString()}
-                  </p>
-                  <p className="text-xs font-body text-foreground font-bold mt-1">
-                    {s.totalDrinks} drinks · {formatCurrency(s.totalRevenue)}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-2">
+                <div key={s.id} className="rounded-lg bg-muted/20 p-5 space-y-3 hover:bg-muted/30 transition-colors">
+                  <div>
+                    <p className="font-body font-semibold text-foreground">{s.eventName}</p>
+                    <p className="text-xs text-muted-foreground font-body mt-1">
+                      {new Date(s.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                    </p>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-border/30">
+                    <div>
+                      <p className="text-sm font-body text-muted-foreground">Drinks</p>
+                      <p className="font-display text-xl text-foreground">{s.totalDrinks}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm font-body text-muted-foreground">Revenue</p>
+                      <p className="font-display text-lg text-accent">{formatCurrency(s.totalRevenue)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 pt-2">
                     <button
                       onClick={() => {
                         const recap = generateEventRecap(s);
@@ -635,25 +642,25 @@ export default function EventsPage() {
                         });
                         toast.success("Recap draft created — find it in Content");
                       }}
-                      className="p-1 rounded text-accent hover:bg-accent/10 transition-colors shrink-0"
+                      className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg bg-accent/10 text-accent hover:bg-accent/20 transition-colors font-body text-xs font-semibold"
                       aria-label="Draft a recap post"
-                      title="Draft recap"
                     >
-                      <Sparkles size={13} strokeWidth={1.75} />
+                      <Sparkles size={14} strokeWidth={1.75} />
+                      Recap
                     </button>
                     <button
                       onClick={() => setHistory(deleteFromHistory(s.id))}
-                      className="p-1 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
+                      className="p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                       aria-label="Delete session"
                     >
-                      <Trash2 size={12} strokeWidth={1.5} />
+                      <Trash2 size={16} strokeWidth={1.5} />
                     </button>
                   </div>
                 </div>
               ))}
             </div>
-          )}
-        </div>
+          </section>
+        )}
       </div>
     </div>
   );
