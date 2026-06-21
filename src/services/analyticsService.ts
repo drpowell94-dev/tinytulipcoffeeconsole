@@ -1,5 +1,6 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
 import { loadEvents } from "@/lib/eventStore";
+import { loadProperties, getInstagramFollowsWithoutBooking } from "@/lib/propertyStore";
 
 export interface UpcomingEventMetrics {
   upcomingEventCount: number;
@@ -269,6 +270,39 @@ function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | nu
 }
 
 /**
+ * Find venues that haven't had an event in X days.
+ */
+function findInactiveVenues(daysWithoutEvent: number = 60): Array<{
+  location: string;
+  daysAgo: number;
+  lastEventDate: string;
+}> {
+  const events = loadEvents().filter(e => e.status === "completed");
+  if (events.length === 0) return [];
+
+  const cutoffDate = new Date(Date.now() - daysWithoutEvent * 24 * 60 * 60 * 1000);
+  const venueMap = new Map<string, string>();
+
+  events
+    .sort((a, b) => b.dateStart.localeCompare(a.dateStart))
+    .forEach(e => {
+      if (!venueMap.has(e.location)) {
+        venueMap.set(e.location, e.dateStart);
+      }
+    });
+
+  return Array.from(venueMap.entries())
+    .map(([location, lastDate]) => ({
+      location,
+      lastEventDate: lastDate,
+      daysAgo: Math.floor((Date.now() - new Date(lastDate).getTime()) / (1000 * 60 * 60 * 24)),
+    }))
+    .filter(v => v.daysAgo >= daysWithoutEvent)
+    .sort((a, b) => b.daysAgo - a.daysAgo)
+    .slice(0, 3);
+}
+
+/**
  * Generate actionable insights for dashboard based on current business state.
  * Returns a list of insights prioritized by impact.
  */
@@ -288,6 +322,36 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
       actionableNextStep: `${topVenue.location} is your best venue (avg $${topVenue.avgRevenue.toFixed(0)}/event, ${topVenue.eventCount} bookings)`,
       relatedVenueName: topVenue?.location,
       priority: "high",
+    });
+  }
+
+  // Recommend re-engagement with inactive venues (no event in 60+ days)
+  const inactiveVenues = findInactiveVenues(60);
+  if (inactiveVenues.length > 0) {
+    const venue = inactiveVenues[0];
+    insights.push({
+      type: "low_revenue_trend",
+      actionableNextStep: `${venue.location} hasn't hosted in ${venue.daysAgo}d. Time for a check-in?`,
+      relatedVenueName: venue.location,
+      priority: "medium",
+    });
+  }
+
+  // Recommend outreach to new Instagram followers without bookings
+  const allEvents = loadEvents();
+  const bookedPropertyIds = new Set(
+    allEvents
+      .filter(e => e.propertyId)
+      .map(e => e.propertyId)
+  );
+  const instagramFollows = getInstagramFollowsWithoutBooking(Array.from(bookedPropertyIds));
+  if (instagramFollows.length > 0) {
+    const property = instagramFollows[0];
+    insights.push({
+      type: "inventory_low",
+      actionableNextStep: `${property.name} follows on Instagram. Reach out about hosting?`,
+      relatedVenueName: property.name,
+      priority: "medium",
     });
   }
 
