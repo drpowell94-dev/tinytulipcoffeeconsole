@@ -15,6 +15,7 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
+import { persistEventToSupabase, deleteEventFromSupabase } from "@/services/eventPersistence";
 import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
@@ -95,6 +96,8 @@ export default function EventsPage() {
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
+    // Persist to Supabase (no-op if offline)
+    persistEventToSupabase(event);
     if (form.status === "confirmed") {
       createChecklistForEvent(event.id, event.name, event.eventType);
     }
@@ -107,6 +110,8 @@ export default function EventsPage() {
 
   const handleDelete = (event: TulipEvent) => {
     setEvents(deleteEvent(event.id));
+    // Delete from Supabase (no-op if offline)
+    deleteEventFromSupabase(event.id);
     toast(`Deleted "${event.name}"`);
   };
 
@@ -122,8 +127,13 @@ export default function EventsPage() {
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
   const handleConvertLead = (lead: TulipEvent) => {
-    updateEvent(lead.id, { status: "confirmed" });
-    setEvents(loadEvents());
+    const updated = updateEvent(lead.id, { status: "confirmed" });
+    // Persist to Supabase (no-op if offline)
+    const updatedEvent = updated.find(e => e.id === lead.id);
+    if (updatedEvent) {
+      persistEventToSupabase(updatedEvent);
+    }
+    setEvents(updated);
     toast.success(`"${lead.name}" moved to confirmed`);
   };
 

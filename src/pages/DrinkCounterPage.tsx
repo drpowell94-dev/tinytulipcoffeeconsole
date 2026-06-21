@@ -18,6 +18,7 @@ import {
   type OrderItem,
 } from "@/lib/drinkStore";
 import { scheduleSync, archiveSessionRemote } from "@/services/drinkSync";
+import { persistEventToSupabase } from "@/services/eventPersistence";
 import { isSupabaseEnabled } from "@/services/supabase";
 import { savePost } from "@/lib/contentStore";
 import { generateEventRecap } from "@/lib/blogWriter";
@@ -93,7 +94,12 @@ export default function DrinkCounterPage() {
         extraSales: saved.extraSales,
         productCounts: saved.productCounts,
       });
-      updateEvent(event.id, { status: "completed" });
+      const updated = updateEvent(event.id, { status: "completed" });
+      // Persist to Supabase (no-op if offline)
+      const completedEvent = updated.find(e => e.id === event.id);
+      if (completedEvent) {
+        persistEventToSupabase(completedEvent);
+      }
       const recap = generateEventRecap(saved);
       savePost({
         title: recap.title,

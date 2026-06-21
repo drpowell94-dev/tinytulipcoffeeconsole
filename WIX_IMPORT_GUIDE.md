@@ -1,6 +1,29 @@
 # Importing Existing Events from Wix
 
-This guide helps you bulk import all your existing Wix events into the Tiny Tulip console.
+This guide helps you bulk import all your existing Wix events into the Tiny Tulip console and keep them synced.
+
+## Understanding the Three Import Paths
+
+**Bundled JSON** (`src/data/wixEvents.json`) — Test/demo data. Use this for development. Safe to leave as-is for production (unused unless explicitly imported).
+
+**Bulk Import Script** (`scripts/import-wix-events.ts`) — One-time historical import. Fetches all events from Wix and upserts them to Supabase. Run this once to load your existing events.
+
+**Webhook Receiver** (live sync) — Recommended for production. Whenever you create/update an event in Wix, it automatically syncs to the console.
+
+---
+
+## Event Persistence & Sync
+
+Once imported, events **persist in Supabase** and sync to your device automatically:
+
+- **On app load**: Device syncs latest events from Supabase
+- **On Wix update**: Webhook receiver updates Supabase instantly
+- **Offline mode**: Events stay in localStorage; sync resumes when back online
+- **User edits preserved**: If you edit an event locally (add notes, change type), Wix webhook updates won't overwrite your changes
+  
+**No login required.** Uses Supabase's public/anon access (same user for all devices).
+
+---
 
 ## Quick Start (Easiest)
 

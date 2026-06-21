@@ -1,5 +1,8 @@
 /**
- * Bulk import events from Wix Events app into Supabase
+ * Bulk import events from Wix Events app into Supabase.
+ *
+ * One-time historical import. Fetches all events from Wix and upserts them
+ * to Supabase, where they persist for all devices to sync.
  *
  * Usage:
  *   npx ts-node scripts/import-wix-events.ts
@@ -9,6 +12,8 @@
  *   - WIX_SITE_ID: Your Wix site ID
  *   - VITE_SUPABASE_URL: Supabase project URL
  *   - SUPABASE_SERVICE_ROLE_KEY: Service role key for admin access
+ *
+ * After import, set up live sync via webhook receiver (see WIX_INTEGRATION_SETUP.md).
  */
 
 import { createClient } from "@supabase/supabase-js";
@@ -63,10 +68,24 @@ interface EventInsert {
   date_start: string;
   date_end: string | null;
   location: string;
-  status: "inquiry" | "confirmed" | "cancelled";
+  status: "inquiry" | "confirmed" | "completed" | "cancelled";
   event_type: "other";
   synced_from_wix: boolean;
   created_by: string; // Will be a system user UUID
+}
+
+/**
+ * Derive status matching webhook receiver logic.
+ * Cancelled stays cancelled; past events are "completed", future are "confirmed".
+ */
+function deriveStatus(event: {
+  status?: string;
+  startsAt?: string;
+  endsAt?: string;
+}): "inquiry" | "confirmed" | "completed" | "cancelled" {
+  if (event.status === "CANCELLED") return "cancelled";
+  const end = new Date(event.endsAt || event.startsAt || Date.now()).getTime();
+  return end < Date.now() ? "completed" : "confirmed";
 }
 
 async function fetchWixEvents(): Promise<WixEvent[]> {
@@ -158,19 +177,15 @@ function mapWixEventToSupabase(
   wixEvent: WixEvent,
   createdBy: string
 ): EventInsert {
-  const status = (() => {
-    if (wixEvent.status === "CANCELLED") return "cancelled";
-    if (wixEvent.status === "READY") return "confirmed";
-    return "inquiry";
-  })();
+  const status = deriveStatus(wixEvent);
 
   return {
     wix_event_id: wixEvent.id,
-    name: wixEvent.title || "Untitled Event",
-    description: wixEvent.description || null,
+    name: (wixEvent.title || "Untitled Event").trim(),
+    description: wixEvent.description ? wixEvent.description.trim() : null,
     date_start: wixEvent.startsAt || new Date().toISOString(),
     date_end: wixEvent.endsAt || null,
-    location: wixEvent.location?.address || "TBD",
+    location: (wixEvent.location?.address || "TBD").trim(),
     status,
     event_type: "other",
     synced_from_wix: true,
@@ -216,6 +231,7 @@ async function importEventsToSupabase(
 
 async function main() {
   console.log("🚀 Wix Events Bulk Import\n");
+  console.log("ℹ️  Events will persist in Supabase and sync to all devices.\n");
 
   const supabase = createClient(SUPABASE_URL!, SUPABASE_SERVICE_KEY!);
 
@@ -235,6 +251,10 @@ async function main() {
     await importEventsToSupabase(supabase, wixEvents, userId);
 
     console.log("\n🎉 Import complete!");
+    console.log("\n📋 Next steps:");
+    console.log("   1. Verify events in Supabase dashboard");
+    console.log("   2. Set up live sync via webhook receiver (WIX_INTEGRATION_SETUP.md)");
+    console.log("   3. Events will auto-sync to all devices on app load");
   } catch (error) {
     console.error("\n❌ Import failed:", error);
     process.exit(1);
