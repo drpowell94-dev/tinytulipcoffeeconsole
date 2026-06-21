@@ -65,38 +65,36 @@ export function generateInstagramAuthUrl(): string {
 
 /**
  * Exchange authorization code for access token
+ * Calls edge function to keep client secret safe
  */
 export async function exchangeCodeForToken(code: string): Promise<InstagramToken | null> {
   try {
-    const clientId = process.env.VITE_INSTAGRAM_CLIENT_ID;
-    const clientSecret = process.env.VITE_INSTAGRAM_CLIENT_SECRET;
-    const redirectUri = process.env.VITE_INSTAGRAM_REDIRECT_URI;
+    if (!isSupabaseEnabled || !supabase) {
+      console.error("Supabase not configured");
+      return null;
+    }
 
-    const response = await fetch(`${INSTAGRAM_GRAPH_URL}/v18.0/oauth/access_token`, {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const response = await fetch(`${supabaseUrl}/functions/v1/instagram-exchange-token`, {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        client_id: clientId || "",
-        client_secret: clientSecret || "",
-        grant_type: "authorization_code",
-        redirect_uri: redirectUri || "",
-        code,
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
     });
 
     if (!response.ok) {
-      console.error("Token exchange failed:", await response.text());
+      const error = await response.text();
+      console.error("Token exchange failed");
       return null;
     }
 
     const data = await response.json() as any;
     return {
-      accessToken: data.access_token,
-      businessAccountId: data.user_id,
-      username: data.user_id, // Will be fetched later
+      accessToken: data.accessToken,
+      businessAccountId: data.businessAccountId,
+      username: data.username,
     };
   } catch (error) {
-    console.error("Error exchanging code for token:", error);
+    console.error("Error exchanging code for token");
     return null;
   }
 }

@@ -1,4 +1,5 @@
 import { supabase, isSupabaseEnabled } from "./supabase";
+import { isValidEmail, isValidISODate, isValidLocation, isValidPositiveNumber } from "@/lib/validators";
 
 export interface LeadBookingPayload {
   leadId: string; // External form submission UUID
@@ -46,34 +47,36 @@ export function validateLeadPayload(payload: any): {
 } {
   const errors: string[] = [];
 
-  if (!payload.leadId || typeof payload.leadId !== "string") {
-    errors.push("leadId is required and must be a string");
+  if (!payload.leadId || typeof payload.leadId !== "string" || payload.leadId.length > 500) {
+    errors.push("leadId is required and must be a valid string");
   }
 
-  if (!payload.clientName || typeof payload.clientName !== "string") {
-    errors.push("clientName is required and must be a string");
+  if (!payload.clientName || typeof payload.clientName !== "string" || payload.clientName.length > 200) {
+    errors.push("clientName is required and must be a valid string");
   }
 
-  if (!payload.clientEmail || !payload.clientEmail.includes("@")) {
+  if (!isValidEmail(payload.clientEmail)) {
     errors.push("Valid clientEmail is required");
   }
 
-  if (!payload.eventDate) {
-    errors.push("eventDate is required");
-  } else {
-    try {
-      new Date(payload.eventDate);
-    } catch {
-      errors.push("eventDate must be a valid ISO date string");
-    }
+  if (!isValidISODate(payload.eventDate)) {
+    errors.push("eventDate must be a valid ISO date string");
   }
 
-  if (!payload.location || typeof payload.location !== "string") {
-    errors.push("location is required and must be a string");
+  if (!isValidLocation(payload.location)) {
+    errors.push("location is required and must be valid");
   }
 
-  if (typeof payload.guestCount !== "number" || payload.guestCount <= 0) {
+  if (!isValidPositiveNumber(payload.guestCount)) {
     errors.push("guestCount is required and must be a positive number");
+  }
+
+  if (payload.clientPhone && typeof payload.clientPhone === "string" && payload.clientPhone.length > 20) {
+    errors.push("clientPhone must be valid");
+  }
+
+  if (payload.specialNotes && typeof payload.specialNotes === "string" && payload.specialNotes.length > 1000) {
+    errors.push("specialNotes must be less than 1000 characters");
   }
 
   return {

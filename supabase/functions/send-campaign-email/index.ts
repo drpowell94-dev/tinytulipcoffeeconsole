@@ -1,9 +1,42 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
+// Simple rate limiting
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function checkRateLimit(identifier: string, maxRequests: number = 5, windowSeconds: number = 60): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(identifier);
+
+  if (!record || now > record.resetTime) {
+    requestCounts.set(identifier, { count: 1, resetTime: now + windowSeconds * 1000 });
+    return true;
+  }
+
+  if (record.count < maxRequests) {
+    record.count++;
+    return true;
+  }
+
+  return false;
+}
+
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = [
+    "https://tinytulipcoffee.com",
+    "https://www.tinytulipcoffee.com",
+  ];
+
+  const isAllowed = origin && allowedOrigins.includes(origin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "null",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+  };
+}
 
 interface SendEmailRequest {
   campaignId: string;
@@ -85,6 +118,9 @@ async function sendEmailViaResend(
 }
 
 export const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -101,6 +137,32 @@ export const handler = async (req: Request): Promise<Response> => {
     const payload: SendEmailRequest = await req.json();
 
     const { campaignId, recipientEmail, recipientName, eventId, variables } = payload;
+
+    // Get authenticated user from Authorization header
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Missing authorization header" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authorization token" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Check rate limit (5 emails per minute per user)
+    const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+    if (!checkRateLimit(clientIp, 5, 60)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded" }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
 
     // Validate
     if (!campaignId || !recipientEmail || !eventId) {
@@ -123,16 +185,27 @@ export const handler = async (req: Request): Promise<Response> => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch campaign
+    // Get user ID from token (using Supabase admin API)
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 401, headers: corsHeaders }
+      );
+    }
+
+    // Fetch campaign and verify ownership
     const { data: campaign, error: campaignError } = await supabase
       .from("email_campaigns")
       .select("*")
       .eq("id", campaignId)
+      .eq("user_id", user.id)
       .single();
 
     if (campaignError || !campaign) {
       return new Response(
-        JSON.stringify({ error: "Campaign not found" }),
+        JSON.stringify({ error: "Campaign not found or access denied" }),
         { status: 404, headers: corsHeaders }
       );
     }

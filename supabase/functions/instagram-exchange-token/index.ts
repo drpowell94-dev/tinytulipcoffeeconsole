@@ -1,5 +1,27 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
+const INSTAGRAM_GRAPH_URL = "https://graph.instagram.com";
+
+// Simple rate limiting
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(identifier: string, maxRequests: number = 3, windowSeconds: number = 60): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(identifier);
+
+  if (!record || now > record.resetTime) {
+    requestCounts.set(identifier, { count: 1, resetTime: now + windowSeconds * 1000 });
+    return true;
+  }
+
+  if (record.count < maxRequests) {
+    record.count++;
+    return true;
+  }
+
+  return false;
+}
+
 function getCorsHeaders(origin: string | null): Record<string, string> {
   const allowedOrigins = [
     "https://tinytulipcoffee.com",
@@ -36,40 +58,57 @@ export const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { code, userId, state } = await req.json();
-
-    if (!code || !userId) {
+    // Rate limit (3 attempts per minute per IP)
+    const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+    if (!checkRateLimit(clientIp, 3, 60)) {
       return new Response(
-        JSON.stringify({ error: "Missing code or userId" }),
+        JSON.stringify({ error: "Too many attempts, please try again later" }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
+    const { code } = await req.json();
+
+    if (!code || typeof code !== "string" || code.length > 500) {
+      return new Response(
+        JSON.stringify({ error: "Missing or invalid authorization code" }),
         { status: 400, headers: corsHeaders }
       );
     }
 
-    // Exchange code for access token
+    // Get credentials from environment (backend-only, never exposed)
     const clientId = Deno.env.get("INSTAGRAM_CLIENT_ID");
     const clientSecret = Deno.env.get("INSTAGRAM_CLIENT_SECRET");
     const redirectUri = Deno.env.get("INSTAGRAM_REDIRECT_URI");
 
+    if (!clientId || !clientSecret || !redirectUri) {
+      console.error("Instagram configuration missing");
+      return new Response(
+        JSON.stringify({ error: "Server configuration error" }),
+        { status: 500, headers: corsHeaders }
+      );
+    }
+
+    // Exchange code for access token (backend-only operation)
     const tokenResponse = await fetch(
-      "https://graph.instagram.com/v18.0/oauth/access_token",
+      `${INSTAGRAM_GRAPH_URL}/v18.0/oauth/access_token`,
       {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-          client_id: clientId || "",
-          client_secret: clientSecret || "",
+          client_id: clientId,
+          client_secret: clientSecret,
           grant_type: "authorization_code",
-          redirect_uri: redirectUri || "",
+          redirect_uri: redirectUri,
           code,
         }),
       }
     );
 
     if (!tokenResponse.ok) {
-      const error = await tokenResponse.text();
-      console.error("Token exchange error:", error);
+      console.error("Token exchange failed");
       return new Response(
-        JSON.stringify({ error: "Failed to exchange code for token" }),
+        JSON.stringify({ error: "Failed to exchange token" }),
         { status: 400, headers: corsHeaders }
       );
     }
@@ -78,9 +117,9 @@ export const handler = async (req: Request): Promise<Response> => {
     const accessToken = tokenData.access_token;
     const businessAccountId = tokenData.user_id;
 
-    // Get Instagram user details (use Authorization header instead of URL param)
+    // Get user details using the access token (use Authorization header, not URL param)
     const userDetailsResponse = await fetch(
-      `https://graph.instagram.com/me?fields=username,name,profile_picture_url`,
+      `${INSTAGRAM_GRAPH_URL}/me?fields=username,name,profile_picture_url`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -89,73 +128,16 @@ export const handler = async (req: Request): Promise<Response> => {
     );
 
     let username = businessAccountId;
-    let businessName = "";
-    let profilePictureUrl = "";
-
     if (userDetailsResponse.ok) {
       const userDetails = await userDetailsResponse.json() as any;
       username = userDetails.username || businessAccountId;
-      businessName = userDetails.name || "";
-      profilePictureUrl = userDetails.profile_picture_url || "";
     }
-
-    // Store token in Supabase
-    const supabaseUrl = Deno.env.get("SUPABASE_URL");
-    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-
-    if (!supabaseUrl || !supabaseServiceKey) {
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    const { error: upsertError } = await supabase
-      .from("instagram_integrations")
-      .upsert(
-        {
-          user_id: userId,
-          instagram_business_account_id: businessAccountId,
-          instagram_access_token: accessToken,
-          instagram_username: username,
-          business_name: businessName,
-          profile_picture_url: profilePictureUrl,
-          is_active: true,
-          connected_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "user_id" }
-      );
-
-    if (upsertError) {
-      console.error("Database error:", upsertError);
-      return new Response(
-        JSON.stringify({ error: "Failed to store Instagram integration" }),
-        { status: 500, headers: corsHeaders }
-      );
-    }
-
-    // Log activity
-    await supabase.from("activity_log").insert({
-      user_id: userId,
-      action: "INSTAGRAM_CONNECTED",
-      entity_type: "instagram_integration",
-      entity_id: userId,
-      changes: {
-        username,
-        business_account_id: businessAccountId,
-      },
-      created_at: new Date().toISOString(),
-    });
 
     return new Response(
       JSON.stringify({
-        success: true,
-        message: "Instagram account connected",
-        username,
+        accessToken,
         businessAccountId,
+        username,
       }),
       {
         status: 200,
@@ -163,7 +145,7 @@ export const handler = async (req: Request): Promise<Response> => {
       }
     );
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error processing token exchange");
     return new Response(
       JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: corsHeaders }

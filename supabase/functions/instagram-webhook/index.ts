@@ -1,11 +1,72 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = [
+    "https://tinytulipcoffee.com",
+    "https://www.tinytulipcoffee.com",
+  ];
+
+  const isAllowed = origin && allowedOrigins.includes(origin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "null",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+  };
+}
+
+// Simple rate limiting
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(identifier: string, maxRequests: number = 100, windowSeconds: number = 60): boolean {
+  const now = Date.now();
+  const record = requestCounts.get(identifier);
+
+  if (!record || now > record.resetTime) {
+    requestCounts.set(identifier, { count: 1, resetTime: now + windowSeconds * 1000 });
+    return true;
+  }
+
+  if (record.count < maxRequests) {
+    record.count++;
+    return true;
+  }
+
+  return false;
+}
+
+// Verify Instagram webhook signature using HMAC-SHA256
+async function verifyInstagramSignature(payload: string, signature: string, appSecret: string): Promise<boolean> {
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(appSecret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+
+    const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(payload));
+    const hexSig = Array.from(new Uint8Array(sig))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    return hexSig === signature;
+  } catch (error) {
+    console.error("Error verifying signature:", error);
+    return false;
+  }
+}
 
 export const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -24,7 +85,39 @@ export const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const payload = await req.json();
+    // Rate limit (100 webhooks per minute per IP)
+    const clientIp = req.headers.get("x-forwarded-for") || "unknown";
+    if (!checkRateLimit(clientIp, 100, 60)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded" }),
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
+    // Get the raw body for signature verification
+    const rawBody = await req.text();
+    const payload = JSON.parse(rawBody);
+
+    // Verify Instagram signature
+    const signature = req.headers.get("x-hub-signature-256");
+    const appSecret = Deno.env.get("INSTAGRAM_APP_SECRET");
+
+    if (!signature || !appSecret) {
+      console.error("Missing signature or app secret");
+      return new Response(
+        JSON.stringify({ error: "Invalid request" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
+
+    const isValidSignature = await verifyInstagramSignature(rawBody, signature.replace("sha256=", ""), appSecret);
+    if (!isValidSignature) {
+      console.error("Invalid signature");
+      return new Response(
+        JSON.stringify({ error: "Signature verification failed" }),
+        { status: 403, headers: corsHeaders }
+      );
+    }
 
     // Verify webhook token
     const verifyToken = Deno.env.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN");

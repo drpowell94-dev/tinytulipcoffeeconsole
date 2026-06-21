@@ -1,10 +1,23 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+function getCorsHeaders(origin: string | null): Record<string, string> {
+  const allowedOrigins = [
+    "https://tinytulipcoffee.com",
+    "https://www.tinytulipcoffee.com",
+  ];
+
+  const isAllowed = origin && allowedOrigins.includes(origin);
+
+  return {
+    "Access-Control-Allow-Origin": isAllowed ? origin : "null",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Max-Age": "86400",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block",
+  };
+}
 
 interface WixEventPayload {
   wixEventId: string;
@@ -17,6 +30,9 @@ interface WixEventPayload {
 }
 
 export const handler = async (req: Request): Promise<Response> => {
+  const origin = req.headers.get("origin");
+  const corsHeaders = getCorsHeaders(origin);
+
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
