@@ -66,6 +66,26 @@ function deriveStatus(record: {
   return eventDate < Date.now() ? "completed" : "confirmed";
 }
 
+/**
+ * Generate realistic estimated revenue based on event duration.
+ * Used for Wix historical events to enable Smart Recommendations.
+ * Duration-based estimates: 30min=$100, 2hr=$350, 4hr=$600, 6hr=$900
+ */
+function estimateRevenueFromDuration(startDate: Date, endDate?: Date): number {
+  if (!endDate) {
+    return 350; // 2-hour equivalent default
+  }
+  const durationHours = (endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60);
+
+  if (durationHours <= 0.5) return 100;
+  if (durationHours <= 1) return 200;
+  if (durationHours <= 2) return 350;
+  if (durationHours <= 3) return 500;
+  if (durationHours <= 4) return 600;
+  if (durationHours <= 5) return 750;
+  return 900; // 6+ hours
+}
+
 /** Map a raw Wix record to the app's TulipEvent shape. */
 export function mapWixToTulip(record: WixEventRecord): TulipEvent {
   const startDate = parseDate(record.startDate) || new Date();
@@ -74,6 +94,9 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     record.eventType && VALID_TYPES.includes(record.eventType)
       ? record.eventType
       : "other";
+  const status = deriveStatus(record);
+  const estimatedRevenue = status === "completed" ? estimateRevenueFromDuration(startDate, endDate) : 0;
+
   return {
     id: record.wixEventId, // stable id so re-imports converge
     wixEventId: record.wixEventId,
@@ -83,7 +106,8 @@ export function mapWixToTulip(record: WixEventRecord): TulipEvent {
     dateEnd: endDate?.toISOString(),
     location: (record.location?.trim() || "TBD").substring(0, 255),
     preOrders: 0,
-    status: deriveStatus(record),
+    estimatedRevenue,
+    status,
     depositStatus: "pending",
     notes: (record.description?.trim() || undefined)?.substring(0, 1024),
     createdAt: new Date().toISOString(),
