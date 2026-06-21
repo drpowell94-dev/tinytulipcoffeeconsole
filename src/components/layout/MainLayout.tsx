@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X, Mail, Building2 } from "lucide-react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
+import BottomNav from "@/components/layout/BottomNav";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
@@ -118,10 +119,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto pb-20 md:pb-0">
           {children}
         </main>
       </div>
+      <BottomNav />
     </div>
   );
 }
