@@ -216,41 +216,30 @@ export default function EventsPage() {
     // Edit mode — show inline form instead of card
     if (editingId === event.id) {
       return (
-        <div key={event.id} className="rounded-lg bg-muted/20 p-4 sm:p-5 space-y-3">
-          <h3 className="font-body font-semibold text-foreground text-sm">Edit Event</h3>
+        <div key={event.id} className="rounded-lg bg-muted/20 p-4 sm:p-5 space-y-3 overflow-hidden">
           <form onSubmit={e => handleSaveEdit(e, event.id)} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <input className={input} placeholder="Event name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} autoFocus />
-              <select className={input} value={editForm.eventType} onChange={e => setEditForm({ ...editForm, eventType: e.target.value as EventType })}>
-                {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              <select className={input} value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value as EventStatus })}>
-                <option value="inquiry">📝 Lead (Inquiry)</option>
-                <option value="confirmed">✓ Confirmed</option>
-                <option value="completed">✓✓ Completed</option>
-                <option value="cancelled">✗ Cancelled</option>
-              </select>
-              <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Event date & time</p><input className={input} type="datetime-local" value={editForm.dateStart} onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })} /></div>
-              <input className={input} placeholder="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
-              <input className={input} placeholder="Contact name" value={editForm.contactName} onChange={e => setEditForm({ ...editForm, contactName: e.target.value })} />
-              <input className={input} placeholder="Contact email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
-              <input className={input} placeholder="Contact phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
-              <input className={input} type="number" min={0} placeholder="Pre-orders" value={editForm.preOrders || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, preOrders: isNaN(n) ? 0 : n }); }} />
-              <input className={input} type="number" min={0} placeholder="Estimated revenue ($)" value={editForm.estimatedRevenue || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, estimatedRevenue: isNaN(n) ? 0 : n }); }} />
-              <div className="space-y-1 overflow-hidden"><p className="text-xs text-muted-foreground font-body font-semibold">Follow-up date</p><input className={input + " max-w-full"} type="date" style={{ WebkitAppearance: "none", maxWidth: "100%" }} value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} /></div>
-              <input className={input} placeholder="Follow-up note" value={editForm.followUpNote} onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })} />
+            <select className={input} value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value as EventStatus })}>
+              <option value="inquiry">📝 Lead</option>
+              <option value="confirmed">✓ Confirmed</option>
+              <option value="completed">✓✓ Completed</option>
+              <option value="cancelled">✗ Cancelled</option>
+            </select>
+            <input className={input} placeholder="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} autoFocus />
+            <input className={input} placeholder="Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+            <input className={input} placeholder="Email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
+            <input className={input} placeholder="Phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
+            <div className="space-y-1 overflow-hidden">
+              <label className="block text-xs font-body font-semibold text-foreground">Date</label>
+              <input className={input + " max-w-full"} type="datetime-local" style={{ WebkitAppearance: "none", maxWidth: "100%" }} value={editForm.dateStart} onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })} />
             </div>
             <textarea className={input} placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
             {(editForm.status === "confirmed" || editForm.status === "completed") && (
               <>
-                <p className="text-xs font-body font-semibold text-muted-foreground pt-1">Day-of details</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <input className={input} placeholder="Parking (guest lot, street, code)" value={editForm.dayOfParking} onChange={e => setEditForm({ ...editForm, dayOfParking: e.target.value })} />
-                  <input className={input} placeholder="Entry (door code, contact)" value={editForm.dayOfEntry} onChange={e => setEditForm({ ...editForm, dayOfEntry: e.target.value })} />
-                  <input className={input} placeholder="Setup location (lobby, rooftop…)" value={editForm.dayOfSetupLocation} onChange={e => setEditForm({ ...editForm, dayOfSetupLocation: e.target.value })} />
-                  <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Arrival time</p><input className={input} type="time" value={editForm.dayOfArrivalTime} onChange={e => setEditForm({ ...editForm, dayOfArrivalTime: e.target.value })} /></div>
-                </div>
-                <textarea className={input} placeholder="Other notes" rows={2} value={editForm.dayOfOtherNotes} onChange={e => setEditForm({ ...editForm, dayOfOtherNotes: e.target.value })} />
+                <p className="text-xs font-body font-semibold text-muted-foreground">Day-of details</p>
+                <input className={input} placeholder="Arrival time" value={editForm.dayOfArrivalTime} onChange={e => setEditForm({ ...editForm, dayOfArrivalTime: e.target.value })} />
+                <input className={input} placeholder="Setup location" value={editForm.dayOfSetupLocation} onChange={e => setEditForm({ ...editForm, dayOfSetupLocation: e.target.value })} />
+                <input className={input} placeholder="Parking" value={editForm.dayOfParking} onChange={e => setEditForm({ ...editForm, dayOfParking: e.target.value })} />
+                <input className={input} placeholder="Entry" value={editForm.dayOfEntry} onChange={e => setEditForm({ ...editForm, dayOfEntry: e.target.value })} />
               </>
             )}
             <div className="flex gap-2">
