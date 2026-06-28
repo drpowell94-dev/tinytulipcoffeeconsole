@@ -1,5 +1,11 @@
 # Tiny Tulip Coffee Console - Complete System Design
 
+## Git Workflow (IMPORTANT)
+- **Always start from `main`** — `main` is the source of truth and matches production exactly
+- **All changes go to `main`** — commit and push directly to `main` (no feature branches unless explicitly asked)
+- **Never work off a stale or unrelated branch** — if the current branch is not `main`, switch to it: `git checkout main && git pull origin main`
+- Production URL: `https://tinytulipcoffeeconsole.vercel.app` (auto-deploys from `main`)
+
 ## Project Overview
 A barista-focused event management and drink tracking system for Tiny Tulip Coffee. The primary focus is a mobile-first drink counter integrated with event management. Secondary features include inventory tracking, packing checklists, and content management.
 
