@@ -24,11 +24,18 @@ export interface TulipEvent {
   wixEventId?: string;
   /** Link to a tracked property/venue for recommendations. */
   propertyId?: string;
+  followUpDate?: string;
+  followUpNote?: string;
+  dayOfParking?: string;
+  dayOfEntry?: string;
+  dayOfSetupLocation?: string;
+  dayOfArrivalTime?: string;
+  dayOfOtherNotes?: string;
   createdAt: string;
 }
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  catering: "Catering",
+  catering: "Private Event",
   popup: "Pop-up",
   farmers_market: "Farmers Market",
   other: "Other",

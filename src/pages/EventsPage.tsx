@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, ClipboardList } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -39,10 +39,13 @@ const EMPTY_FORM = {
   preOrders: 0,
   estimatedRevenue: 0,
   contactName: "",
+  contactEmail: "",
   contactPhone: "",
   notes: "",
   status: "confirmed" as EventStatus,
   propertyId: "" as string,
+  followUpDate: "",
+  followUpNote: "",
 };
 
 export default function EventsPage() {
@@ -56,6 +59,10 @@ export default function EventsPage() {
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [dayOfExpanded, setDayOfExpanded] = useState<Record<string, boolean>>({});
+  const [dayOfForm, setDayOfForm] = useState<Record<string, { parking: string; entry: string; setupLocation: string; arrivalTime: string; otherNotes: string }>>({});
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -147,8 +154,103 @@ export default function EventsPage() {
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
 
+  const handleEdit = (event: TulipEvent) => {
+    setEditingId(event.id);
+    setEditForm({
+      name: event.name,
+      eventType: event.eventType,
+      dateStart: event.dateStart ? new Date(event.dateStart).toISOString().slice(0, 16) : "",
+      location: event.location,
+      preOrders: event.preOrders,
+      estimatedRevenue: event.estimatedRevenue || 0,
+      contactName: event.contactName || "",
+      contactEmail: event.contactEmail || "",
+      contactPhone: event.contactPhone || "",
+      notes: event.notes || "",
+      status: event.status,
+      propertyId: event.propertyId || "",
+      followUpDate: event.followUpDate || "",
+      followUpNote: event.followUpNote || "",
+    });
+  };
+
+  const handleSaveEdit = (e: React.FormEvent, eventId: string) => {
+    e.preventDefault();
+    updateEvent(eventId, {
+      name: editForm.name.trim(),
+      eventType: editForm.eventType,
+      dateStart: editForm.dateStart ? new Date(editForm.dateStart).toISOString() : undefined,
+      location: editForm.location.trim() || "TBD",
+      preOrders: editForm.preOrders,
+      estimatedRevenue: editForm.estimatedRevenue || undefined,
+      status: editForm.status,
+      contactName: editForm.contactName.trim() || undefined,
+      contactEmail: editForm.contactEmail.trim() || undefined,
+      contactPhone: editForm.contactPhone.trim() || undefined,
+      notes: editForm.notes.trim() || undefined,
+      propertyId: editForm.propertyId || undefined,
+      followUpDate: editForm.followUpDate || undefined,
+      followUpNote: editForm.followUpNote.trim() || undefined,
+    });
+    setEvents(loadEvents());
+    setEditingId(null);
+    toast.success("Event updated");
+  };
+
+  const handleSaveDayOf = (eventId: string) => {
+    const f = dayOfForm[eventId];
+    if (!f) return;
+    updateEvent(eventId, {
+      dayOfParking: f.parking.trim() || undefined,
+      dayOfEntry: f.entry.trim() || undefined,
+      dayOfSetupLocation: f.setupLocation.trim() || undefined,
+      dayOfArrivalTime: f.arrivalTime.trim() || undefined,
+      dayOfOtherNotes: f.otherNotes.trim() || undefined,
+    });
+    setEvents(loadEvents());
+    toast.success("Day-of logistics saved");
+  };
+
   const renderEvent = (event: TulipEvent) => {
     const days = daysUntil(event.dateStart);
+
+    // Edit mode — show inline form instead of card
+    if (editingId === event.id) {
+      return (
+        <div key={event.id} className="rounded-lg bg-muted/20 p-4 sm:p-5 space-y-3">
+          <h3 className="font-body font-semibold text-foreground text-sm">Edit Event</h3>
+          <form onSubmit={e => handleSaveEdit(e, event.id)} className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input className={input} placeholder="Event name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} autoFocus />
+              <select className={input} value={editForm.eventType} onChange={e => setEditForm({ ...editForm, eventType: e.target.value as EventType })}>
+                {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+              <select className={input} value={editForm.status} onChange={e => setEditForm({ ...editForm, status: e.target.value as EventStatus })}>
+                <option value="inquiry">📝 Lead (Inquiry)</option>
+                <option value="confirmed">✓ Confirmed</option>
+                <option value="completed">✓✓ Completed</option>
+                <option value="cancelled">✗ Cancelled</option>
+              </select>
+              <input className={input} type="datetime-local" value={editForm.dateStart} onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })} />
+              <input className={input} placeholder="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
+              <input className={input} placeholder="Contact name" value={editForm.contactName} onChange={e => setEditForm({ ...editForm, contactName: e.target.value })} />
+              <input className={input} placeholder="Contact email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
+              <input className={input} placeholder="Contact phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
+              <input className={input} type="number" min={0} placeholder="Pre-orders" value={editForm.preOrders || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, preOrders: isNaN(n) ? 0 : n }); }} />
+              <input className={input} type="number" min={0} placeholder="Estimated revenue ($)" value={editForm.estimatedRevenue || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, estimatedRevenue: isNaN(n) ? 0 : n }); }} />
+              <input className={input} placeholder="Follow-up date" type="date" value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} />
+              <input className={input} placeholder="Follow-up note" value={editForm.followUpNote} onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })} />
+            </div>
+            <textarea className={input} placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
+            <div className="flex gap-2">
+              <button type="submit" className="rounded-lg bg-primary text-primary-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Save</button>
+              <button type="button" onClick={() => setEditingId(null)} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
+            </div>
+          </form>
+        </div>
+      );
+    }
+
     return (
       <div key={event.id} className="space-y-2 sm:space-y-3">
         <div className="rounded-lg bg-muted/20 p-4 sm:p-6 hover:bg-muted/30 transition-colors space-y-3 sm:space-y-4">
@@ -158,6 +260,11 @@ export default function EventsPage() {
               <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                 {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
+              {event.followUpDate && event.status === "inquiry" && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-blue-500/10 text-blue-600">
+                  <Bell size={10} /> Follow-up {new Date(event.followUpDate).toLocaleDateString()}
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground font-body space-y-1">
               <span className="block">{formatDate(event.dateStart)}</span>
@@ -176,6 +283,9 @@ export default function EventsPage() {
                   📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
                 </span>
               )}
+              {event.followUpNote && event.status === "inquiry" && (
+                <span className="block text-muted-foreground italic">{event.followUpNote}</span>
+              )}
             </p>
           </div>
           <div className="flex flex-row gap-2 sm:gap-3 pt-1 sm:pt-2">
@@ -186,6 +296,13 @@ export default function EventsPage() {
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
                 >
                   <CheckCircle2 size={14} /> Accept
+                </button>
+                <button
+                  onClick={() => handleEdit(event)}
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors"
+                  aria-label={`Edit ${event.name}`}
+                >
+                  <Pencil size={15} strokeWidth={1.5} />
                 </button>
                 <button
                   onClick={() => handleDeclineLead(event)}
@@ -207,6 +324,13 @@ export default function EventsPage() {
                   </Link>
                 )}
                 <button
+                  onClick={() => handleEdit(event)}
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors"
+                  aria-label={`Edit ${event.name}`}
+                >
+                  <Pencil size={15} strokeWidth={1.5} />
+                </button>
+                <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs flex-1 sm:flex-initial border border-border hover:border-destructive"
                   aria-label={`Delete ${event.name}`}
@@ -219,7 +343,7 @@ export default function EventsPage() {
           </div>
         </div>
 
-          {/* Predictive logistics section - nested in card */}
+          {/* Predictive logistics section */}
           {event.guestCount && (
             <div className="border-t border-border/50 pt-3">
               <button
@@ -290,6 +414,80 @@ export default function EventsPage() {
               )}
             </div>
           )}
+
+          {/* Day-of logistics intake — confirmed and completed events only */}
+          {(event.status === "confirmed" || event.status === "completed") && (
+            <div className="border-t border-border/50 pt-3">
+              <button
+                onClick={() => {
+                  const isOpen = dayOfExpanded[event.id];
+                  setDayOfExpanded(prev => ({ ...prev, [event.id]: !isOpen }));
+                  if (!isOpen && !dayOfForm[event.id]) {
+                    setDayOfForm(prev => ({
+                      ...prev,
+                      [event.id]: {
+                        parking: event.dayOfParking || "",
+                        entry: event.dayOfEntry || "",
+                        setupLocation: event.dayOfSetupLocation || "",
+                        arrivalTime: event.dayOfArrivalTime || "",
+                        otherNotes: event.dayOfOtherNotes || "",
+                      },
+                    }));
+                  }
+                }}
+                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+              >
+                <span className="flex items-center gap-1">
+                  <ClipboardList size={14} strokeWidth={2} />
+                  Day-of Logistics
+                </span>
+                <ChevronDown size={16} className={`transition-transform ${dayOfExpanded[event.id] ? "rotate-180" : ""}`} />
+              </button>
+
+              {dayOfExpanded[event.id] && dayOfForm[event.id] && (
+                <div className="mt-3 space-y-2">
+                  <input
+                    className={input}
+                    placeholder="Parking (e.g. guest lot, street, code)"
+                    value={dayOfForm[event.id].parking}
+                    onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], parking: e.target.value } }))}
+                  />
+                  <input
+                    className={input}
+                    placeholder="Entry instructions (door code, contact, etc.)"
+                    value={dayOfForm[event.id].entry}
+                    onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], entry: e.target.value } }))}
+                  />
+                  <input
+                    className={input}
+                    placeholder="Setup location (lobby, rooftop, suite #)"
+                    value={dayOfForm[event.id].setupLocation}
+                    onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], setupLocation: e.target.value } }))}
+                  />
+                  <input
+                    className={input}
+                    placeholder="Arrival time"
+                    type="time"
+                    value={dayOfForm[event.id].arrivalTime}
+                    onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], arrivalTime: e.target.value } }))}
+                  />
+                  <textarea
+                    className={input}
+                    placeholder="Other notes"
+                    rows={2}
+                    value={dayOfForm[event.id].otherNotes}
+                    onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], otherNotes: e.target.value } }))}
+                  />
+                  <button
+                    onClick={() => handleSaveDayOf(event.id)}
+                    className="rounded-lg bg-primary text-primary-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                  >
+                    Save Logistics
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
       </div>
     );
   };
@@ -300,7 +498,7 @@ export default function EventsPage() {
         <div className="flex-1">
           <h1 className="font-display text-3xl sm:text-4xl text-foreground leading-tight">Events</h1>
           <p className="text-xs sm:text-sm text-muted-foreground font-body mt-2">
-            Pop-ups, farmers markets, catering with live drink counting
+            Pop-ups, farmers markets, private events with live drink counting
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-start sm:justify-end">
@@ -348,13 +546,18 @@ export default function EventsPage() {
             const event = createEvent({
               name: form.name.trim(),
               eventType: "popup",
-              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              dateStart: form.dateStart
+                ? new Date(form.dateStart).toISOString()
+                : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim() || "TBD",
               preOrders: 0,
               status: "inquiry",
               depositStatus: "pending",
+              contactEmail: form.contactEmail.trim() || undefined,
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
+              followUpDate: form.followUpDate || undefined,
+              followUpNote: form.followUpNote.trim() || undefined,
             });
             setEvents(loadEvents());
             setForm(EMPTY_FORM);
@@ -368,18 +571,47 @@ export default function EventsPage() {
               onChange={e => setForm({ ...form, name: e.target.value })}
               autoFocus
             />
-            <input
-              className={input}
-              placeholder="Phone (optional)"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Location (optional)"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                className={input}
+                placeholder="Email (optional)"
+                type="email"
+                value={form.contactEmail}
+                onChange={e => setForm({ ...form, contactEmail: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Phone (optional)"
+                value={form.contactPhone}
+                onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+              />
+              <input
+                className={input}
+                type="date"
+                placeholder="Event date (optional)"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Location (optional)"
+                value={form.location}
+                onChange={e => setForm({ ...form, location: e.target.value })}
+              />
+              <input
+                className={input}
+                type="date"
+                placeholder="Follow-up reminder date"
+                value={form.followUpDate}
+                onChange={e => setForm({ ...form, followUpDate: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Follow-up note (optional)"
+                value={form.followUpNote}
+                onChange={e => setForm({ ...form, followUpNote: e.target.value })}
+              />
+            </div>
             <textarea
               className={input}
               placeholder="Notes (optional)"

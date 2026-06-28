@@ -62,7 +62,7 @@ function SocialManager() {
             <div>
               <h3 className="font-body font-semibold text-foreground">Connect Instagram</h3>
               <p className="text-xs text-muted-foreground font-body mt-1">
-                Automatically post event updates and respond to catering inquiries from your Instagram comments.
+                Automatically post event updates and respond to booking inquiries from your Instagram comments.
               </p>
             </div>
           </div>
