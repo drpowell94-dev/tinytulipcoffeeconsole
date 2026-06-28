@@ -535,7 +535,7 @@ export default function EventsPage() {
 
       {/* Quick lead form - always accessible */}
       {showLeadForm && (
-        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3 overflow-hidden">
           <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -585,8 +585,10 @@ export default function EventsPage() {
                 value={form.contactPhone}
                 onChange={e => setForm({ ...form, contactPhone: e.target.value })}
               />
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-body font-semibold">Event date</p>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1 min-w-0">
+                <label className="block text-xs font-body font-semibold text-foreground">Event date <span className="text-muted-foreground font-normal">(optional)</span></label>
                 <input
                   className={input}
                   type="date"
@@ -601,23 +603,21 @@ export default function EventsPage() {
                 onChange={e => setForm({ ...form, location: e.target.value })}
               />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-body font-semibold">Follow-up reminder</p>
-                <input
-                  className={input}
-                  type="date"
-                  value={form.followUpDate}
-                  onChange={e => setForm({ ...form, followUpDate: e.target.value })}
-                />
-              </div>
+            <div className="space-y-1 min-w-0">
+              <label className="block text-xs font-body font-semibold text-foreground">Follow-up reminder <span className="text-muted-foreground font-normal">(optional)</span></label>
               <input
                 className={input}
-                placeholder="Follow-up note (optional)"
-                value={form.followUpNote}
-                onChange={e => setForm({ ...form, followUpNote: e.target.value })}
+                type="date"
+                value={form.followUpDate}
+                onChange={e => setForm({ ...form, followUpDate: e.target.value })}
               />
             </div>
+            <input
+              className={input}
+              placeholder="Follow-up note (optional)"
+              value={form.followUpNote}
+              onChange={e => setForm({ ...form, followUpNote: e.target.value })}
+            />
             <textarea
               className={input}
               placeholder="Notes (optional)"
@@ -842,36 +842,12 @@ export default function EventsPage() {
         {/* Past events at bottom */}
         {past.length > 0 && (
           <section className="space-y-4 border-t border-border/50 pt-8">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <History size={18} className="text-accent" />
-                <h2 className="font-display text-lg text-foreground">Past Events ({past.length})</h2>
-              </div>
+            <div className="flex items-center gap-2">
+              <History size={18} className="text-accent" />
+              <h2 className="font-display text-lg text-foreground">Past Events ({past.length})</h2>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {past.slice(0, 6).map(event => (
-                <div key={event.id} className="rounded-lg bg-muted/20 p-5 space-y-3 hover:bg-muted/30 transition-colors">
-                  <div>
-                    <p className="font-body font-semibold text-foreground">{event.name}</p>
-                    <p className="text-xs text-muted-foreground font-body mt-1">
-                      {formatDate(event.dateStart)}
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {event.location && (
-                      <p className="text-xs font-body text-muted-foreground">
-                        <MapPin size={12} className="inline mr-1" />
-                        {event.location}
-                      </p>
-                    )}
-                    {event.preOrders > 0 && (
-                      <p className="text-xs font-body text-foreground">
-                        {event.preOrders} drinks · {formatCurrency(event.estimatedRevenue || 0)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="space-y-4">
+              {past.slice(0, 6).map(event => renderEvent(event))}
             </div>
           </section>
         )}
