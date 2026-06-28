@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, ClipboardList } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -46,6 +46,11 @@ const EMPTY_FORM = {
   propertyId: "" as string,
   followUpDate: "",
   followUpNote: "",
+  dayOfParking: "",
+  dayOfEntry: "",
+  dayOfSetupLocation: "",
+  dayOfArrivalTime: "",
+  dayOfOtherNotes: "",
 };
 
 export default function EventsPage() {
@@ -61,8 +66,6 @@ export default function EventsPage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
-  const [dayOfExpanded, setDayOfExpanded] = useState<Record<string, boolean>>({});
-  const [dayOfForm, setDayOfForm] = useState<Record<string, { parking: string; entry: string; setupLocation: string; arrivalTime: string; otherNotes: string }>>({});
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -171,6 +174,11 @@ export default function EventsPage() {
       propertyId: event.propertyId || "",
       followUpDate: event.followUpDate || "",
       followUpNote: event.followUpNote || "",
+      dayOfParking: event.dayOfParking || "",
+      dayOfEntry: event.dayOfEntry || "",
+      dayOfSetupLocation: event.dayOfSetupLocation || "",
+      dayOfArrivalTime: event.dayOfArrivalTime || "",
+      dayOfOtherNotes: event.dayOfOtherNotes || "",
     });
   };
 
@@ -191,24 +199,15 @@ export default function EventsPage() {
       propertyId: editForm.propertyId || undefined,
       followUpDate: editForm.followUpDate || undefined,
       followUpNote: editForm.followUpNote.trim() || undefined,
+      dayOfParking: editForm.dayOfParking.trim() || undefined,
+      dayOfEntry: editForm.dayOfEntry.trim() || undefined,
+      dayOfSetupLocation: editForm.dayOfSetupLocation.trim() || undefined,
+      dayOfArrivalTime: editForm.dayOfArrivalTime || undefined,
+      dayOfOtherNotes: editForm.dayOfOtherNotes.trim() || undefined,
     });
     setEvents(loadEvents());
     setEditingId(null);
     toast.success("Event updated");
-  };
-
-  const handleSaveDayOf = (eventId: string) => {
-    const f = dayOfForm[eventId];
-    if (!f) return;
-    updateEvent(eventId, {
-      dayOfParking: f.parking.trim() || undefined,
-      dayOfEntry: f.entry.trim() || undefined,
-      dayOfSetupLocation: f.setupLocation.trim() || undefined,
-      dayOfArrivalTime: f.arrivalTime.trim() || undefined,
-      dayOfOtherNotes: f.otherNotes.trim() || undefined,
-    });
-    setEvents(loadEvents());
-    toast.success("Day-of logistics saved");
   };
 
   const renderEvent = (event: TulipEvent) => {
@@ -242,6 +241,18 @@ export default function EventsPage() {
               <input className={input} placeholder="Follow-up note" value={editForm.followUpNote} onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })} />
             </div>
             <textarea className={input} placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
+            {(editForm.status === "confirmed" || editForm.status === "completed") && (
+              <>
+                <p className="text-xs font-body font-semibold text-muted-foreground pt-1">Day-of details</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <input className={input} placeholder="Parking (guest lot, street, code)" value={editForm.dayOfParking} onChange={e => setEditForm({ ...editForm, dayOfParking: e.target.value })} />
+                  <input className={input} placeholder="Entry (door code, contact)" value={editForm.dayOfEntry} onChange={e => setEditForm({ ...editForm, dayOfEntry: e.target.value })} />
+                  <input className={input} placeholder="Setup location (lobby, rooftop…)" value={editForm.dayOfSetupLocation} onChange={e => setEditForm({ ...editForm, dayOfSetupLocation: e.target.value })} />
+                  <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Arrival time</p><input className={input} type="time" value={editForm.dayOfArrivalTime} onChange={e => setEditForm({ ...editForm, dayOfArrivalTime: e.target.value })} /></div>
+                </div>
+                <textarea className={input} placeholder="Other notes" rows={2} value={editForm.dayOfOtherNotes} onChange={e => setEditForm({ ...editForm, dayOfOtherNotes: e.target.value })} />
+              </>
+            )}
             <div className="flex gap-2">
               <button type="submit" className="rounded-lg bg-primary text-primary-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Save</button>
               <button type="button" onClick={() => setEditingId(null)} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
@@ -250,23 +261,6 @@ export default function EventsPage() {
         </div>
       );
     }
-
-    const toggleDayOf = () => {
-      const isOpen = dayOfExpanded[event.id];
-      setDayOfExpanded(prev => ({ ...prev, [event.id]: !isOpen }));
-      if (!isOpen && !dayOfForm[event.id]) {
-        setDayOfForm(prev => ({
-          ...prev,
-          [event.id]: {
-            parking: event.dayOfParking || "",
-            entry: event.dayOfEntry || "",
-            setupLocation: event.dayOfSetupLocation || "",
-            arrivalTime: event.dayOfArrivalTime || "",
-            otherNotes: event.dayOfOtherNotes || "",
-          },
-        }));
-      }
-    };
 
     return (
       <div key={event.id} className="space-y-2 sm:space-y-3">
@@ -304,6 +298,16 @@ export default function EventsPage() {
                 )}
                 {event.followUpNote && event.status === "inquiry" && (
                   <span className="block text-muted-foreground italic">{event.followUpNote}</span>
+                )}
+                {(event.dayOfArrivalTime || event.dayOfParking || event.dayOfSetupLocation || event.dayOfEntry) && (
+                  <span className="block pt-1 text-foreground/70">
+                    {[
+                      event.dayOfArrivalTime && `⏰ ${event.dayOfArrivalTime}`,
+                      event.dayOfSetupLocation && `📍 ${event.dayOfSetupLocation}`,
+                      event.dayOfParking && `🅿️ ${event.dayOfParking}`,
+                      event.dayOfEntry && `🔑 ${event.dayOfEntry}`,
+                    ].filter(Boolean).join(" · ")}
+                  </span>
                 )}
               </p>
             </div>
@@ -344,20 +348,6 @@ export default function EventsPage() {
                     <Coffee size={14} strokeWidth={1.5} />
                     <span className="hidden sm:inline">Counter</span>
                   </Link>
-                )}
-                {(event.status === "confirmed" || event.status === "completed") && (
-                  <button
-                    onClick={toggleDayOf}
-                    className={cn(
-                      "flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 font-body font-semibold text-xs transition-colors",
-                      dayOfExpanded[event.id]
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-muted/40"
-                    )}
-                  >
-                    <ClipboardList size={14} strokeWidth={1.5} />
-                    Day-of
-                  </button>
                 )}
                 <button
                   onClick={() => handleDelete(event)}
@@ -445,49 +435,6 @@ export default function EventsPage() {
         )}
 
         {/* Day-of logistics expanded panel */}
-        {(event.status === "confirmed" || event.status === "completed") && dayOfExpanded[event.id] && (
-          <div className="rounded-lg border border-border/40 bg-muted/10 p-4 space-y-2">
-            <p className="text-xs font-body font-semibold text-foreground mb-1">Day-of Logistics</p>
-            <input
-              className={input}
-              placeholder="Parking (e.g. guest lot, street, code)"
-              value={dayOfForm[event.id]?.parking ?? ""}
-              onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], parking: e.target.value } }))}
-            />
-            <input
-              className={input}
-              placeholder="Entry instructions (door code, contact, etc.)"
-              value={dayOfForm[event.id]?.entry ?? ""}
-              onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], entry: e.target.value } }))}
-            />
-            <input
-              className={input}
-              placeholder="Setup location (lobby, rooftop, suite #)"
-              value={dayOfForm[event.id]?.setupLocation ?? ""}
-              onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], setupLocation: e.target.value } }))}
-            />
-            <input
-              className={input}
-              placeholder="Arrival time"
-              type="time"
-              value={dayOfForm[event.id]?.arrivalTime ?? ""}
-              onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], arrivalTime: e.target.value } }))}
-            />
-            <textarea
-              className={input}
-              placeholder="Other notes"
-              rows={2}
-              value={dayOfForm[event.id]?.otherNotes ?? ""}
-              onChange={e => setDayOfForm(prev => ({ ...prev, [event.id]: { ...prev[event.id], otherNotes: e.target.value } }))}
-            />
-            <button
-              onClick={() => handleSaveDayOf(event.id)}
-              className="rounded-lg bg-primary text-primary-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-            >
-              Save Logistics
-            </button>
-          </div>
-        )}
       </div>
     );
   };
