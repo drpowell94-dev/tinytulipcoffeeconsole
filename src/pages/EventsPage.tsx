@@ -273,7 +273,7 @@ export default function EventsPage() {
                 <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                   {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
                 </span>
-                {event.followUpDate && event.status === "inquiry" && (
+                {event.followUpDate && event.status === "inquiry" && days >= 0 && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-blue-500/10 text-blue-600">
                     <Bell size={10} /> Follow-up {new Date(event.followUpDate).toLocaleDateString()}
                   </span>
@@ -296,17 +296,12 @@ export default function EventsPage() {
                     📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
                   </span>
                 )}
-                {event.followUpNote && event.status === "inquiry" && (
+                {event.followUpNote && event.status === "inquiry" && days >= 0 && (
                   <span className="block text-muted-foreground italic">{event.followUpNote}</span>
                 )}
-                {(event.dayOfArrivalTime || event.dayOfParking || event.dayOfSetupLocation || event.dayOfEntry) && (
-                  <span className="block pt-1 text-foreground/70">
-                    {[
-                      event.dayOfArrivalTime && `⏰ ${event.dayOfArrivalTime}`,
-                      event.dayOfSetupLocation && `📍 ${event.dayOfSetupLocation}`,
-                      event.dayOfParking && `🅿️ ${event.dayOfParking}`,
-                      event.dayOfEntry && `🔑 ${event.dayOfEntry}`,
-                    ].filter(Boolean).join(" · ")}
+                {(event.status === "confirmed" || event.status === "completed") && (
+                  <span className="block pt-1 text-foreground/60">
+                    {`⏰ ${event.dayOfArrivalTime || "—"} · 📍 ${event.dayOfSetupLocation || "—"} · 🅿️ ${event.dayOfParking || "—"} · 🔑 ${event.dayOfEntry || "—"}`}
                   </span>
                 )}
               </p>
