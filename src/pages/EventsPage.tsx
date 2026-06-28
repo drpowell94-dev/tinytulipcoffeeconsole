@@ -476,7 +476,7 @@ export default function EventsPage() {
             }
             const event = createEvent({
               name: form.name.trim(),
-              eventType: "popup",
+              eventType: form.eventType,
               dateStart: form.dateStart
                 ? new Date(form.dateStart).toISOString()
                 : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
@@ -531,6 +531,13 @@ export default function EventsPage() {
                 style={{ WebkitAppearance: "none", maxWidth: "100%" }}
               />
             </div>
+            <select
+              className={input}
+              value={form.eventType}
+              onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+            >
+              {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
             <textarea
               className={input}
               placeholder="Notes"
