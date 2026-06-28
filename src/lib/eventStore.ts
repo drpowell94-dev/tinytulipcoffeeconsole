@@ -37,7 +37,7 @@ export interface TulipEvent {
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   catering: "Private Event",
   popup: "Pop-up",
-  farmers_market: "Farmers Market",
+  farmers_market: "Grab and Go",
   other: "Other",
 };
 
