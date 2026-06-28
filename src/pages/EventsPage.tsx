@@ -603,25 +603,10 @@ export default function EventsPage() {
                 onChange={e => setForm({ ...form, location: e.target.value })}
               />
             </div>
-            <div className="space-y-1 min-w-0">
-              <label className="block text-xs font-body font-semibold text-foreground">Follow-up reminder <span className="text-muted-foreground font-normal">(optional)</span></label>
-              <input
-                className={input}
-                type="date"
-                value={form.followUpDate}
-                onChange={e => setForm({ ...form, followUpDate: e.target.value })}
-              />
-            </div>
-            <input
-              className={input}
-              placeholder="Follow-up note (optional)"
-              value={form.followUpNote}
-              onChange={e => setForm({ ...form, followUpNote: e.target.value })}
-            />
             <textarea
               className={input}
               placeholder="Notes (optional)"
-              rows={2}
+              rows={3}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
             />
