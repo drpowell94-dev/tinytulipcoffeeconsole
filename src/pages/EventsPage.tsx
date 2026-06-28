@@ -237,7 +237,7 @@ export default function EventsPage() {
               <input className={input} placeholder="Contact phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
               <input className={input} type="number" min={0} placeholder="Pre-orders" value={editForm.preOrders || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, preOrders: isNaN(n) ? 0 : n }); }} />
               <input className={input} type="number" min={0} placeholder="Estimated revenue ($)" value={editForm.estimatedRevenue || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, estimatedRevenue: isNaN(n) ? 0 : n }); }} />
-              <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Follow-up date</p><input className={input} type="date" value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} /></div>
+              <div className="space-y-1 overflow-hidden"><p className="text-xs text-muted-foreground font-body font-semibold">Follow-up date</p><input className={input + " max-w-full"} type="date" style={{ WebkitAppearance: "none", maxWidth: "100%" }} value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} /></div>
               <input className={input} placeholder="Follow-up note" value={editForm.followUpNote} onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })} />
             </div>
             <textarea className={input} placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
@@ -532,13 +532,14 @@ export default function EventsPage() {
               value={form.contactPhone}
               onChange={e => setForm({ ...form, contactPhone: e.target.value })}
             />
-            <div className="space-y-1 min-w-0">
+            <div className="space-y-1 overflow-hidden">
               <label className="block text-xs font-body font-semibold text-foreground">Date</label>
               <input
-                className={input}
+                className={input + " max-w-full"}
                 type="date"
                 value={form.dateStart}
                 onChange={e => setForm({ ...form, dateStart: e.target.value })}
+                style={{ WebkitAppearance: "none", maxWidth: "100%" }}
               />
             </div>
             <textarea
