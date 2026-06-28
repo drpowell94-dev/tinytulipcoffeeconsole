@@ -269,7 +269,7 @@ export async function sendInstagramDM(
     const bookingLink = `https://tinytulipcoffee.com/booking?source=instagram_dm`;
 
     // Prepare message
-    const messageText = `Hi ${recipientUsername}! 👋 Thanks for your interest! Check out our catering menu and booking: ${bookingLink}`;
+    const messageText = `Hi ${recipientUsername}! 👋 Thanks for your interest! Check out our menu and booking: ${bookingLink}`;
 
     // Mock API call - in production, this would call Instagram Messaging API
     console.log(`[MOCK DM] Sending to ${recipientUsername}:`, messageText);

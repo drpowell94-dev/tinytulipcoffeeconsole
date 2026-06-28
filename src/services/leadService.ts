@@ -131,8 +131,8 @@ export async function createLeadEvent(
       .from("events")
       .insert([
         {
-          name: `Catering Request - ${payload.clientName}`,
-          event_type: payload.eventType ?? "catering",
+          name: `Booking Request - ${payload.clientName}`,
+          event_type: payload.eventType ?? "other",
           date_start: eventDate.toISOString(),
           location: payload.location,
           guest_count: payload.guestCount,
@@ -298,8 +298,8 @@ export async function queueLeadConfirmationEmail(
   // const result = await sendgrid.send({
   //   to: email,
   //   from: 'booking@tinytulipcoffee.com',
-  //   subject: 'Your Catering Request Received',
-  //   html: `<p>Hi ${clientName},</p><p>We received your catering request for ${eventDate}. We'll follow up soon!</p>`,
+  //   subject: 'Your Booking Request Received',
+  //   html: `<p>Hi ${clientName},</p><p>We received your booking request for ${eventDate}. We'll follow up soon!</p>`,
   // });
 
   return {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Pencil, ClipboardList, Bell } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -38,9 +38,20 @@ const EMPTY_FORM = {
   preOrders: 0,
   estimatedRevenue: 0,
   contactName: "",
+  contactEmail: "",
   contactPhone: "",
   notes: "",
   status: "confirmed" as EventStatus,
+  followUpDate: "",
+  followUpNote: "",
+};
+
+const EMPTY_INTAKE = {
+  intakeParkingInfo: "",
+  intakeEntryInstructions: "",
+  intakeSetupLocation: "",
+  intakeArrivalTime: "",
+  intakeOtherNotes: "",
 };
 
 export default function EventsPage() {
@@ -54,6 +65,9 @@ export default function EventsPage() {
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ ...EMPTY_FORM, ...EMPTY_INTAKE });
+  const [intakeOpenId, setIntakeOpenId] = useState<string | null>(null);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -92,6 +106,7 @@ export default function EventsPage() {
       status: form.status,
       depositStatus: "pending",
       contactName: form.contactName.trim() || undefined,
+      contactEmail: form.contactEmail.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
@@ -134,8 +149,188 @@ export default function EventsPage() {
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
 
+  const startEdit = (event: TulipEvent) => {
+    setEditingId(event.id);
+    setEditForm({
+      name: event.name,
+      eventType: event.eventType,
+      dateStart: event.dateStart.slice(0, 16), // datetime-local format
+      location: event.location,
+      preOrders: event.preOrders,
+      estimatedRevenue: event.estimatedRevenue ?? 0,
+      contactName: event.contactName ?? "",
+      contactEmail: event.contactEmail ?? "",
+      contactPhone: event.contactPhone ?? "",
+      notes: event.notes ?? "",
+      status: event.status,
+      followUpDate: event.followUpDate ?? "",
+      followUpNote: event.followUpNote ?? "",
+      intakeParkingInfo: event.intakeParkingInfo ?? "",
+      intakeEntryInstructions: event.intakeEntryInstructions ?? "",
+      intakeSetupLocation: event.intakeSetupLocation ?? "",
+      intakeArrivalTime: event.intakeArrivalTime ?? "",
+      intakeOtherNotes: event.intakeOtherNotes ?? "",
+    });
+  };
+
+  const handleSaveEdit = (event: TulipEvent) => {
+    if (!editForm.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    updateEvent(event.id, {
+      name: editForm.name.trim(),
+      eventType: editForm.eventType,
+      dateStart: editForm.dateStart ? new Date(editForm.dateStart).toISOString() : event.dateStart,
+      location: editForm.location.trim() || "TBD",
+      preOrders: editForm.preOrders,
+      estimatedRevenue: editForm.estimatedRevenue || undefined,
+      status: editForm.status,
+      contactName: editForm.contactName.trim() || undefined,
+      contactEmail: editForm.contactEmail.trim() || undefined,
+      contactPhone: editForm.contactPhone.trim() || undefined,
+      notes: editForm.notes.trim() || undefined,
+      followUpDate: editForm.followUpDate || undefined,
+      followUpNote: editForm.followUpNote.trim() || undefined,
+    });
+    setEvents(loadEvents());
+    setEditingId(null);
+    toast.success(`"${editForm.name.trim()}" updated`);
+  };
+
+  const handleSaveIntake = (event: TulipEvent) => {
+    updateEvent(event.id, {
+      intakeParkingInfo: editForm.intakeParkingInfo.trim() || undefined,
+      intakeEntryInstructions: editForm.intakeEntryInstructions.trim() || undefined,
+      intakeSetupLocation: editForm.intakeSetupLocation.trim() || undefined,
+      intakeArrivalTime: editForm.intakeArrivalTime.trim() || undefined,
+      intakeOtherNotes: editForm.intakeOtherNotes.trim() || undefined,
+    });
+    setEvents(loadEvents());
+    setIntakeOpenId(null);
+    toast.success("Day-of logistics saved");
+  };
+
   const renderEvent = (event: TulipEvent) => {
     const days = daysUntil(event.dateStart);
+
+    // Inline edit form
+    if (editingId === event.id) {
+      return (
+        <div key={event.id} className="rounded-lg bg-muted/20 p-5 space-y-4">
+          <p className="font-body font-semibold text-foreground text-sm">Edit: {event.name}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              className={input}
+              placeholder="Name *"
+              value={editForm.name}
+              onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+              autoFocus
+            />
+            <select
+              className={input}
+              value={editForm.eventType}
+              onChange={e => setEditForm({ ...editForm, eventType: e.target.value as EventType })}
+            >
+              {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+            <select
+              className={input}
+              value={editForm.status}
+              onChange={e => setEditForm({ ...editForm, status: e.target.value as EventStatus })}
+            >
+              <option value="inquiry">📝 Lead (Inquiry)</option>
+              <option value="confirmed">✓ Confirmed</option>
+              <option value="completed">✓✓ Completed</option>
+              <option value="cancelled">✗ Cancelled</option>
+            </select>
+            <input
+              className={input}
+              type="datetime-local"
+              value={editForm.dateStart}
+              onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Location"
+              value={editForm.location}
+              onChange={e => setEditForm({ ...editForm, location: e.target.value })}
+            />
+            <input
+              className={input}
+              type="number"
+              min={0}
+              placeholder="Pre-orders"
+              value={editForm.preOrders || ""}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setEditForm({ ...editForm, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
+            />
+            <input
+              className={input}
+              placeholder="Contact name"
+              value={editForm.contactName}
+              onChange={e => setEditForm({ ...editForm, contactName: e.target.value })}
+            />
+            <input
+              className={input}
+              type="email"
+              placeholder="Contact email"
+              value={editForm.contactEmail}
+              onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Contact phone"
+              value={editForm.contactPhone}
+              onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })}
+            />
+            {event.status === "inquiry" && (
+              <>
+                <input
+                  className={input}
+                  type="date"
+                  placeholder="Follow-up reminder date"
+                  value={editForm.followUpDate}
+                  onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })}
+                />
+                <input
+                  className={input}
+                  placeholder="Follow-up note"
+                  value={editForm.followUpNote}
+                  onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })}
+                />
+              </>
+            )}
+          </div>
+          <textarea
+            className={input}
+            placeholder="Notes"
+            rows={2}
+            value={editForm.notes}
+            onChange={e => setEditForm({ ...editForm, notes: e.target.value })}
+          />
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleSaveEdit(event)}
+              className="rounded-lg bg-accent text-accent-foreground px-5 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+            >
+              Save
+            </button>
+            <button
+              onClick={() => setEditingId(null)}
+              className="rounded-lg bg-muted/50 px-5 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div key={event.id} className="space-y-3">
         <div className="rounded-lg bg-muted/20 p-5 hover:bg-muted/30 transition-colors space-y-3">
@@ -159,6 +354,13 @@ export default function EventsPage() {
                 {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
               </span>
             </p>
+            {event.followUpDate && (
+              <p className="text-xs font-body mt-1 flex items-center gap-1 text-accent/80">
+                <Bell size={11} strokeWidth={1.75} />
+                Follow-up: {new Date(event.followUpDate).toLocaleDateString()}
+                {event.followUpNote && ` — ${event.followUpNote}`}
+              </p>
+            )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {event.status === "inquiry" ? (
@@ -168,6 +370,13 @@ export default function EventsPage() {
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
                 >
                   <CheckCircle2 size={14} /> Accept
+                </button>
+                <button
+                  onClick={() => startEdit(event)}
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors"
+                  aria-label={`Edit ${event.name}`}
+                >
+                  <Pencil size={15} strokeWidth={1.5} />
                 </button>
                 <button
                   onClick={() => handleDeclineLead(event)}
@@ -187,6 +396,13 @@ export default function EventsPage() {
                   <span className="hidden sm:inline">Counter</span>
                 </Link>
                 <button
+                  onClick={() => startEdit(event)}
+                  className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-muted/40 transition-colors"
+                  aria-label={`Edit ${event.name}`}
+                >
+                  <Pencil size={15} strokeWidth={1.5} />
+                </button>
+                <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center p-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors sm:ml-auto"
                   aria-label={`Delete ${event.name}`}
@@ -198,7 +414,7 @@ export default function EventsPage() {
           </div>
         </div>
 
-          {/* Predictive logistics section - nested in card */}
+          {/* Predictive logistics section */}
           {event.guestCount && (
             <div className="border-t border-border/50 pt-3">
               <button
@@ -264,6 +480,91 @@ export default function EventsPage() {
               )}
             </div>
           )}
+
+          {/* Post-booking intake form section (confirmed/completed events only) */}
+          {(event.status === "confirmed" || event.status === "completed") && (
+            <div className="border-t border-border/50 pt-3">
+              <button
+                onClick={() => {
+                  if (intakeOpenId === event.id) {
+                    setIntakeOpenId(null);
+                  } else {
+                    setIntakeOpenId(event.id);
+                    setEditForm(prev => ({
+                      ...prev,
+                      intakeParkingInfo: event.intakeParkingInfo ?? "",
+                      intakeEntryInstructions: event.intakeEntryInstructions ?? "",
+                      intakeSetupLocation: event.intakeSetupLocation ?? "",
+                      intakeArrivalTime: event.intakeArrivalTime ?? "",
+                      intakeOtherNotes: event.intakeOtherNotes ?? "",
+                    }));
+                  }
+                }}
+                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+              >
+                <span className="flex items-center gap-1">
+                  <ClipboardList size={14} strokeWidth={2} />
+                  Day-of Logistics
+                  {(event.intakeParkingInfo || event.intakeEntryInstructions || event.intakeSetupLocation) && (
+                    <span className="ml-1 px-1.5 py-0.5 rounded bg-accent/20 text-[10px] font-semibold">filled</span>
+                  )}
+                </span>
+                <ChevronDown size={16} className={`transition-transform ${intakeOpenId === event.id ? "rotate-180" : ""}`} />
+              </button>
+
+              {intakeOpenId === event.id && (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      className={input}
+                      placeholder="Parking info"
+                      value={editForm.intakeParkingInfo}
+                      onChange={e => setEditForm(prev => ({ ...prev, intakeParkingInfo: e.target.value }))}
+                    />
+                    <input
+                      className={input}
+                      placeholder="Entry instructions"
+                      value={editForm.intakeEntryInstructions}
+                      onChange={e => setEditForm(prev => ({ ...prev, intakeEntryInstructions: e.target.value }))}
+                    />
+                    <input
+                      className={input}
+                      placeholder="Setup location"
+                      value={editForm.intakeSetupLocation}
+                      onChange={e => setEditForm(prev => ({ ...prev, intakeSetupLocation: e.target.value }))}
+                    />
+                    <input
+                      className={input}
+                      placeholder="Arrival time (e.g. 9:00 AM)"
+                      value={editForm.intakeArrivalTime}
+                      onChange={e => setEditForm(prev => ({ ...prev, intakeArrivalTime: e.target.value }))}
+                    />
+                  </div>
+                  <textarea
+                    className={input}
+                    placeholder="Other day-of notes"
+                    rows={2}
+                    value={editForm.intakeOtherNotes}
+                    onChange={e => setEditForm(prev => ({ ...prev, intakeOtherNotes: e.target.value }))}
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleSaveIntake(event)}
+                      className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIntakeOpenId(null)}
+                      className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
       </div>
     );
   };
@@ -274,7 +575,7 @@ export default function EventsPage() {
         <div>
           <h1 className="font-display text-4xl text-foreground">Events</h1>
           <p className="text-sm text-muted-foreground font-body mt-1">
-            Pop-ups, farmers markets, catering with live counting
+            Pop-ups, farmers markets, private events with live counting
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
@@ -313,16 +614,22 @@ export default function EventsPage() {
               toast.error("Lead name is required");
               return;
             }
+            const eventDate = form.dateStart
+              ? new Date(form.dateStart).toISOString()
+              : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
             const event = createEvent({
               name: form.name.trim(),
               eventType: "popup",
-              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              dateStart: eventDate,
               location: form.location.trim() || "TBD",
               preOrders: 0,
               status: "inquiry",
               depositStatus: "pending",
+              contactEmail: form.contactEmail.trim() || undefined,
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
+              followUpDate: form.followUpDate || undefined,
+              followUpNote: form.followUpNote.trim() || undefined,
             });
             setEvents(loadEvents());
             setForm(EMPTY_FORM);
@@ -336,6 +643,22 @@ export default function EventsPage() {
               onChange={e => setForm({ ...form, name: e.target.value })}
               autoFocus
             />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                className={input}
+                type="date"
+                placeholder="Event date (optional)"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              />
+              <input
+                className={input}
+                type="email"
+                placeholder="Email (optional)"
+                value={form.contactEmail}
+                onChange={e => setForm({ ...form, contactEmail: e.target.value })}
+              />
+            </div>
             <input
               className={input}
               placeholder="Phone (optional)"
@@ -355,6 +678,21 @@ export default function EventsPage() {
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
             />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <input
+                className={input}
+                type="date"
+                placeholder="Follow-up reminder date"
+                value={form.followUpDate}
+                onChange={e => setForm({ ...form, followUpDate: e.target.value })}
+              />
+              <input
+                className={input}
+                placeholder="Follow-up note (optional)"
+                value={form.followUpNote}
+                onChange={e => setForm({ ...form, followUpNote: e.target.value })}
+              />
+            </div>
             <div className="flex gap-2">
               <button
                 type="submit"
@@ -452,6 +790,13 @@ export default function EventsPage() {
               placeholder="Contact phone"
               value={form.contactPhone}
               onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+            />
+            <input
+              className={input}
+              type="email"
+              placeholder="Contact email"
+              value={form.contactEmail}
+              onChange={e => setForm({ ...form, contactEmail: e.target.value })}
             />
           </div>
           <textarea

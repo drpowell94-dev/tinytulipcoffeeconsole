@@ -16,10 +16,10 @@ export const DEFAULT_CAMPAIGNS = {
   inquiry_confirmation: {
     name: "Inquiry Confirmation",
     triggerType: "inquiry_confirmation" as const,
-    subject: "Thanks for Your Interest in Tiny Tulip Catering! ☕",
+    subject: "Thanks for Your Interest in Tiny Tulip Coffee! ☕",
     body: `Hi {{clientName}},
 
-Thank you so much for your interest in Tiny Tulip Coffee catering for your {{eventType}} on {{eventDate}}.
+Thank you so much for your interest in Tiny Tulip Coffee for your {{eventType}} on {{eventDate}}.
 
 We're excited to help make your event special! Here's what we offer:
 • Fresh-brewed coffee & espresso

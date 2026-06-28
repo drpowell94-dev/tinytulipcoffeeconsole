@@ -20,13 +20,20 @@ export interface TulipEvent {
   contactEmail?: string;
   contactPhone?: string;
   notes?: string;
+  followUpDate?: string; // ISO date for follow-up reminder
+  followUpNote?: string;
+  intakeParkingInfo?: string;
+  intakeEntryInstructions?: string;
+  intakeSetupLocation?: string;
+  intakeArrivalTime?: string;
+  intakeOtherNotes?: string;
   /** Wix Events ID when this event originated from / syncs with Wix. */
   wixEventId?: string;
   createdAt: string;
 }
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  catering: "Catering",
+  catering: "Private Event",
   popup: "Pop-up",
   farmers_market: "Farmers Market",
   other: "Other",
