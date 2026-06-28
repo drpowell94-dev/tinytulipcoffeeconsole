@@ -231,14 +231,14 @@ export default function EventsPage() {
                 <option value="completed">✓✓ Completed</option>
                 <option value="cancelled">✗ Cancelled</option>
               </select>
-              <input className={input} type="datetime-local" value={editForm.dateStart} onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })} />
+              <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Event date & time</p><input className={input} type="datetime-local" value={editForm.dateStart} onChange={e => setEditForm({ ...editForm, dateStart: e.target.value })} /></div>
               <input className={input} placeholder="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} />
               <input className={input} placeholder="Contact name" value={editForm.contactName} onChange={e => setEditForm({ ...editForm, contactName: e.target.value })} />
               <input className={input} placeholder="Contact email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
               <input className={input} placeholder="Contact phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
               <input className={input} type="number" min={0} placeholder="Pre-orders" value={editForm.preOrders || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, preOrders: isNaN(n) ? 0 : n }); }} />
               <input className={input} type="number" min={0} placeholder="Estimated revenue ($)" value={editForm.estimatedRevenue || ""} onChange={e => { const n = parseInt(e.target.value, 10); setEditForm({ ...editForm, estimatedRevenue: isNaN(n) ? 0 : n }); }} />
-              <input className={input} placeholder="Follow-up date" type="date" value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} />
+              <div className="space-y-1"><p className="text-xs text-muted-foreground font-body font-semibold">Follow-up date</p><input className={input} type="date" value={editForm.followUpDate} onChange={e => setEditForm({ ...editForm, followUpDate: e.target.value })} /></div>
               <input className={input} placeholder="Follow-up note" value={editForm.followUpNote} onChange={e => setEditForm({ ...editForm, followUpNote: e.target.value })} />
             </div>
             <textarea className={input} placeholder="Notes" rows={2} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} />
@@ -585,26 +585,32 @@ export default function EventsPage() {
                 value={form.contactPhone}
                 onChange={e => setForm({ ...form, contactPhone: e.target.value })}
               />
-              <input
-                className={input}
-                type="date"
-                placeholder="Event date (optional)"
-                value={form.dateStart}
-                onChange={e => setForm({ ...form, dateStart: e.target.value })}
-              />
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-body font-semibold">Event date</p>
+                <input
+                  className={input}
+                  type="date"
+                  value={form.dateStart}
+                  onChange={e => setForm({ ...form, dateStart: e.target.value })}
+                />
+              </div>
               <input
                 className={input}
                 placeholder="Location (optional)"
                 value={form.location}
                 onChange={e => setForm({ ...form, location: e.target.value })}
               />
-              <input
-                className={input}
-                type="date"
-                placeholder="Follow-up reminder date"
-                value={form.followUpDate}
-                onChange={e => setForm({ ...form, followUpDate: e.target.value })}
-              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <p className="text-xs text-muted-foreground font-body font-semibold">Follow-up reminder</p>
+                <input
+                  className={input}
+                  type="date"
+                  value={form.followUpDate}
+                  onChange={e => setForm({ ...form, followUpDate: e.target.value })}
+                />
+              </div>
               <input
                 className={input}
                 placeholder="Follow-up note (optional)"
