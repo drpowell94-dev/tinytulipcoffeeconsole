@@ -508,46 +508,42 @@ export default function EventsPage() {
           }} className="space-y-3">
             <input
               className={input}
-              placeholder="Lead name or company *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
+              placeholder="Location"
+              value={form.location}
+              onChange={e => setForm({ ...form, location: e.target.value })}
               autoFocus
             />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              className={input}
+              placeholder="Name"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Email"
+              type="email"
+              value={form.contactEmail}
+              onChange={e => setForm({ ...form, contactEmail: e.target.value })}
+            />
+            <input
+              className={input}
+              placeholder="Phone"
+              value={form.contactPhone}
+              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+            />
+            <div className="space-y-1 min-w-0">
+              <label className="block text-xs font-body font-semibold text-foreground">Date</label>
               <input
                 className={input}
-                placeholder="Email (optional)"
-                type="email"
-                value={form.contactEmail}
-                onChange={e => setForm({ ...form, contactEmail: e.target.value })}
-              />
-              <input
-                className={input}
-                placeholder="Phone (optional)"
-                value={form.contactPhone}
-                onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1 min-w-0">
-                <label className="block text-xs font-body font-semibold text-foreground">Event date <span className="text-muted-foreground font-normal">(optional)</span></label>
-                <input
-                  className={input}
-                  type="date"
-                  value={form.dateStart}
-                  onChange={e => setForm({ ...form, dateStart: e.target.value })}
-                />
-              </div>
-              <input
-                className={input}
-                placeholder="Location (optional)"
-                value={form.location}
-                onChange={e => setForm({ ...form, location: e.target.value })}
+                type="date"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
               />
             </div>
             <textarea
               className={input}
-              placeholder="Notes (optional)"
+              placeholder="Notes"
               rows={3}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
