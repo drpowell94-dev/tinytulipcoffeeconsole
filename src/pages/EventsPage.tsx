@@ -453,7 +453,7 @@ export default function EventsPage() {
             {(editForm.status === "confirmed" || editForm.status === "completed") && (
               <>
                 <p className="text-xs font-body font-semibold text-muted-foreground">Day-of details</p>
-                <input className={input} placeholder="Arrival time" value={editForm.dayOfArrivalTime} onChange={e => setEditForm({ ...editForm, dayOfArrivalTime: e.target.value })} />
+                <input className={input} placeholder="Event start time" value={editForm.dayOfArrivalTime} onChange={e => setEditForm({ ...editForm, dayOfArrivalTime: e.target.value })} />
                 <input className={input} placeholder="Setup location" value={editForm.dayOfSetupLocation} onChange={e => setEditForm({ ...editForm, dayOfSetupLocation: e.target.value })} />
                 <input className={input} placeholder="Parking" value={editForm.dayOfParking} onChange={e => setEditForm({ ...editForm, dayOfParking: e.target.value })} />
                 <input className={input} placeholder="Entry" value={editForm.dayOfEntry} onChange={e => setEditForm({ ...editForm, dayOfEntry: e.target.value })} />
