@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Trash2, Printer, ClipboardList, Plus, X, Trash, AlertCircle, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -31,8 +32,21 @@ import { formatTime } from "@/lib/utils";
 
 type TabType = "events" | "daily" | "todos";
 
+const TABS: TabType[] = ["todos", "events", "daily"];
+
 export default function ChecklistsPage() {
-  const [activeTab, setActiveTab] = useState<TabType>("events");
+  const [searchParams] = useSearchParams();
+  const initialTab = (searchParams.get("tab") as TabType) || "todos";
+  const [activeTab, setActiveTab] = useState<TabType>(
+    TABS.includes(initialTab) ? initialTab : "todos"
+  );
+
+  // Allow deep-linking to a tab (e.g. the bottom-nav To-Dos button → ?tab=todos)
+  // even when this page is already mounted.
+  useEffect(() => {
+    const tab = searchParams.get("tab") as TabType | null;
+    if (tab && TABS.includes(tab)) setActiveTab(tab);
+  }, [searchParams]);
   const [eventLists, setEventLists] = useState<Checklist[]>(() => loadChecklists());
   const [openEventId, setOpenEventId] = useState<string | null>(eventLists[0]?.id ?? null);
   const [dailyChecklist, setDailyChecklist] = useState<DailyChecklist>(() => loadDailyChecklist());
@@ -146,6 +160,16 @@ export default function ChecklistsPage() {
       {/* Tabs */}
       <div className="flex gap-2 border-b border-border">
         <button
+          onClick={() => setActiveTab("todos")}
+          className={`px-4 py-3 font-body font-semibold text-sm border-b-2 transition-colors ${
+            activeTab === "todos"
+              ? "border-accent text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          To-Do List {activeTodos.length > 0 && `(${activeTodos.length})`}
+        </button>
+        <button
           onClick={() => setActiveTab("events")}
           className={`px-4 py-3 font-body font-semibold text-sm border-b-2 transition-colors ${
             activeTab === "events"
@@ -164,16 +188,6 @@ export default function ChecklistsPage() {
           }`}
         >
           Daily Tasks {dailyChecklist.items.length > 0 && `(${dailyChecklist.items.filter(i => !i.completed).length})`}
-        </button>
-        <button
-          onClick={() => setActiveTab("todos")}
-          className={`px-4 py-3 font-body font-semibold text-sm border-b-2 transition-colors ${
-            activeTab === "todos"
-              ? "border-accent text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          To-Do List {activeTodos.length > 0 && `(${activeTodos.length})`}
         </button>
       </div>
 

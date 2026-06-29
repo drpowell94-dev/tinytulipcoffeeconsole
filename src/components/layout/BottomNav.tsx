@@ -1,10 +1,11 @@
 import { NavLink } from "react-router-dom";
-import { Home, CalendarDays, Package } from "lucide-react";
+import { Home, CalendarDays, Package, ListTodo } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Home", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
+  { to: "/checklists?tab=todos", label: "To-Dos", icon: ListTodo },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];
 
