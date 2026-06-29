@@ -52,6 +52,15 @@ const EMPTY_VENUE_FORM = {
   logoH: 630,
 };
 
+// Default pre-ordered drinks by event type: 30 for a Pop-up, 25 for Grab and
+// Go. These prefill the form when the type changes, and stay editable.
+const PREORDER_DEFAULTS: Record<EventType, number> = {
+  popup: 30,
+  farmers_market: 25,
+  catering: 30,
+  other: 30,
+};
+
 const STATUS_STYLES: Record<EventStatus, string> = {
   inquiry: "bg-muted/50 text-foreground",
   confirmed: "bg-accent/15 text-accent",
@@ -64,7 +73,7 @@ const EMPTY_FORM = {
   eventType: "popup" as EventType,
   dateStart: "",
   location: "",
-  preOrders: 0,
+  preOrders: 30,
   estimatedRevenue: 0,
   contactName: "",
   contactEmail: "",
@@ -157,7 +166,7 @@ export default function EventsPage() {
         ? new Date(`${form.dateStart}T12:00:00`).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       location: form.location.trim(),
-      preOrders: 0,
+      preOrders: form.preOrders,
       status: form.status,
       depositStatus: "pending",
       contactName: form.name.trim() || undefined,
@@ -490,7 +499,7 @@ export default function EventsPage() {
               </>
             ) : (
               <>
-                {event.preOrders === 30 && (
+                {event.preOrders > 0 && (
                   <Link
                     to={`/events/${event.id}/counter`}
                     className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all"
@@ -702,7 +711,7 @@ export default function EventsPage() {
                 ? new Date(`${form.dateStart}T12:00:00`).toISOString()
                 : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim(),
-              preOrders: 0,
+              preOrders: form.preOrders,
               status: "inquiry",
               depositStatus: "pending",
               contactName: form.name.trim() || undefined,
@@ -762,10 +771,27 @@ export default function EventsPage() {
             <select
               className={input}
               value={form.eventType}
-              onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+              onChange={e => {
+                const eventType = e.target.value as EventType;
+                setForm({ ...form, eventType, preOrders: PREORDER_DEFAULTS[eventType] });
+              }}
             >
               {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
+            <div className="space-y-1">
+              <label className="block text-xs font-body font-semibold text-foreground">Pre-ordered drinks</label>
+              <input
+                className={input}
+                type="number"
+                min={0}
+                placeholder="Pre-ordered drinks"
+                value={form.preOrders}
+                onChange={e => {
+                  const num = parseInt(e.target.value, 10);
+                  setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+                }}
+              />
+            </div>
             <textarea
               className={input}
               placeholder="Notes"
@@ -854,12 +880,29 @@ export default function EventsPage() {
           <select
             className={input}
             value={form.eventType}
-            onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+            onChange={e => {
+              const eventType = e.target.value as EventType;
+              setForm({ ...form, eventType, preOrders: PREORDER_DEFAULTS[eventType] });
+            }}
           >
             {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
+          <div className="space-y-1">
+            <label className="block text-xs font-body font-semibold text-foreground">Pre-ordered drinks</label>
+            <input
+              className={input}
+              type="number"
+              min={0}
+              placeholder="Pre-ordered drinks"
+              value={form.preOrders}
+              onChange={e => {
+                const num = parseInt(e.target.value, 10);
+                setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
+              }}
+            />
+          </div>
           <textarea
             className={input}
             placeholder="Notes"
