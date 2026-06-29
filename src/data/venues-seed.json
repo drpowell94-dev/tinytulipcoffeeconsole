@@ -130,5 +130,17 @@
     "logo_media_id": "60a8ee_2e58a0b370aa4c60aa74b0d411349bfd~mv2.jpg",
     "logo_url": "https://static.wixstatic.com/media/60a8ee_2e58a0b370aa4c60aa74b0d411349bfd~mv2.jpg",
     "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "The Penrose Southend",
+    "street_number": "327", "street_name": "West Tremont Avenue", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "327 W Tremont Ave, Charlotte, NC 28203, USA",
+    "lat": 35.2103, "lng": -80.8562,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "",
+    "logo_url": "",
+    "logo_w": 1200, "logo_h": 630,
+    "_note": "logo_url needs a Wix-hosted image URL — upload their logo to Wix media and paste the URL here"
   }
 ]
