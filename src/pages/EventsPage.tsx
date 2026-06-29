@@ -127,6 +127,7 @@ export default function EventsPage() {
   const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
   const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
   const [showAddVenue, setShowAddVenue] = useState(false);
+  const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const venueManagerRef = useRef<HTMLElement | null>(null);
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
@@ -345,6 +346,9 @@ export default function EventsPage() {
     }
 
     const venue = upsertVenue({
+      // When editing, keep the original id so we update in place even if the
+      // name changes; otherwise a new id is derived from the name.
+      ...(editingVenueId ? { id: editingVenueId } : {}),
       name: venueForm.name.trim(),
       streetNumber: venueForm.streetNumber.trim(),
       streetName: venueForm.streetName.trim(),
@@ -366,7 +370,32 @@ export default function EventsPage() {
     setVenues(loadVenues());
     setVenueForm(EMPTY_VENUE_FORM);
     setShowAddVenue(false);
+    setEditingVenueId(null);
     toast.success(`Venue "${venue.name}" saved`);
+  };
+
+  // Open the venue form prefilled with an existing venue for editing.
+  const startEditVenue = (venue: Venue) => {
+    setEditingVenueId(venue.id);
+    setVenueForm({
+      name: venue.name,
+      streetNumber: venue.streetNumber,
+      streetName: venue.streetName,
+      apt: venue.apt,
+      city: venue.city,
+      state: venue.state,
+      zip: venue.zip,
+      formattedAddress: venue.formattedAddress,
+      lat: String(venue.lat),
+      lng: String(venue.lng),
+      defaultStartTime: venue.defaultStartTime,
+      defaultCategory: venue.defaultCategory,
+      logoUrl: venue.logoUrl,
+      logoMediaId: venue.logoMediaId,
+      logoW: venue.logoW,
+      logoH: venue.logoH,
+    });
+    setShowAddVenue(true);
   };
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
@@ -1122,25 +1151,32 @@ export default function EventsPage() {
               <h2 className="font-display text-lg text-foreground">Venue Address Book ({venues.length})</h2>
             </div>
             <button
-              onClick={() => { setShowAddVenue(v => !v); setVenueForm(EMPTY_VENUE_FORM); }}
+              onClick={() => { setEditingVenueId(null); setVenueForm(EMPTY_VENUE_FORM); setShowAddVenue(v => !v); }}
               className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
             >
               <Plus size={14} /> Add Venue
             </button>
           </div>
 
+          <p className="text-xs font-body text-muted-foreground -mt-2">
+            Each property has a <strong className="text-foreground">name</strong> (used as the event's Location)
+            and a separate <strong className="text-foreground">address</strong> (the street address shown on Wix).
+          </p>
+
           {showAddVenue && (
             <form onSubmit={handleAddVenue} className="rounded-lg bg-muted/20 p-4 space-y-3">
-              <p className="text-xs font-body font-semibold text-muted-foreground">Required for Wix publish</p>
+              <p className="text-xs font-body font-semibold text-muted-foreground">
+                {editingVenueId ? `Editing "${venueForm.name || "venue"}"` : "Required for Wix publish"}
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input className={input} placeholder="Venue name *" value={venueForm.name} onChange={e => setVenueForm({ ...venueForm, name: e.target.value })} autoFocus />
+                <input className={input} placeholder="Property name * (becomes the Location)" value={venueForm.name} onChange={e => setVenueForm({ ...venueForm, name: e.target.value })} autoFocus />
                 <select className={input} value={venueForm.defaultCategory} onChange={e => setVenueForm({ ...venueForm, defaultCategory: e.target.value as Venue["defaultCategory"] })}>
                   <option value="Pop Up">Pop Up</option>
                   <option value="Grab & Go">Grab & Go</option>
                   <option value="Market">Market</option>
                   <option value="Private Event">Private Event</option>
                 </select>
-                <input className={input} placeholder="Formatted address * (e.g. 711 E Morehead St, Charlotte, NC 28203, USA)" value={venueForm.formattedAddress} onChange={e => setVenueForm({ ...venueForm, formattedAddress: e.target.value })} />
+                <input className={input} placeholder="Street address * (e.g. 711 E Morehead St, Charlotte, NC 28203, USA)" value={venueForm.formattedAddress} onChange={e => setVenueForm({ ...venueForm, formattedAddress: e.target.value })} />
                 <div className="flex gap-2">
                   <input className={input} placeholder="Street #" value={venueForm.streetNumber} onChange={e => setVenueForm({ ...venueForm, streetNumber: e.target.value })} />
                   <input className={input} placeholder="Street name" value={venueForm.streetName} onChange={e => setVenueForm({ ...venueForm, streetName: e.target.value })} />
@@ -1158,8 +1194,8 @@ export default function EventsPage() {
                 <input className={input} type="time" value={venueForm.defaultStartTime} onChange={e => setVenueForm({ ...venueForm, defaultStartTime: e.target.value })} />
               </div>
               <div className="flex gap-2">
-                <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Save Venue</button>
-                <button type="button" onClick={() => setShowAddVenue(false)} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
+                <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">{editingVenueId ? "Update Venue" : "Save Venue"}</button>
+                <button type="button" onClick={() => { setShowAddVenue(false); setEditingVenueId(null); setVenueForm(EMPTY_VENUE_FORM); }} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
               </div>
             </form>
           )}
@@ -1177,17 +1213,26 @@ export default function EventsPage() {
                       {v.defaultCategory} · {v.defaultStartTime}{v.logoUrl ? "" : " · no photo"}
                     </p>
                   </div>
-                  <button
-                    onClick={() => {
-                      deleteVenue(v.id);
-                      setVenues(loadVenues());
-                      toast(`Removed "${v.name}"`);
-                    }}
-                    className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    aria-label={`Remove ${v.name}`}
-                  >
-                    <Trash2 size={13} strokeWidth={1.5} />
-                  </button>
+                  <div className="flex items-center shrink-0">
+                    <button
+                      onClick={() => startEditVenue(v)}
+                      className="p-1 rounded text-muted-foreground hover:text-accent hover:bg-accent/10 transition-colors"
+                      aria-label={`Edit ${v.name}`}
+                    >
+                      <Pencil size={13} strokeWidth={1.5} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        deleteVenue(v.id);
+                        setVenues(loadVenues());
+                        toast(`Removed "${v.name}"`);
+                      }}
+                      className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                      aria-label={`Remove ${v.name}`}
+                    >
+                      <Trash2 size={13} strokeWidth={1.5} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
