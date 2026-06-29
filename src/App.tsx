@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "sonner";
 import MainLayout from "@/components/layout/MainLayout";
@@ -8,8 +9,13 @@ import ContentPage from "@/pages/ContentPage";
 import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
+import { seedVenues } from "@/lib/venueStore";
 
 export default function App() {
+  useEffect(() => {
+    seedVenues();
+  }, []);
+
   return (
     <BrowserRouter>
       <Toaster position="top-center" richColors />

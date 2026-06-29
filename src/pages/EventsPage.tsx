@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, ChevronDown, Filter, Loader, Building2 } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -20,8 +20,17 @@ import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
 import { savePost } from "@/lib/contentStore";
 import { generateEventRecap } from "@/lib/blogWriter";
-import { DrinkIcon, TulipLogo } from "@/components/drinks/DrinkIcon";
+import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn, formatCurrency, formatDate, daysUntil } from "@/lib/utils";
+import {
+  loadVenues,
+  findVenueByName,
+  upsertVenue,
+  deleteVenue,
+  nameToVenueId,
+  type Venue,
+} from "@/lib/venueStore";
+import { publishToWix } from "@/services/wixPublishService";
 
 const STATUS_STYLES: Record<EventStatus, string> = {
   inquiry: "bg-muted/50 text-foreground",
@@ -43,20 +52,41 @@ const EMPTY_FORM = {
   status: "confirmed" as EventStatus,
 };
 
+const EMPTY_VENUE_FORM = {
+  name: "",
+  streetNumber: "",
+  streetName: "",
+  apt: "",
+  city: "Charlotte",
+  state: "NC",
+  zip: "",
+  formattedAddress: "",
+  lat: "",
+  lng: "",
+  defaultStartTime: "09:00",
+  defaultCategory: "Pop Up" as Venue["defaultCategory"],
+  logoUrl: "",
+  logoMediaId: "",
+  logoW: 1200,
+  logoH: 630,
+};
+
 export default function EventsPage() {
   const [events, setEvents] = useState<TulipEvent[]>(() => loadEvents());
   const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
   const [showForm, setShowForm] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
   const [loadingLogistics, setLoadingLogistics] = useState<Record<string, boolean>>({});
   const [filter, setFilter] = useState<"all" | "upcoming" | "past" | "leads">("upcoming");
   const [showLeadForm, setShowLeadForm] = useState(false);
+  const [converting, setConverting] = useState<Record<string, boolean>>({});
+  const [showVenueManager, setShowVenueManager] = useState(false);
+  const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
+  const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
+  const [showAddVenue, setShowAddVenue] = useState(false);
 
-  // On load, pull any events that arrived in Supabase (e.g. via the Wix
-  // receiver) and merge them into the local store.
   useEffect(() => {
     syncEventsFromSupabase().then(result => {
       if (result && result.created > 0) {
@@ -113,7 +143,6 @@ export default function EventsPage() {
   const input =
     "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
-  // Split into upcoming (today or later) and past, each sensibly sorted.
   const upcoming = events
     .filter(e => daysUntil(e.dateStart) >= 0)
     .sort((a, b) => a.dateStart.localeCompare(b.dateStart));
@@ -121,15 +150,92 @@ export default function EventsPage() {
     .filter(e => daysUntil(e.dateStart) < 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
-  const handleConvertLead = (lead: TulipEvent) => {
-    updateEvent(lead.id, { status: "confirmed" });
-    setEvents(loadEvents());
-    toast.success(`"${lead.name}" moved to confirmed`);
+  const handleConvertLead = async (lead: TulipEvent) => {
+    const venue = findVenueByName(lead.location);
+    if (!venue) {
+      toast.error(`No venue found for "${lead.location}". Add it in the Venues section below.`);
+      setShowVenueManager(true);
+      // Pre-fill venue name so they can add it quickly
+      setVenueForm(f => ({ ...f, name: lead.location }));
+      setShowAddVenue(true);
+      return;
+    }
+
+    setConverting(prev => ({ ...prev, [lead.id]: true }));
+    try {
+      const { wixEventId } = await publishToWix({
+        event: {
+          id: lead.id,
+          name: lead.name,
+          eventType: lead.eventType,
+          dateStart: lead.dateStart,
+          notes: lead.notes,
+          wixEventId: lead.wixEventId,
+        },
+        venue,
+      });
+      updateEvent(lead.id, { status: "confirmed", wixEventId });
+      setEvents(loadEvents());
+      createChecklistForEvent(lead.id, lead.name, lead.eventType);
+      toast.success(`"${lead.name}" published to Wix and confirmed!`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Wix publish failed: ${message}`);
+    } finally {
+      setConverting(prev => ({ ...prev, [lead.id]: false }));
+    }
   };
 
   const handleDeclineLead = (lead: TulipEvent) => {
     handleDelete(lead);
     toast(`Declined lead: "${lead.name}"`);
+  };
+
+  const handleAddVenue = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venueForm.name.trim() || !venueForm.formattedAddress.trim()) {
+      toast.error("Venue name and address are required");
+      return;
+    }
+    if (!venueForm.lat || !venueForm.lng) {
+      toast.error("Lat/lng are required for Wix geocoding");
+      return;
+    }
+    if (!venueForm.logoUrl.trim()) {
+      toast.error("Logo URL is required for the Wix event card image");
+      return;
+    }
+
+    // Auto-extract media ID from Wix static URL if not set
+    let mediaId = venueForm.logoMediaId.trim();
+    if (!mediaId && venueForm.logoUrl.includes("wixstatic.com/media/")) {
+      const parts = venueForm.logoUrl.split("/media/");
+      mediaId = parts[1]?.split("?")[0] ?? "";
+    }
+
+    const venue = upsertVenue({
+      name: venueForm.name.trim(),
+      streetNumber: venueForm.streetNumber.trim(),
+      streetName: venueForm.streetName.trim(),
+      apt: venueForm.apt.trim(),
+      city: venueForm.city.trim(),
+      state: venueForm.state.trim(),
+      zip: venueForm.zip.trim(),
+      formattedAddress: venueForm.formattedAddress.trim(),
+      lat: parseFloat(venueForm.lat),
+      lng: parseFloat(venueForm.lng),
+      defaultStartTime: venueForm.defaultStartTime,
+      defaultCategory: venueForm.defaultCategory,
+      logoUrl: venueForm.logoUrl.trim(),
+      logoMediaId: mediaId,
+      logoW: venueForm.logoW,
+      logoH: venueForm.logoH,
+    });
+
+    setVenues(loadVenues());
+    setVenueForm(EMPTY_VENUE_FORM);
+    setShowAddVenue(false);
+    toast.success(`Venue "${venue.name}" saved`);
   };
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
@@ -145,6 +251,11 @@ export default function EventsPage() {
               <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                 {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
               </span>
+              {event.wixEventId && (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-purple-500/10 text-purple-600">
+                  Wix ✓
+                </span>
+              )}
             </div>
             <p className="text-xs text-muted-foreground font-body space-y-1">
               <span>{formatDate(event.dateStart)}</span>
@@ -165,9 +276,15 @@ export default function EventsPage() {
               <>
                 <button
                   onClick={() => handleConvertLead(event)}
-                  className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+                  disabled={converting[event.id]}
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-2 font-body font-semibold text-xs hover-scale active:scale-95 transition-all disabled:opacity-60"
                 >
-                  <CheckCircle2 size={14} /> Accept
+                  {converting[event.id] ? (
+                    <Loader size={14} className="animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={14} />
+                  )}
+                  {converting[event.id] ? "Publishing…" : "Convert & Publish"}
                 </button>
                 <button
                   onClick={() => handleDeclineLead(event)}
@@ -198,72 +315,71 @@ export default function EventsPage() {
           </div>
         </div>
 
-          {/* Predictive logistics section - nested in card */}
-          {event.guestCount && (
-            <div className="border-t border-border/50 pt-3">
-              <button
-                onClick={() => {
-                  if (expandedLogistics[event.id]) {
-                    setExpandedLogistics(prev => {
-                      const next = { ...prev };
-                      delete next[event.id];
-                      return next;
-                    });
-                  } else if (!loadingLogistics[event.id]) {
-                    setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
-                    getPredictedNeeds(event)
-                      .then(needs => {
-                        setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
-                      })
-                      .catch(() => toast.error("Failed to load predicted needs"))
-                      .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
-                  }
-                }}
-                disabled={loadingLogistics[event.id]}
-                className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
-              >
-                <span className="flex items-center gap-1">
-                  <Zap size={14} strokeWidth={2} /> Supplies
-                </span>
-                <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
-              </button>
+        {event.guestCount && (
+          <div className="border-t border-border/50 pt-3">
+            <button
+              onClick={() => {
+                if (expandedLogistics[event.id]) {
+                  setExpandedLogistics(prev => {
+                    const next = { ...prev };
+                    delete next[event.id];
+                    return next;
+                  });
+                } else if (!loadingLogistics[event.id]) {
+                  setLoadingLogistics(prev => ({ ...prev, [event.id]: true }));
+                  getPredictedNeeds(event)
+                    .then(needs => {
+                      setExpandedLogistics(prev => ({ ...prev, [event.id]: needs }));
+                    })
+                    .catch(() => toast.error("Failed to load predicted needs"))
+                    .finally(() => setLoadingLogistics(prev => ({ ...prev, [event.id]: false })));
+                }
+              }}
+              disabled={loadingLogistics[event.id]}
+              className="w-full text-left flex items-center justify-between gap-2 text-sm font-body font-semibold text-accent hover:opacity-70 transition-opacity"
+            >
+              <span className="flex items-center gap-1">
+                <Zap size={14} strokeWidth={2} /> Supplies
+              </span>
+              <ChevronDown size={16} className={`transition-transform ${expandedLogistics[event.id] ? "rotate-180" : ""}`} />
+            </button>
 
-              {expandedLogistics[event.id] && (
-                <div className="mt-3 p-3 rounded bg-accent/5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-body">
-                  <div>
-                    <p className="text-accent/70 font-semibold">Cups</p>
-                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedCups}</p>
-                  </div>
-                  <div>
-                    <p className="text-accent/70 font-semibold">Beans (lbs)</p>
-                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedBeansLbs}</p>
-                  </div>
-                  <div>
-                    <p className="text-accent/70 font-semibold">Milk (L)</p>
-                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedMilkLiters}</p>
-                  </div>
-                  <div>
-                    <p className="text-accent/70 font-semibold">Lids</p>
-                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedLids}</p>
-                  </div>
-                  <div>
-                    <p className="text-accent/70 font-semibold">Napkins</p>
-                    <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedNapkins}</p>
-                  </div>
-                  <div>
-                    <p className="text-accent/70 font-semibold">Confidence</p>
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                      expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
-                      expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
-                      "bg-muted/30 text-muted-foreground"
-                    }`}>
-                      {expandedLogistics[event.id].confidence}
-                    </span>
-                  </div>
+            {expandedLogistics[event.id] && (
+              <div className="mt-3 p-3 rounded bg-accent/5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs font-body">
+                <div>
+                  <p className="text-accent/70 font-semibold">Cups</p>
+                  <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedCups}</p>
                 </div>
-              )}
-            </div>
-          )}
+                <div>
+                  <p className="text-accent/70 font-semibold">Beans (lbs)</p>
+                  <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedBeansLbs}</p>
+                </div>
+                <div>
+                  <p className="text-accent/70 font-semibold">Milk (L)</p>
+                  <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedMilkLiters}</p>
+                </div>
+                <div>
+                  <p className="text-accent/70 font-semibold">Lids</p>
+                  <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedLids}</p>
+                </div>
+                <div>
+                  <p className="text-accent/70 font-semibold">Napkins</p>
+                  <p className="text-foreground font-bold">{expandedLogistics[event.id].predictedNapkins}</p>
+                </div>
+                <div>
+                  <p className="text-accent/70 font-semibold">Confidence</p>
+                  <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+                    expandedLogistics[event.id].confidence === "high" ? "bg-accent/20 text-accent" :
+                    expandedLogistics[event.id].confidence === "medium" ? "bg-accent/15 text-accent" :
+                    "bg-muted/30 text-muted-foreground"
+                  }`}>
+                    {expandedLogistics[event.id].confidence}
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     );
   };
@@ -279,11 +395,19 @@ export default function EventsPage() {
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap">
           <button
+            onClick={() => setShowVenueManager(v => !v)}
+            className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all"
+          >
+            <Building2 size={16} strokeWidth={2} />
+            <span className="hidden sm:inline">Venues ({venues.length})</span>
+          </button>
+          <button
             onClick={handleImportWix}
             disabled={importing}
             className="flex items-center gap-2 rounded-lg bg-muted/50 text-foreground px-3 sm:px-4 py-2.5 font-body font-semibold text-xs sm:text-sm hover:bg-muted/70 active:scale-95 transition-all disabled:opacity-50"
           >
-            <Download size={16} strokeWidth={2} /> Import from Wix
+            <Download size={16} strokeWidth={2} />
+            <span className="hidden sm:inline">Import Wix</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
@@ -300,12 +424,11 @@ export default function EventsPage() {
         </div>
       </div>
 
-      {/* Lead response time alert */}
       <LeadResponseAlert userId="default-user" />
 
-      {/* Quick lead form - always accessible */}
+      {/* Quick lead form */}
       {showLeadForm && (
-        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3">
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3 overflow-hidden">
           <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
           <form onSubmit={(e) => {
             e.preventDefault();
@@ -315,8 +438,10 @@ export default function EventsPage() {
             }
             const event = createEvent({
               name: form.name.trim(),
-              eventType: "popup",
-              dateStart: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+              eventType: form.eventType,
+              dateStart: form.dateStart
+                ? new Date(form.dateStart).toISOString()
+                : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim() || "TBD",
               preOrders: 0,
               status: "inquiry",
@@ -331,45 +456,54 @@ export default function EventsPage() {
           }} className="space-y-3">
             <input
               className={input}
-              placeholder="Lead name or company *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
+              placeholder="Location"
+              value={form.location}
+              onChange={e => setForm({ ...form, location: e.target.value })}
               autoFocus
             />
             <input
               className={input}
-              placeholder="Phone (optional)"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+              placeholder="Name"
+              value={form.name}
+              onChange={e => setForm({ ...form, name: e.target.value })}
             />
             <input
               className={input}
-              placeholder="Location (optional)"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
+              placeholder="Phone"
+              value={form.contactPhone}
+              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
             />
+            <div className="space-y-1 overflow-hidden">
+              <label className="block text-xs font-body font-semibold text-foreground">Date</label>
+              <input
+                className={input + " max-w-full"}
+                type="date"
+                value={form.dateStart}
+                onChange={e => setForm({ ...form, dateStart: e.target.value })}
+                style={{ WebkitAppearance: "none", maxWidth: "100%" }}
+              />
+            </div>
+            <select
+              className={input}
+              value={form.eventType}
+              onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+            >
+              {Object.entries(EVENT_TYPE_LABELS).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
             <textarea
               className={input}
-              placeholder="Notes (optional)"
+              placeholder="Notes"
               rows={2}
               value={form.notes}
               onChange={e => setForm({ ...form, notes: e.target.value })}
             />
             <div className="flex gap-2">
-              <button
-                type="submit"
-                className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-              >
+              <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">
                 Add Lead
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowLeadForm(false);
-                  setForm(EMPTY_FORM);
-                }}
-                className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
-              >
+              <button type="button" onClick={() => { setShowLeadForm(false); setForm(EMPTY_FORM); }} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">
                 Cancel
               </button>
             </div>
@@ -377,111 +511,39 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Create form */}
+      {/* Create event form */}
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input
-              className={input}
-              placeholder="Event name *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              autoFocus
-            />
-            <select
-              className={input}
-              value={form.eventType}
-              onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
-            >
+            <input className={input} placeholder="Event name *" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus />
+            <select className={input} value={form.eventType} onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}>
               {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
             </select>
-            <select
-              className={input}
-              value={form.status}
-              onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}
-            >
+            <select className={input} value={form.status} onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}>
               <option value="inquiry">📝 Lead (Inquiry)</option>
               <option value="confirmed">✓ Confirmed</option>
               <option value="completed">✓✓ Completed</option>
               <option value="cancelled">✗ Cancelled</option>
             </select>
-            <input
-              className={input}
-              type="datetime-local"
-              value={form.dateStart}
-              onChange={e => setForm({ ...form, dateStart: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Location"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
-            <input
-              className={input}
-              type="number"
-              min={0}
-              placeholder="Pre-orders (drinks)"
-              value={form.preOrders || ""}
-              onChange={e => {
-                const num = parseInt(e.target.value, 10);
-                setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
-              }}
-            />
-            <input
-              className={input}
-              type="number"
-              min={0}
-              placeholder="Estimated revenue ($)"
-              value={form.estimatedRevenue || ""}
-              onChange={e => {
-                const num = parseInt(e.target.value, 10);
-                setForm({ ...form, estimatedRevenue: isNaN(num) ? 0 : Math.max(0, num) });
-              }}
-            />
-            <input
-              className={input}
-              placeholder="Contact name"
-              value={form.contactName}
-              onChange={e => setForm({ ...form, contactName: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Contact phone"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-            />
+            <input className={input} type="datetime-local" value={form.dateStart} onChange={e => setForm({ ...form, dateStart: e.target.value })} />
+            <input className={input} placeholder="Location" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+            <input className={input} type="number" min={0} placeholder="Pre-orders (drinks)" value={form.preOrders || ""} onChange={e => { const n = parseInt(e.target.value, 10); setForm({ ...form, preOrders: isNaN(n) ? 0 : Math.max(0, n) }); }} />
+            <input className={input} type="number" min={0} placeholder="Est. revenue ($)" value={form.estimatedRevenue || ""} onChange={e => { const n = parseInt(e.target.value, 10); setForm({ ...form, estimatedRevenue: isNaN(n) ? 0 : Math.max(0, n) }); }} />
+            <input className={input} placeholder="Contact name" value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} />
+            <input className={input} placeholder="Contact phone" value={form.contactPhone} onChange={e => setForm({ ...form, contactPhone: e.target.value })} />
           </div>
-          <textarea
-            className={input}
-            placeholder="Notes"
-            rows={2}
-            value={form.notes}
-            onChange={e => setForm({ ...form, notes: e.target.value })}
-          />
+          <textarea className={input} placeholder="Notes" rows={2} value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} />
           <div className="flex gap-3">
-            <button
-              type="submit"
-              className="rounded-lg bg-primary text-primary-foreground px-6 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
-            >
-              Create
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowForm(false)}
-              className="rounded-lg bg-muted/50 px-6 py-2.5 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors"
-            >
-              Cancel
-            </button>
+            <button type="submit" className="rounded-lg bg-primary text-primary-foreground px-6 py-2.5 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Create</button>
+            <button type="button" onClick={() => setShowForm(false)} className="rounded-lg bg-muted/50 px-6 py-2.5 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
           </div>
         </form>
       )}
 
       {/* Event list with session history sidebar */}
       <div className="grid lg:grid-cols-[1fr_320px] gap-6">
-        {/* Main event list */}
         <div className="space-y-6">
           {/* Filter buttons */}
           <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-1 -mx-4 sm:-mx-0 px-4 sm:px-0">
@@ -506,13 +568,11 @@ export default function EventsPage() {
             ))}
           </div>
 
-          {/* Unified event+lead list */}
           <div className="space-y-4">
             {filter === "all" && events.length > 0 && (
               <div className="space-y-4">
-                {events
+                {[...events]
                   .sort((a, b) => {
-                    // Sort by: leads first, then upcoming, then past
                     const aIsLead = a.status === "inquiry" ? 0 : 1;
                     const bIsLead = b.status === "inquiry" ? 0 : 1;
                     if (aIsLead !== bIsLead) return aIsLead - bIsLead;
@@ -523,21 +583,15 @@ export default function EventsPage() {
             )}
 
             {filter === "upcoming" && upcoming.length > 0 && (
-              <div className="space-y-4">
-                {upcoming.map(e => renderEvent(e))}
-              </div>
+              <div className="space-y-4">{upcoming.map(e => renderEvent(e))}</div>
             )}
 
             {filter === "leads" && pendingLeads.length > 0 && (
-              <div className="space-y-4">
-                {pendingLeads.map(e => renderEvent(e))}
-              </div>
+              <div className="space-y-4">{pendingLeads.map(e => renderEvent(e))}</div>
             )}
 
             {filter === "past" && past.length > 0 && (
-              <div className="space-y-4">
-                {past.map(e => renderEvent(e))}
-              </div>
+              <div className="space-y-4">{past.map(e => renderEvent(e))}</div>
             )}
 
             {((filter === "all" && events.length === 0) ||
@@ -547,8 +601,8 @@ export default function EventsPage() {
               <div className="rounded-lg bg-muted/20 p-12 text-center">
                 <TulipLogo size={44} className="mx-auto mb-3" />
                 <p className="font-body text-muted-foreground">
-                  {filter === "all" && "No events yet — create one or tap 'Import from Wix'!"}
-                  {filter === "upcoming" && "No upcoming events — create one or tap 'Import from Wix'!"}
+                  {filter === "all" && "No events yet — create one or tap 'Import Wix'!"}
+                  {filter === "upcoming" && "No upcoming events — create one or tap 'Import Wix'!"}
                   {filter === "leads" && "No pending leads. When your booking form receives requests, they'll appear here."}
                   {filter === "past" && "No past events yet."}
                 </p>
@@ -612,6 +666,86 @@ export default function EventsPage() {
           )}
         </div>
       </div>
+
+      {/* Venue Manager */}
+      {showVenueManager && (
+        <section className="space-y-4 border-t border-border/50 pt-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 size={18} className="text-accent" />
+              <h2 className="font-display text-lg text-foreground">Venue Address Book ({venues.length})</h2>
+            </div>
+            <button
+              onClick={() => { setShowAddVenue(v => !v); setVenueForm(EMPTY_VENUE_FORM); }}
+              className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+            >
+              <Plus size={14} /> Add Venue
+            </button>
+          </div>
+
+          {showAddVenue && (
+            <form onSubmit={handleAddVenue} className="rounded-lg bg-muted/20 p-4 space-y-3">
+              <p className="text-xs font-body font-semibold text-muted-foreground">Required for Wix publish</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className={input} placeholder="Venue name *" value={venueForm.name} onChange={e => setVenueForm({ ...venueForm, name: e.target.value })} autoFocus />
+                <select className={input} value={venueForm.defaultCategory} onChange={e => setVenueForm({ ...venueForm, defaultCategory: e.target.value as Venue["defaultCategory"] })}>
+                  <option value="Pop Up">Pop Up</option>
+                  <option value="Grab & Go">Grab & Go</option>
+                  <option value="Market">Market</option>
+                  <option value="Private Event">Private Event</option>
+                </select>
+                <input className={input} placeholder="Formatted address * (e.g. 711 E Morehead St, Charlotte, NC 28203, USA)" value={venueForm.formattedAddress} onChange={e => setVenueForm({ ...venueForm, formattedAddress: e.target.value })} />
+                <div className="flex gap-2">
+                  <input className={input} placeholder="Street #" value={venueForm.streetNumber} onChange={e => setVenueForm({ ...venueForm, streetNumber: e.target.value })} />
+                  <input className={input} placeholder="Street name" value={venueForm.streetName} onChange={e => setVenueForm({ ...venueForm, streetName: e.target.value })} />
+                </div>
+                <div className="flex gap-2">
+                  <input className={input} placeholder="City" value={venueForm.city} onChange={e => setVenueForm({ ...venueForm, city: e.target.value })} />
+                  <input className={input} placeholder="State" value={venueForm.state} maxLength={2} onChange={e => setVenueForm({ ...venueForm, state: e.target.value })} />
+                  <input className={input} placeholder="ZIP" value={venueForm.zip} onChange={e => setVenueForm({ ...venueForm, zip: e.target.value })} />
+                </div>
+                <div className="flex gap-2">
+                  <input className={input} placeholder="Latitude *" type="number" step="any" value={venueForm.lat} onChange={e => setVenueForm({ ...venueForm, lat: e.target.value })} />
+                  <input className={input} placeholder="Longitude *" type="number" step="any" value={venueForm.lng} onChange={e => setVenueForm({ ...venueForm, lng: e.target.value })} />
+                </div>
+                <input className={input} placeholder="Logo URL * (Wix static URL)" value={venueForm.logoUrl} onChange={e => setVenueForm({ ...venueForm, logoUrl: e.target.value })} />
+                <input className={input} type="time" value={venueForm.defaultStartTime} onChange={e => setVenueForm({ ...venueForm, defaultStartTime: e.target.value })} />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Save Venue</button>
+                <button type="button" onClick={() => setShowAddVenue(false)} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
+              </div>
+            </form>
+          )}
+
+          {venues.length === 0 ? (
+            <p className="text-sm font-body text-muted-foreground">No venues yet. Add one above or they'll load automatically on first visit.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {venues.map(v => (
+                <div key={v.id} className="rounded-lg bg-muted/20 p-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-body font-semibold text-sm text-foreground truncate">{v.name}</p>
+                    <p className="font-body text-xs text-muted-foreground truncate">{v.formattedAddress}</p>
+                    <p className="font-body text-[10px] text-muted-foreground/70 mt-0.5">{v.defaultCategory} · {v.defaultStartTime}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      deleteVenue(v.id);
+                      setVenues(loadVenues());
+                      toast(`Removed "${v.name}"`);
+                    }}
+                    className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label={`Remove ${v.name}`}
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

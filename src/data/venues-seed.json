@@ -1,0 +1,134 @@
+[
+  {
+    "name": "Hanover Dilworth",
+    "street_number": "711", "street_name": "East Morehead Street", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "711 E Morehead St, Charlotte, NC 28203, USA",
+    "lat": 35.2114153, "lng": -80.8424211,
+    "default_start_time": "09:00", "default_category": "Grab & Go",
+    "logo_media_id": "60a8ee_5d859238e7564a659b45e29ea495ca0c~mv2.jpeg",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_5d859238e7564a659b45e29ea495ca0c~mv2.jpeg",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Bradham at New Bern",
+    "street_number": "145", "street_name": "New Bern Street", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28209",
+    "formatted_address": "145 New Bern St, Charlotte, NC 28209, USA",
+    "lat": 35.1993496, "lng": -80.8691998,
+    "default_start_time": "07:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_96307611bb504e1390944b6158a4b0d7~mv2.jpeg",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_96307611bb504e1390944b6158a4b0d7~mv2.jpeg",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Urban Med Spa",
+    "street_number": "8535", "street_name": "Cliff Cameron Drive", "apt": "Ste 116",
+    "city": "Charlotte", "state": "NC", "zip": "28269",
+    "formatted_address": "8535 Cliff Cameron Dr Ste 116, Charlotte, NC 28269, USA",
+    "lat": 35.3223493, "lng": -80.781313,
+    "default_start_time": "09:00", "default_category": "Market",
+    "logo_media_id": "60a8ee_00172ce9104042bf87c4db3693909354~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_00172ce9104042bf87c4db3693909354~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "The Prospect",
+    "street_number": "1115", "street_name": "South Mint Street", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "1115 S Mint St, Charlotte, NC 28203, USA",
+    "lat": 35.2217073, "lng": -80.8567299,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_3de0406ff218403fbf6852179abc9469~mv2.jpeg",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_3de0406ff218403fbf6852179abc9469~mv2.jpeg",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Yards at NoDa",
+    "street_number": "703", "street_name": "Rollerton Road", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28205",
+    "formatted_address": "703 Rollerton Rd, Charlotte, NC 28205, USA",
+    "lat": 35.2472434, "lng": -80.8093975,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_10bc5cc75a1443a99f0a23c708d2943c~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_10bc5cc75a1443a99f0a23c708d2943c~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Carolinas Medical Center",
+    "street_number": "1000", "street_name": "Blythe Boulevard", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "1000 Blythe Blvd, Charlotte, NC 28203, USA",
+    "lat": 35.202401, "lng": -80.8375191,
+    "default_start_time": "09:00", "default_category": "Grab & Go",
+    "logo_media_id": "60a8ee_52cf1d919f784b01889f57c94b5f21c2~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_52cf1d919f784b01889f57c94b5f21c2~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Presley Uptown",
+    "street_number": "900", "street_name": "East Brooklyn Village Avenue", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28204",
+    "formatted_address": "900 E Brooklyn Village Ave, Charlotte, NC 28204, USA",
+    "lat": 35.218661, "lng": -80.8429929,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_abc166bc4711475da1663a8f0e79b7c1~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_abc166bc4711475da1663a8f0e79b7c1~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "The Campbell",
+    "street_number": "2025", "street_name": "Cleveland Avenue", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "2025 Cleveland Ave, Charlotte, NC 28203, USA",
+    "lat": 35.2068, "lng": -80.854,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_bdde1dd3a3c746f0976d874a39b0bab9~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_bdde1dd3a3c746f0976d874a39b0bab9~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "The Rowe",
+    "street_number": "1711", "street_name": "Commonwealth Avenue", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28205",
+    "formatted_address": "1711 Commonwealth Ave, Charlotte, NC 28205, USA",
+    "lat": 35.2197104, "lng": -80.814828,
+    "default_start_time": "09:00", "default_category": "Grab & Go",
+    "logo_media_id": "60a8ee_05789edc3dc942a6a9cebe2f94ee4bc7~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_05789edc3dc942a6a9cebe2f94ee4bc7~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Broadstone Ayrsley",
+    "street_number": "2200", "street_name": "Silver Crescent Drive", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28273",
+    "formatted_address": "2200 Silver Crescent Dr, Charlotte, NC 28273, USA",
+    "lat": 35.1334172, "lng": -80.9311749,
+    "default_start_time": "09:00", "default_category": "Grab & Go",
+    "logo_media_id": "60a8ee_71158aaa06a149ddab77ddb7be3399bd~mv2.png",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_71158aaa06a149ddab77ddb7be3399bd~mv2.png",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "Vera at Savona",
+    "street_number": "725", "street_name": "Savona Mill Lane", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28208",
+    "formatted_address": "725 Savona Mill Ln, Charlotte, NC 28208, USA",
+    "lat": 35.2432369, "lng": -80.8677639,
+    "default_start_time": "09:00", "default_category": "Pop Up",
+    "logo_media_id": "60a8ee_0c29bfaf7712431da75e6864bbb275a0~mv2.jpeg",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_0c29bfaf7712431da75e6864bbb275a0~mv2.jpeg",
+    "logo_w": 1200, "logo_h": 630
+  },
+  {
+    "name": "704 At The Quarter",
+    "street_number": "704", "street_name": "West Tremont Avenue", "apt": "",
+    "city": "Charlotte", "state": "NC", "zip": "28203",
+    "formatted_address": "704 W Tremont Ave, Charlotte, NC 28203, USA",
+    "lat": 35.2112278, "lng": -80.867231,
+    "default_start_time": "09:00", "default_category": "Grab & Go",
+    "logo_media_id": "60a8ee_2e58a0b370aa4c60aa74b0d411349bfd~mv2.jpg",
+    "logo_url": "https://static.wixstatic.com/media/60a8ee_2e58a0b370aa4c60aa74b0d411349bfd~mv2.jpg",
+    "logo_w": 1200, "logo_h": 630
+  }
+]
