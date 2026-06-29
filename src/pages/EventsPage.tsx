@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
@@ -101,6 +101,15 @@ export default function EventsPage() {
   const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
   const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
   const [showAddVenue, setShowAddVenue] = useState(false);
+  const venueManagerRef = useRef<HTMLElement | null>(null);
+
+  // When the Venue Manager opens, scroll it into view so it's obvious it opened
+  // (the panel lives below the event list).
+  useEffect(() => {
+    if (showVenueManager) {
+      venueManagerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [showVenueManager]);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -677,20 +686,23 @@ export default function EventsPage() {
           <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
           <form onSubmit={(e) => {
             e.preventDefault();
-            if (!form.name.trim()) {
-              toast.error("Lead name is required");
+            if (!form.location.trim()) {
+              toast.error("Location (the lead) is required");
               return;
             }
             const event = createEvent({
-              name: form.name.trim(),
+              // The location/property IS the lead's name (card title + venue match);
+              // the "Name" field is the contact person at that property.
+              name: form.location.trim(),
               eventType: form.eventType,
               dateStart: form.dateStart
-                ? new Date(form.dateStart).toISOString()
+                ? new Date(`${form.dateStart}T12:00:00`).toISOString()
                 : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              location: form.location.trim() || "TBD",
+              location: form.location.trim(),
               preOrders: 0,
               status: "inquiry",
               depositStatus: "pending",
+              contactName: form.name.trim() || undefined,
               contactEmail: form.contactEmail.trim() || undefined,
               contactPhone: form.contactPhone.trim() || undefined,
               notes: form.notes.trim() || undefined,
@@ -704,14 +716,20 @@ export default function EventsPage() {
           }} className="space-y-3">
             <input
               className={input}
-              placeholder="Location"
+              placeholder="Location (the lead/property)"
+              list="venue-options"
               value={form.location}
               onChange={e => setForm({ ...form, location: e.target.value })}
               autoFocus
             />
+            <datalist id="venue-options">
+              {venues.map(v => (
+                <option key={v.id} value={v.name} />
+              ))}
+            </datalist>
             <input
               className={input}
-              placeholder="Name"
+              placeholder="Name (contact at the property)"
               value={form.name}
               onChange={e => setForm({ ...form, name: e.target.value })}
             />
@@ -982,7 +1000,7 @@ export default function EventsPage() {
 
       {/* Venue Manager */}
       {showVenueManager && (
-        <section className="space-y-4 border-t border-border/50 pt-8">
+        <section ref={venueManagerRef} className="space-y-4 border-t border-border/50 pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Building2 size={18} className="text-accent" />
