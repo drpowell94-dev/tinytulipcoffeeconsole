@@ -144,23 +144,26 @@ export default function EventsPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.dateStart) {
-      toast.error("Event name and date are required");
+    if (!form.location.trim()) {
+      toast.error("Location (the event) is required");
       return;
     }
     const event = createEvent({
-      name: form.name.trim(),
+      // Same mapping as the lead flow: the location/property is the event's
+      // name (title + venue match); the Name field is the contact person.
+      name: form.location.trim(),
       eventType: form.eventType,
-      dateStart: new Date(form.dateStart).toISOString(),
-      location: form.location.trim() || "TBD",
-      preOrders: form.preOrders,
-      estimatedRevenue: form.estimatedRevenue || undefined,
+      dateStart: form.dateStart
+        ? new Date(`${form.dateStart}T12:00:00`).toISOString()
+        : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      location: form.location.trim(),
+      preOrders: 0,
       status: form.status,
       depositStatus: "pending",
-      contactName: form.contactName.trim() || undefined,
+      contactName: form.name.trim() || undefined,
+      contactEmail: form.contactEmail.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
-      propertyId: form.propertyId || undefined,
     });
     if (form.status === "confirmed") {
       createChecklistForEvent(event.id, event.name, event.eventType);
@@ -792,99 +795,75 @@ export default function EventsPage() {
         </div>
       )}
 
-      {/* Create form */}
+      {/* Create form — mirrors the lead flow */}
       {showForm && (
-        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-3 overflow-hidden">
+          <h3 className="font-body font-semibold text-foreground">New Event</h3>
+          <input
+            className={input}
+            placeholder="Location (the event/property)"
+            list="venue-options-event"
+            value={form.location}
+            onChange={e => setForm({ ...form, location: e.target.value })}
+            autoFocus
+          />
+          <datalist id="venue-options-event">
+            {venues.map(v => (
+              <option key={v.id} value={v.name} />
+            ))}
+          </datalist>
+          <input
+            className={input}
+            placeholder="Name (contact at the property)"
+            value={form.name}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+          />
+          <input
+            className={input}
+            placeholder="Email"
+            type="email"
+            value={form.contactEmail}
+            onChange={e => setForm({ ...form, contactEmail: e.target.value })}
+          />
+          <input
+            className={input}
+            placeholder="Phone"
+            value={form.contactPhone}
+            onChange={e => setForm({ ...form, contactPhone: e.target.value })}
+          />
+          <div className="space-y-1 overflow-hidden">
+            <label className="block text-xs font-body font-semibold text-foreground">Date</label>
             <input
-              className={input}
-              placeholder="Event name *"
-              value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              autoFocus
-            />
-            <select
-              className={input}
-              value={form.eventType}
-              onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
-            >
-              {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>{label}</option>
-              ))}
-            </select>
-            <select
-              className={input}
-              value={form.status}
-              onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}
-            >
-              <option value="inquiry">📝 Lead (Inquiry)</option>
-              <option value="confirmed">✓ Confirmed</option>
-              <option value="completed">✓✓ Completed</option>
-              <option value="cancelled">✗ Cancelled</option>
-            </select>
-            <input
-              className={input}
-              type="datetime-local"
+              className={input + " max-w-full"}
+              type="date"
               value={form.dateStart}
               onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              style={{ WebkitAppearance: "none", maxWidth: "100%" }}
             />
-            <input
-              className={input}
-              placeholder="Location"
-              value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
-            />
-            <input
-              className={input}
-              type="number"
-              min={0}
-              placeholder="Pre-orders (drinks)"
-              value={form.preOrders || ""}
-              onChange={e => {
-                const num = parseInt(e.target.value, 10);
-                setForm({ ...form, preOrders: isNaN(num) ? 0 : Math.max(0, num) });
-              }}
-            />
-            <input
-              className={input}
-              type="number"
-              min={0}
-              placeholder="Estimated revenue ($)"
-              value={form.estimatedRevenue || ""}
-              onChange={e => {
-                const num = parseInt(e.target.value, 10);
-                setForm({ ...form, estimatedRevenue: isNaN(num) ? 0 : Math.max(0, num) });
-              }}
-            />
-            <input
-              className={input}
-              placeholder="Contact name"
-              value={form.contactName}
-              onChange={e => setForm({ ...form, contactName: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Contact phone"
-              value={form.contactPhone}
-              onChange={e => setForm({ ...form, contactPhone: e.target.value })}
-            />
-            <select
-              className={input}
-              value={form.propertyId}
-              onChange={e => setForm({ ...form, propertyId: e.target.value })}
-            >
-              <option value="">No property</option>
-              {getCharlotteApartments().map(property => (
-                <option key={property.id} value={property.id}>
-                  {property.name}
-                </option>
-              ))}
-            </select>
           </div>
+          <select
+            className={input}
+            value={form.status}
+            onChange={e => setForm({ ...form, status: e.target.value as EventStatus })}
+          >
+            <option value="inquiry">📝 Lead (Inquiry)</option>
+            <option value="confirmed">✓ Confirmed</option>
+            <option value="completed">✓✓ Completed</option>
+            <option value="cancelled">✗ Cancelled</option>
+          </select>
+          <select
+            className={input}
+            value={form.eventType}
+            onChange={e => setForm({ ...form, eventType: e.target.value as EventType })}
+          >
+            {Object.entries(EVENT_TYPE_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
           <textarea
             className={input}
             placeholder="Notes"
-            rows={2}
+            rows={3}
             value={form.notes}
             onChange={e => setForm({ ...form, notes: e.target.value })}
           />
