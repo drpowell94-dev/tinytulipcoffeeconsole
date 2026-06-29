@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -23,6 +23,34 @@ import { savePost } from "@/lib/contentStore";
 import { generateEventRecap } from "@/lib/blogWriter";
 import { DrinkIcon, TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn, formatCurrency, formatDate, daysUntil } from "@/lib/utils";
+import {
+  loadVenues,
+  findVenueByName,
+  upsertVenue,
+  deleteVenue,
+  type Venue,
+} from "@/lib/venueStore";
+import { publishToWix } from "@/services/wixPublishService";
+import { uploadLogoToWix } from "@/services/wixUploadService";
+
+const EMPTY_VENUE_FORM = {
+  name: "",
+  streetNumber: "",
+  streetName: "",
+  apt: "",
+  city: "Charlotte",
+  state: "NC",
+  zip: "",
+  formattedAddress: "",
+  lat: "",
+  lng: "",
+  defaultStartTime: "09:00",
+  defaultCategory: "Pop Up" as Venue["defaultCategory"],
+  logoUrl: "",
+  logoMediaId: "",
+  logoW: 1200,
+  logoH: 630,
+};
 
 const STATUS_STYLES: Record<EventStatus, string> = {
   inquiry: "bg-muted/50 text-foreground",
@@ -66,6 +94,13 @@ export default function EventsPage() {
   const [showLeadForm, setShowLeadForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [converting, setConverting] = useState<Record<string, boolean>>({});
+  const [publishNeedsLogo, setPublishNeedsLogo] = useState<Record<string, boolean>>({});
+  const [uploadingLogo, setUploadingLogo] = useState<Record<string, boolean>>({});
+  const [showVenueManager, setShowVenueManager] = useState(false);
+  const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
+  const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
+  const [showAddVenue, setShowAddVenue] = useState(false);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
@@ -153,6 +188,120 @@ export default function EventsPage() {
   const handleDeclineLead = (lead: TulipEvent) => {
     handleDelete(lead);
     toast(`Declined lead: "${lead.name}"`);
+  };
+
+  // Push the event payload to Wix and store the returned ID. Re-publishing an
+  // event that already has a wixEventId sends a PATCH ("Update Wix").
+  const doPublish = async (event: TulipEvent, venue: Venue) => {
+    setConverting(prev => ({ ...prev, [event.id]: true }));
+    try {
+      const { wixEventId } = await publishToWix({
+        event: {
+          id: event.id,
+          name: event.name,
+          eventType: event.eventType,
+          dateStart: event.dateStart,
+          notes: event.notes,
+          wixEventId: event.wixEventId,
+        },
+        venue,
+      });
+      updateEvent(event.id, { wixEventId });
+      setEvents(loadEvents());
+      toast.success(event.wixEventId ? `"${event.name}" updated on Wix` : `"${event.name}" published to Wix!`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Wix publish failed: ${message}`);
+    } finally {
+      setConverting(prev => ({ ...prev, [event.id]: false }));
+    }
+  };
+
+  // "Publish to Wix" entry point. Resolves the venue, then:
+  //  - no venue → open the venue manager prefilled
+  //  - venue missing a logo → reveal an inline photo picker (upload then publish)
+  //  - venue ready → publish straight away
+  const handlePublishToWix = (event: TulipEvent) => {
+    const venue = findVenueByName(event.location);
+    if (!venue) {
+      toast.error(`No venue found for "${event.location}". Add it below to publish.`);
+      setShowVenueManager(true);
+      setVenueForm(f => ({ ...f, name: event.location }));
+      setShowAddVenue(true);
+      return;
+    }
+    if (!venue.logoUrl) {
+      toast.info(`"${venue.name}" has no photo yet — add one to publish.`);
+      setPublishNeedsLogo(prev => ({ ...prev, [event.id]: true }));
+      return;
+    }
+    doPublish(event, venue);
+  };
+
+  // Photo picked for a venue with no logo: upload to Wix, save the URL onto the
+  // venue, then publish the event in the same step.
+  const handleLogoPicked = async (event: TulipEvent, file: File) => {
+    const venue = findVenueByName(event.location);
+    if (!venue) {
+      toast.error("Venue disappeared — re-add it below.");
+      return;
+    }
+    setUploadingLogo(prev => ({ ...prev, [event.id]: true }));
+    try {
+      const logo = await uploadLogoToWix(file);
+      const updatedVenue = upsertVenue({ ...venue, ...logo });
+      setVenues(loadVenues());
+      setPublishNeedsLogo(prev => ({ ...prev, [event.id]: false }));
+      toast.success(`Photo uploaded for "${venue.name}"`);
+      await doPublish(event, updatedVenue);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast.error(`Upload failed: ${message}`);
+    } finally {
+      setUploadingLogo(prev => ({ ...prev, [event.id]: false }));
+    }
+  };
+
+  const handleAddVenue = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!venueForm.name.trim() || !venueForm.formattedAddress.trim()) {
+      toast.error("Venue name and address are required");
+      return;
+    }
+    if (!venueForm.lat || !venueForm.lng) {
+      toast.error("Lat/lng are required for Wix geocoding");
+      return;
+    }
+
+    // Logo is optional — if blank, you'll be prompted to upload at publish time.
+    let mediaId = venueForm.logoMediaId.trim();
+    if (!mediaId && venueForm.logoUrl.includes("wixstatic.com/media/")) {
+      mediaId = venueForm.logoUrl.split("/media/")[1]?.split("?")[0] ?? "";
+    }
+
+    const venue = upsertVenue({
+      name: venueForm.name.trim(),
+      streetNumber: venueForm.streetNumber.trim(),
+      streetName: venueForm.streetName.trim(),
+      apt: venueForm.apt.trim(),
+      city: venueForm.city.trim(),
+      state: venueForm.state.trim(),
+      zip: venueForm.zip.trim(),
+      formattedAddress: venueForm.formattedAddress.trim(),
+      lat: parseFloat(venueForm.lat),
+      lng: parseFloat(venueForm.lng),
+      defaultStartTime: venueForm.defaultStartTime,
+      defaultCategory: venueForm.defaultCategory,
+      logoUrl: venueForm.logoUrl.trim(),
+      logoMediaId: mediaId,
+      logoW: venueForm.logoW,
+      logoH: venueForm.logoH,
+    });
+
+    setVenues(loadVenues());
+    setVenueForm(EMPTY_VENUE_FORM);
+    setShowAddVenue(false);
+    toast.success(`Venue "${venue.name}" saved`);
   };
 
   const pendingLeads = events.filter(e => e.status === "inquiry");
@@ -262,6 +411,11 @@ export default function EventsPage() {
                 <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                   {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
                 </span>
+                {event.wixEventId && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-purple-500/10 text-purple-600">
+                    Wix ✓
+                  </span>
+                )}
                 {event.followUpDate && event.status === "inquiry" && days >= 0 && (
                   <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-blue-500/10 text-blue-600">
                     <Bell size={10} /> Follow-up {new Date(event.followUpDate).toLocaleDateString()}
@@ -333,6 +487,22 @@ export default function EventsPage() {
                     <span className="hidden sm:inline">Counter</span>
                   </Link>
                 )}
+                {event.status === "confirmed" && (
+                  <button
+                    onClick={() => handlePublishToWix(event)}
+                    disabled={converting[event.id] || uploadingLogo[event.id]}
+                    className="flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 text-white px-3 py-2 font-body font-semibold text-xs sm:text-sm hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-60"
+                  >
+                    {converting[event.id] ? (
+                      <Loader size={14} className="animate-spin" />
+                    ) : (
+                      <Upload size={14} strokeWidth={1.75} />
+                    )}
+                    <span className="hidden sm:inline">
+                      {converting[event.id] ? "Publishing…" : event.wixEventId ? "Update Wix" : "Publish to Wix"}
+                    </span>
+                  </button>
+                )}
                 <button
                   onClick={() => handleDelete(event)}
                   className="flex items-center justify-center gap-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors px-3 py-2 font-body font-semibold text-xs border border-border hover:border-destructive ml-auto"
@@ -344,6 +514,35 @@ export default function EventsPage() {
               </>
             )}
           </div>
+
+          {/* Inline photo picker — shown when publishing a venue with no logo */}
+          {publishNeedsLogo[event.id] && (
+            <div className="rounded-lg border border-dashed border-purple-400/50 bg-purple-500/5 p-3 space-y-2">
+              <p className="text-xs font-body text-foreground">
+                <strong>{event.location}</strong> needs a photo before it can go on Wix.
+                Pick an image — it uploads to your Wix Media and publishes the event.
+              </p>
+              <label className="flex items-center gap-2 cursor-pointer rounded-lg bg-purple-600 text-white px-3 py-2 font-body font-semibold text-xs w-fit hover:bg-purple-700 transition-colors">
+                {uploadingLogo[event.id] ? (
+                  <Loader size={14} className="animate-spin" />
+                ) : (
+                  <Upload size={14} />
+                )}
+                {uploadingLogo[event.id] ? "Uploading…" : "Choose photo & publish"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingLogo[event.id]}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    if (file) handleLogoPicked(event, file);
+                    e.target.value = "";
+                  }}
+                />
+              </label>
+            </div>
+          )}
         </div>
 
         {/* Predictive logistics section */}
@@ -433,6 +632,14 @@ export default function EventsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 sm:gap-3 shrink-0 flex-wrap justify-start sm:justify-end">
+          <button
+            onClick={() => setShowVenueManager(v => !v)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 hover:from-muted/70 hover:to-muted/50 text-foreground px-3 sm:px-4 py-2.5 sm:py-3 font-body font-semibold text-xs sm:text-sm active:scale-95 transition-all border border-border/30"
+          >
+            <Building2 size={16} strokeWidth={2} />
+            <span className="hidden sm:inline">Venues ({venues.length})</span>
+            <span className="sm:hidden">Venues</span>
+          </button>
           <button
             onClick={handleImportWix}
             disabled={importing}
@@ -772,6 +979,88 @@ export default function EventsPage() {
           </section>
         )}
       </div>
+
+      {/* Venue Manager */}
+      {showVenueManager && (
+        <section className="space-y-4 border-t border-border/50 pt-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Building2 size={18} className="text-accent" />
+              <h2 className="font-display text-lg text-foreground">Venue Address Book ({venues.length})</h2>
+            </div>
+            <button
+              onClick={() => { setShowAddVenue(v => !v); setVenueForm(EMPTY_VENUE_FORM); }}
+              className="flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+            >
+              <Plus size={14} /> Add Venue
+            </button>
+          </div>
+
+          {showAddVenue && (
+            <form onSubmit={handleAddVenue} className="rounded-lg bg-muted/20 p-4 space-y-3">
+              <p className="text-xs font-body font-semibold text-muted-foreground">Required for Wix publish</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input className={input} placeholder="Venue name *" value={venueForm.name} onChange={e => setVenueForm({ ...venueForm, name: e.target.value })} autoFocus />
+                <select className={input} value={venueForm.defaultCategory} onChange={e => setVenueForm({ ...venueForm, defaultCategory: e.target.value as Venue["defaultCategory"] })}>
+                  <option value="Pop Up">Pop Up</option>
+                  <option value="Grab & Go">Grab & Go</option>
+                  <option value="Market">Market</option>
+                  <option value="Private Event">Private Event</option>
+                </select>
+                <input className={input} placeholder="Formatted address * (e.g. 711 E Morehead St, Charlotte, NC 28203, USA)" value={venueForm.formattedAddress} onChange={e => setVenueForm({ ...venueForm, formattedAddress: e.target.value })} />
+                <div className="flex gap-2">
+                  <input className={input} placeholder="Street #" value={venueForm.streetNumber} onChange={e => setVenueForm({ ...venueForm, streetNumber: e.target.value })} />
+                  <input className={input} placeholder="Street name" value={venueForm.streetName} onChange={e => setVenueForm({ ...venueForm, streetName: e.target.value })} />
+                </div>
+                <div className="flex gap-2">
+                  <input className={input} placeholder="City" value={venueForm.city} onChange={e => setVenueForm({ ...venueForm, city: e.target.value })} />
+                  <input className={input} placeholder="State" value={venueForm.state} maxLength={2} onChange={e => setVenueForm({ ...venueForm, state: e.target.value })} />
+                  <input className={input} placeholder="ZIP" value={venueForm.zip} onChange={e => setVenueForm({ ...venueForm, zip: e.target.value })} />
+                </div>
+                <div className="flex gap-2">
+                  <input className={input} placeholder="Latitude *" type="number" step="any" value={venueForm.lat} onChange={e => setVenueForm({ ...venueForm, lat: e.target.value })} />
+                  <input className={input} placeholder="Longitude *" type="number" step="any" value={venueForm.lng} onChange={e => setVenueForm({ ...venueForm, lng: e.target.value })} />
+                </div>
+                <input className={input} placeholder="Logo URL (optional — or upload at publish time)" value={venueForm.logoUrl} onChange={e => setVenueForm({ ...venueForm, logoUrl: e.target.value })} />
+                <input className={input} type="time" value={venueForm.defaultStartTime} onChange={e => setVenueForm({ ...venueForm, defaultStartTime: e.target.value })} />
+              </div>
+              <div className="flex gap-2">
+                <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">Save Venue</button>
+                <button type="button" onClick={() => setShowAddVenue(false)} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
+              </div>
+            </form>
+          )}
+
+          {venues.length === 0 ? (
+            <p className="text-sm font-body text-muted-foreground">No venues yet. Add one above or they'll load automatically on first visit.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {venues.map(v => (
+                <div key={v.id} className="rounded-lg bg-muted/20 p-3 flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-body font-semibold text-sm text-foreground truncate">{v.name}</p>
+                    <p className="font-body text-xs text-muted-foreground truncate">{v.formattedAddress}</p>
+                    <p className="font-body text-[10px] text-muted-foreground/70 mt-0.5">
+                      {v.defaultCategory} · {v.defaultStartTime}{v.logoUrl ? "" : " · no photo"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      deleteVenue(v.id);
+                      setVenues(loadVenues());
+                      toast(`Removed "${v.name}"`);
+                    }}
+                    className="shrink-0 p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    aria-label={`Remove ${v.name}`}
+                  >
+                    <Trash2 size={13} strokeWidth={1.5} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </div>
   );
 }

@@ -13,10 +13,12 @@ import PropertiesPage from "@/pages/PropertiesPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { importBundledWixEvents } from "@/services/eventService";
 import { seedCharlotteProperties } from "@/lib/seedData";
+import { seedVenues } from "@/lib/venueStore";
 
 export default function App() {
   useEffect(() => {
     seedCharlotteProperties();
+    seedVenues();
 
     const initialized = localStorage.getItem("tt-bundled-events-imported");
     if (!initialized) {
