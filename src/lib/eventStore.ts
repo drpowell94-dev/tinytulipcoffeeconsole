@@ -11,6 +11,8 @@ export interface TulipEvent {
   dateStart: string; // ISO
   dateEnd?: string; // ISO
   location: string;
+  /** Street address of the location (pulled from the venue address book). */
+  address?: string;
   guestCount?: number;
   preOrders: number;
   estimatedRevenue?: number;

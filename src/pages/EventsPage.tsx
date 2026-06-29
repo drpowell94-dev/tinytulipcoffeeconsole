@@ -90,6 +90,7 @@ const EMPTY_FORM = {
   dateStart: "",
   startTime: "09:00",
   location: "",
+  address: "",
   preOrders: 30,
   estimatedRevenue: 0,
   contactName: "",
@@ -184,6 +185,7 @@ export default function EventsPage() {
         ? new Date(`${form.dateStart}T${form.startTime || "09:00"}:00`).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       location: form.location.trim(),
+      address: form.address.trim() || undefined,
       preOrders: form.preOrders,
       status: form.status,
       depositStatus: "pending",
@@ -214,7 +216,11 @@ export default function EventsPage() {
   // venue, prefill the event start time with that venue's default.
   const handleLocationChange = (value: string) => {
     const venue = findVenueByName(value);
-    setForm(f => ({ ...f, location: value, ...(venue ? { startTime: venue.defaultStartTime } : {}) }));
+    setForm(f => ({
+      ...f,
+      location: value,
+      ...(venue ? { startTime: venue.defaultStartTime, address: venue.formattedAddress } : {}),
+    }));
   };
 
   // Property dropdown: selecting a venue autofills all the relevant fields
@@ -226,6 +232,7 @@ export default function EventsPage() {
     setForm(f => ({
       ...f,
       location: venue.name,
+      address: venue.formattedAddress,
       eventType,
       startTime: venue.defaultStartTime,
       preOrders: PREORDER_DEFAULTS[eventType],
@@ -410,6 +417,7 @@ export default function EventsPage() {
         ? new Date(event.dateStart).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })
         : "09:00",
       location: event.location,
+      address: event.address || "",
       preOrders: event.preOrders,
       estimatedRevenue: event.estimatedRevenue || 0,
       contactName: event.contactName || "",
@@ -435,6 +443,7 @@ export default function EventsPage() {
       eventType: editForm.eventType,
       dateStart: editForm.dateStart ? new Date(editForm.dateStart).toISOString() : undefined,
       location: editForm.location.trim() || "TBD",
+      address: editForm.address.trim() || undefined,
       preOrders: editForm.preOrders,
       estimatedRevenue: editForm.estimatedRevenue || undefined,
       status: editForm.status,
@@ -470,7 +479,23 @@ export default function EventsPage() {
               <option value="completed">✓✓ Completed</option>
               <option value="cancelled">✗ Cancelled</option>
             </select>
-            <input className={input} placeholder="Location" value={editForm.location} onChange={e => setEditForm({ ...editForm, location: e.target.value })} autoFocus />
+            <input
+              className={input}
+              placeholder="Location"
+              list="venue-options-edit"
+              value={editForm.location}
+              onChange={e => {
+                const venue = findVenueByName(e.target.value);
+                setEditForm({ ...editForm, location: e.target.value, ...(venue ? { address: venue.formattedAddress } : {}) });
+              }}
+              autoFocus
+            />
+            <datalist id="venue-options-edit">
+              {venues.map(v => (
+                <option key={v.id} value={v.name} />
+              ))}
+            </datalist>
+            <input className={input} placeholder="Address (autofills from the property)" value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} />
             <input className={input} placeholder="Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
             <input className={input} placeholder="Email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
             <input className={input} placeholder="Phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
@@ -531,6 +556,9 @@ export default function EventsPage() {
                   {event.guestCount && ` • ${event.guestCount} guests`}
                   {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
                 </span>
+                {event.address && (
+                  <span className="block text-muted-foreground/70 pl-4">{event.address}</span>
+                )}
                 {event.propertyId && (
                   <span className="block text-accent/70">
                     📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
@@ -787,6 +815,7 @@ export default function EventsPage() {
                 ? new Date(`${form.dateStart}T${form.startTime || "09:00"}:00`).toISOString()
                 : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim(),
+              address: form.address.trim() || undefined,
               preOrders: form.preOrders,
               status: "inquiry",
               depositStatus: "pending",
@@ -828,6 +857,12 @@ export default function EventsPage() {
                 <option key={v.id} value={v.name} />
               ))}
             </datalist>
+            <input
+              className={input}
+              placeholder="Address (autofills from the property)"
+              value={form.address}
+              onChange={e => setForm({ ...form, address: e.target.value })}
+            />
             <input
               className={input}
               placeholder="Name (contact at the property)"
@@ -950,6 +985,12 @@ export default function EventsPage() {
               <option key={v.id} value={v.name} />
             ))}
           </datalist>
+          <input
+            className={input}
+            placeholder="Address (autofills from the property)"
+            value={form.address}
+            onChange={e => setForm({ ...form, address: e.target.value })}
+          />
           <input
             className={input}
             placeholder="Name (contact at the property)"
