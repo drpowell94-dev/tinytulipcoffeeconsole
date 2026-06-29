@@ -29,6 +29,7 @@ import {
 } from "@/lib/todoStore";
 import { EVENT_TYPE_LABELS } from "@/lib/eventStore";
 import { formatTime } from "@/lib/utils";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 type TabType = "events" | "daily" | "todos";
 
@@ -59,6 +60,12 @@ export default function ChecklistsPage() {
   const [showNewListInput, setShowNewListInput] = useState(false);
   const [renamingListId, setRenamingListId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+
+  useCloudSync(() => {
+    setEventLists(loadChecklists());
+    setDailyChecklist(loadDailyChecklist());
+    setTodoLists(loadTodoLists());
+  });
 
   const openEvent = useMemo(() => eventLists.find(l => l.id === openEventId) ?? null, [eventLists, openEventId]);
   const activeTodoList = todoLists.find(l => l.id === activeTodoListId) ?? null;

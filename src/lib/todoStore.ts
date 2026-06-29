@@ -1,4 +1,4 @@
-import { uid } from "./storage";
+import { uid, saveJSON } from "./storage";
 
 export interface TodoItem {
   id: string;
@@ -44,7 +44,7 @@ export function loadTodoLists(): TodoList[] {
 
 export function saveTodoLists(lists: TodoList[]): TodoList[] {
   if (typeof window === "undefined") return lists;
-  try { localStorage.setItem(LISTS_KEY, JSON.stringify(lists)); } catch {}
+  try { saveJSON(LISTS_KEY, lists); } catch {}
   return lists;
 }
 

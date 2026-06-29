@@ -32,6 +32,7 @@ import {
 } from "@/lib/venueStore";
 import { publishToWix } from "@/services/wixPublishService";
 import { uploadLogoToWix } from "@/services/wixUploadService";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 const EMPTY_VENUE_FORM = {
   name: "",
@@ -138,6 +139,13 @@ export default function EventsPage() {
       venueManagerRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [showVenueManager]);
+
+  // Re-read when a teammate's edit arrives (or tab refocuses).
+  useCloudSync(() => {
+    setEvents(loadEvents());
+    setVenues(loadVenues());
+    setHistory(loadHistory());
+  });
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.

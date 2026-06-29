@@ -9,6 +9,7 @@ import {
   type InventoryItem,
 } from "@/lib/inventoryStore";
 import { cn } from "@/lib/utils";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 const input =
   "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
@@ -17,6 +18,8 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>(() => loadInventory());
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
+
+  useCloudSync(() => setItems(loadInventory()));
 
   const lowCount = items.filter(i => i.quantity <= i.reorderLevel).length;
 

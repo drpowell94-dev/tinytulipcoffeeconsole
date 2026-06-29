@@ -1,4 +1,4 @@
-import { uid } from "./storage";
+import { uid, saveJSON } from "./storage";
 
 export interface Property {
   id: string;
@@ -24,7 +24,7 @@ export function loadProperties(): Property[] {
 }
 
 function saveProperties(properties: Property[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(properties));
+  saveJSON(STORAGE_KEY, properties);
 }
 
 export function createProperty(

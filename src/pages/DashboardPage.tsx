@@ -7,8 +7,12 @@ import { loadHistory } from "@/lib/drinkStore";
 import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 import ConversionFunnelWidget from "@/components/dashboard/ConversionFunnelWidget";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 export default function DashboardPage() {
+  const [, forceTick] = useState(0);
+  useCloudSync(() => forceTick(t => t + 1));
+
   const upcoming = upcomingEvents(7);
   const lowStock = lowStockItems();
   const history = loadHistory();

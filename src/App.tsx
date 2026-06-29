@@ -12,21 +12,33 @@ import InventoryPage from "@/pages/InventoryPage";
 import PropertiesPage from "@/pages/PropertiesPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { importBundledWixEvents } from "@/services/eventService";
+import { loadEvents } from "@/lib/eventStore";
 import { seedCharlotteProperties } from "@/lib/seedData";
 import { seedVenues } from "@/lib/venueStore";
+import { startCloudSync } from "@/services/cloudSync";
 
 export default function App() {
   useEffect(() => {
-    seedCharlotteProperties();
-    seedVenues();
+    (async () => {
+      // Pull the team's shared data first (and subscribe to live changes), so a
+      // new device picks up existing data instead of re-seeding its own copy.
+      await startCloudSync();
 
-    const initialized = localStorage.getItem("tt-bundled-events-imported");
-    if (!initialized) {
-      const { created, updated } = importBundledWixEvents();
-      if (created > 0 || updated > 0) {
-        localStorage.setItem("tt-bundled-events-imported", "true");
+      // Seed local defaults only when nothing came down from the cloud.
+      seedCharlotteProperties();
+      seedVenues();
+
+      const initialized = localStorage.getItem("tt-bundled-events-imported");
+      if (!initialized && loadEvents().length === 0) {
+        const { created, updated } = importBundledWixEvents();
+        if (created > 0 || updated > 0) {
+          localStorage.setItem("tt-bundled-events-imported", "true");
+        }
       }
-    }
+
+      // Nudge any mounted page to re-read after hydration.
+      window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } }));
+    })();
   }, []);
 
   return (

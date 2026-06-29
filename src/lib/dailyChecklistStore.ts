@@ -10,6 +10,8 @@ export interface DailyChecklist {
   items: DailyChecklistItem[];
 }
 
+import { saveJSON } from "./storage";
+
 const STORAGE_KEY = "tiny_tulip_daily_checklist";
 
 export function loadDailyChecklist(): DailyChecklist {
@@ -41,7 +43,7 @@ export function saveDailyChecklist(checklist: DailyChecklist): DailyChecklist {
   if (typeof window === "undefined") return checklist;
 
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(checklist));
+    saveJSON(STORAGE_KEY, checklist);
     return checklist;
   } catch (err) {
     console.error("Failed to save daily checklist:", err);
