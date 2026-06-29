@@ -72,6 +72,7 @@ const EMPTY_FORM = {
   name: "",
   eventType: "popup" as EventType,
   dateStart: "",
+  startTime: "09:00",
   location: "",
   preOrders: 30,
   estimatedRevenue: 0,
@@ -163,7 +164,7 @@ export default function EventsPage() {
       name: form.location.trim(),
       eventType: form.eventType,
       dateStart: form.dateStart
-        ? new Date(`${form.dateStart}T12:00:00`).toISOString()
+        ? new Date(`${form.dateStart}T${form.startTime || "09:00"}:00`).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       location: form.location.trim(),
       preOrders: form.preOrders,
@@ -191,6 +192,13 @@ export default function EventsPage() {
 
   const input =
     "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
+
+  // Shared by both forms' Location field: when the typed value matches a known
+  // venue, prefill the event start time with that venue's default.
+  const handleLocationChange = (value: string) => {
+    const venue = findVenueByName(value);
+    setForm(f => ({ ...f, location: value, ...(venue ? { startTime: venue.defaultStartTime } : {}) }));
+  };
 
   // Split into upcoming (today or later) and past, each sensibly sorted.
   const upcoming = events
@@ -333,6 +341,9 @@ export default function EventsPage() {
       name: event.name,
       eventType: event.eventType,
       dateStart: event.dateStart ? new Date(event.dateStart).toISOString().slice(0, 16) : "",
+      startTime: event.dateStart
+        ? new Date(event.dateStart).toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" })
+        : "09:00",
       location: event.location,
       preOrders: event.preOrders,
       estimatedRevenue: event.estimatedRevenue || 0,
@@ -708,7 +719,7 @@ export default function EventsPage() {
               name: form.location.trim(),
               eventType: form.eventType,
               dateStart: form.dateStart
-                ? new Date(`${form.dateStart}T12:00:00`).toISOString()
+                ? new Date(`${form.dateStart}T${form.startTime || "09:00"}:00`).toISOString()
                 : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
               location: form.location.trim(),
               preOrders: form.preOrders,
@@ -731,7 +742,7 @@ export default function EventsPage() {
               placeholder="Location (the lead/property)"
               list="venue-options"
               value={form.location}
-              onChange={e => setForm({ ...form, location: e.target.value })}
+              onChange={e => handleLocationChange(e.target.value)}
               autoFocus
             />
             <datalist id="venue-options">
@@ -765,6 +776,16 @@ export default function EventsPage() {
                 type="date"
                 value={form.dateStart}
                 onChange={e => setForm({ ...form, dateStart: e.target.value })}
+                style={{ WebkitAppearance: "none", maxWidth: "100%" }}
+              />
+            </div>
+            <div className="space-y-1 overflow-hidden">
+              <label className="block text-xs font-body font-semibold text-foreground">Event start time</label>
+              <input
+                className={input + " max-w-full"}
+                type="time"
+                value={form.startTime}
+                onChange={e => setForm({ ...form, startTime: e.target.value })}
                 style={{ WebkitAppearance: "none", maxWidth: "100%" }}
               />
             </div>
@@ -830,7 +851,7 @@ export default function EventsPage() {
             placeholder="Location (the event/property)"
             list="venue-options-event"
             value={form.location}
-            onChange={e => setForm({ ...form, location: e.target.value })}
+            onChange={e => handleLocationChange(e.target.value)}
             autoFocus
           />
           <datalist id="venue-options-event">
@@ -864,6 +885,16 @@ export default function EventsPage() {
               type="date"
               value={form.dateStart}
               onChange={e => setForm({ ...form, dateStart: e.target.value })}
+              style={{ WebkitAppearance: "none", maxWidth: "100%" }}
+            />
+          </div>
+          <div className="space-y-1 overflow-hidden">
+            <label className="block text-xs font-body font-semibold text-foreground">Event start time</label>
+            <input
+              className={input + " max-w-full"}
+              type="time"
+              value={form.startTime}
+              onChange={e => setForm({ ...form, startTime: e.target.value })}
               style={{ WebkitAppearance: "none", maxWidth: "100%" }}
             />
           </div>
