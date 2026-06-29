@@ -61,6 +61,22 @@ const PREORDER_DEFAULTS: Record<EventType, number> = {
   other: 30,
 };
 
+// Map a venue's Wix category to the app's event type, so selecting a property
+// can prefill the right event type (and its pre-order default).
+function categoryToEventType(category: Venue["defaultCategory"]): EventType {
+  switch (category) {
+    case "Pop Up":
+      return "popup";
+    case "Grab & Go":
+    case "Market":
+      return "farmers_market";
+    case "Private Event":
+      return "catering";
+    default:
+      return "popup";
+  }
+}
+
 const STATUS_STYLES: Record<EventStatus, string> = {
   inquiry: "bg-muted/50 text-foreground",
   confirmed: "bg-accent/15 text-accent",
@@ -199,6 +215,26 @@ export default function EventsPage() {
     const venue = findVenueByName(value);
     setForm(f => ({ ...f, location: value, ...(venue ? { startTime: venue.defaultStartTime } : {}) }));
   };
+
+  // Property dropdown: selecting a venue autofills all the relevant fields
+  // (location, event type, start time, and the matching pre-order default).
+  const handleSelectProperty = (venueId: string) => {
+    const venue = venues.find(v => v.id === venueId);
+    if (!venue) return;
+    const eventType = categoryToEventType(venue.defaultCategory);
+    setForm(f => ({
+      ...f,
+      location: venue.name,
+      eventType,
+      startTime: venue.defaultStartTime,
+      preOrders: PREORDER_DEFAULTS[eventType],
+    }));
+  };
+
+  // Resolve the currently-selected venue id from the location field so the
+  // dropdown reflects the chosen property.
+  const selectedVenueId =
+    venues.find(v => v.name.toLowerCase() === form.location.trim().toLowerCase())?.id ?? "";
 
   // Split into upcoming (today or later) and past, each sensibly sorted.
   const upcoming = events
@@ -737,6 +773,19 @@ export default function EventsPage() {
             setShowLeadForm(false);
             toast.success(`Lead "${event.name}" created`);
           }} className="space-y-3">
+            <div className="space-y-1">
+              <label className="block text-xs font-body font-semibold text-foreground">Property</label>
+              <select
+                className={input}
+                value={selectedVenueId}
+                onChange={e => handleSelectProperty(e.target.value)}
+              >
+                <option value="">Select a property (autofills the form)…</option>
+                {venues.map(v => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+            </div>
             <input
               className={input}
               placeholder="Location (the lead/property)"
@@ -846,6 +895,19 @@ export default function EventsPage() {
       {showForm && (
         <form onSubmit={handleCreate} className="rounded-lg bg-muted/20 p-5 space-y-3 overflow-hidden">
           <h3 className="font-body font-semibold text-foreground">New Event</h3>
+          <div className="space-y-1">
+            <label className="block text-xs font-body font-semibold text-foreground">Property</label>
+            <select
+              className={input}
+              value={selectedVenueId}
+              onChange={e => handleSelectProperty(e.target.value)}
+            >
+              <option value="">Select a property (autofills the form)…</option>
+              {venues.map(v => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </div>
           <input
             className={input}
             placeholder="Location (the event/property)"
