@@ -11,14 +11,17 @@ const NAV_ITEMS = [
 
 export default function BottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border/50 flex items-center justify-around h-16 z-20">
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 bg-background border-t border-border/50 flex items-stretch justify-around z-20"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
       {NAV_ITEMS.map(item => (
         <NavLink
           key={item.to}
           to={item.to}
           className={({ isActive }) =>
             cn(
-              "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors",
+              "flex flex-col items-center justify-center gap-1 flex-1 h-16 transition-colors",
               isActive
                 ? "text-accent"
                 : "text-muted-foreground hover:text-foreground"

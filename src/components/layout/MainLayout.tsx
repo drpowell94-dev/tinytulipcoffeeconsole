@@ -69,7 +69,10 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Mobile header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30">
+        <header
+          className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30"
+          style={{ paddingTop: "calc(1rem + env(safe-area-inset-top))" }}
+        >
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -119,7 +122,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
           </>
         )}
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto pb-20 md:pb-0">
+        <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-6xl w-full mx-auto pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-8">
           {children}
         </main>
       </div>
