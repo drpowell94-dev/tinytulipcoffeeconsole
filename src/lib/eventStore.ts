@@ -24,6 +24,8 @@ export interface TulipEvent {
   notes?: string;
   /** Wix Events ID when this event originated from / syncs with Wix. */
   wixEventId?: string;
+  /** Stable link to a venue in the address book (resolved at sync time). */
+  venueId?: string;
   /** Link to a tracked property/venue for recommendations. */
   propertyId?: string;
   followUpDate?: string;

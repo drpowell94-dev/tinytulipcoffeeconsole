@@ -115,6 +115,70 @@ export function findVenueByName(name: string): Venue | undefined {
   return loadVenues().find(v => v.name.toLowerCase() === normalized);
 }
 
+// Common US street abbreviations, normalized so "650 E Brooklyn Vlg Ave" and
+// "650 East Brooklyn Village Avenue, Charlotte, NC 28202, USA" compare equal.
+const STREET_ABBREV: Record<string, string> = {
+  ave: "avenue", av: "avenue", st: "street", str: "street", blvd: "boulevard",
+  dr: "drive", ln: "lane", rd: "road", ct: "court", pl: "place", sq: "square",
+  ter: "terrace", pkwy: "parkway", hwy: "highway", vlg: "village", cir: "circle",
+  e: "east", w: "west", n: "north", s: "south",
+  ne: "northeast", nw: "northwest", se: "southeast", sw: "southwest",
+};
+
+/**
+ * Canonical key for the *street* portion of an address (everything before the
+ * first comma), with abbreviations expanded and punctuation/country/zip noise
+ * dropped. Used to match events to venues regardless of how the address was
+ * typed or formatted by Wix. Returns "" for a blank or name-only string.
+ */
+export function streetKey(input?: string): string {
+  if (!input) return "";
+  const street = input.split(",")[0];
+  const cleaned = street.toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  const tokens = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(t => STREET_ABBREV[t] ?? t);
+  // Only treat it as an address key if it actually contains a street number;
+  // a bare venue name ("Savoy") must not accidentally match another venue.
+  if (!tokens.some(t => /\d/.test(t))) return "";
+  return tokens.join(" ").trim();
+}
+
+/**
+ * The one venue resolver used everywhere (publish, sync, stats). Tries, in
+ * priority order:
+ *   1. an explicit venueId stamped on the event,
+ *   2. an exact venue-name match (event.location or event.name),
+ *   3. a normalized street-address match (event.address or event.location).
+ * This replaces the old name-only lookup that failed whenever an event's
+ * location held a street address instead of the venue's name.
+ */
+export function resolveVenue(
+  ev: { venueId?: string; location?: string; name?: string; address?: string },
+  venues: Venue[] = loadVenues()
+): Venue | undefined {
+  if (ev.venueId) {
+    const byId = venues.find(v => v.id === ev.venueId);
+    if (byId) return byId;
+  }
+
+  const norm = (s?: string) => (s || "").trim().toLowerCase();
+  const nameKeys = [ev.location, ev.name].map(norm).filter(Boolean);
+  const byName = venues.find(v => nameKeys.includes(norm(v.name)));
+  if (byName) return byName;
+
+  const addrKeys = [ev.address, ev.location].map(streetKey).filter(Boolean);
+  if (addrKeys.length === 0) return undefined;
+  return venues.find(v => {
+    const venueKeys = [
+      streetKey(v.formattedAddress),
+      streetKey(`${v.streetNumber} ${v.streetName}`),
+    ].filter(Boolean);
+    return venueKeys.some(k => addrKeys.includes(k));
+  });
+}
+
 export function upsertVenue(data: Omit<Venue, "id"> & { id?: string }): Venue {
   const id = data.id ?? nameToVenueId(data.name);
   const venue: Venue = { ...data, id };
@@ -150,22 +214,26 @@ export interface VenueEventStats {
  * combined list reflect real bookings without a separate propertyId.
  */
 export function getVenueStats(
-  venue: { name: string; formattedAddress?: string },
-  events: Array<{ name?: string; location: string; status: string; dateStart: string; estimatedRevenue?: number }>
+  venue: { id?: string; name: string; formattedAddress?: string },
+  events: Array<{ venueId?: string; name?: string; location: string; status: string; dateStart: string; estimatedRevenue?: number }>
 ): VenueEventStats {
   const norm = (s?: string) => (s || "").trim().toLowerCase();
-  // A Wix-imported event stores the venue name in its title and the street
-  // address in its location; a form-created event stores the venue name in
-  // both. Match on the venue's name OR address against the event's title OR
-  // location so both shapes are counted.
-  const keys = new Set(
-    [venue.name, venue.formattedAddress, venue.formattedAddress?.split(",")[0]]
-      .map(norm)
-      .filter(Boolean)
-  );
-  const matched = events.filter(
-    e => e.status !== "cancelled" && (keys.has(norm(e.name)) || keys.has(norm(e.location)))
-  );
+  // Prefer the stamped venueId (set at sync time); fall back to name/address
+  // matching for events that predate stamping or were entered by hand. A
+  // Wix-imported event stores the venue name in its title and the street
+  // address in its location; a form-created event stores the venue name in both.
+  const nameKeys = new Set([venue.name, venue.formattedAddress?.split(",")[0]].map(norm).filter(Boolean));
+  const addrKeys = new Set([streetKey(venue.formattedAddress), streetKey(`${venue.name}`)].filter(Boolean));
+  const matched = events.filter(e => {
+    if (e.status === "cancelled") return false;
+    if (venue.id && e.venueId) return e.venueId === venue.id;
+    return (
+      nameKeys.has(norm(e.name)) ||
+      nameKeys.has(norm(e.location)) ||
+      addrKeys.has(streetKey(e.location)) ||
+      addrKeys.has(streetKey(e.name))
+    );
+  });
   const completed = matched.filter(e => e.status === "completed");
   return {
     completedCount: completed.length,

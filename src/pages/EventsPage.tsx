@@ -27,6 +27,7 @@ import { cn, formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 import {
   loadVenues,
   findVenueByName,
+  resolveVenue,
   upsertVenue,
   deleteVenue,
   type Venue,
@@ -302,11 +303,18 @@ export default function EventsPage() {
   //  - venue missing a logo → reveal an inline photo picker (upload then publish)
   //  - venue ready → publish straight away
   const handlePublishToWix = (event: TulipEvent) => {
-    const venue = findVenueByName(event.location);
+    const venue = resolveVenue(event);
     if (!venue) {
       toast.error(`No venue found for "${event.location}". Add it below to publish.`);
       setShowVenueManager(true);
-      setVenueForm(f => ({ ...f, name: event.location }));
+      // Prefill the venue name with the event's title (the venue/contact) and
+      // the address with whatever the event already carries, so publishing a
+      // booking doesn't make the user retype everything.
+      setVenueForm(f => ({
+        ...f,
+        name: event.name || event.location,
+        formattedAddress: event.address || event.location || "",
+      }));
       setShowAddVenue(true);
       return;
     }
@@ -321,7 +329,7 @@ export default function EventsPage() {
   // Photo picked for a venue with no logo: upload to Wix, save the URL onto the
   // venue, then publish the event in the same step.
   const handleLogoPicked = async (event: TulipEvent, file: File) => {
-    const venue = findVenueByName(event.location);
+    const venue = resolveVenue(event);
     if (!venue) {
       toast.error("Venue disappeared — re-add it below.");
       return;
