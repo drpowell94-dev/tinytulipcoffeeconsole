@@ -25,12 +25,15 @@ export async function syncBookingsFromWix(): Promise<WixSyncResult> {
 
   const events = (data.events || []) as TulipEvent[];
 
-  // Drop the old bundled snapshot (replaced by live bookings) — only write if
-  // some are actually present, to avoid a needless push on every load.
+  // If the fetch came back with no bookings (e.g. the key can't read Bookings
+  // yet), do NOT touch existing events — never leave the user with nothing.
+  if (events.length === 0) return { created: 0, updated: 0 };
+
+  // We have live bookings — now it's safe to drop the old bundled snapshot they
+  // replace. User-created and Convert-published events are preserved.
   const current = loadEvents();
   const cleaned = current.filter(e => !(e.wixEventId && BUNDLED_WIX_IDS.has(e.wixEventId)));
   if (cleaned.length !== current.length) saveEvents(cleaned);
 
-  if (events.length === 0) return { created: 0, updated: 0 };
   return importEvents(events);
 }

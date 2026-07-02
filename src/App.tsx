@@ -12,6 +12,8 @@ import InventoryPage from "@/pages/InventoryPage";
 import PropertiesPage from "@/pages/PropertiesPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { loadProperties, clearProperties } from "@/lib/propertyStore";
+import { loadEvents } from "@/lib/eventStore";
+import { importBundledWixEvents } from "@/services/eventService";
 import { seedVenues, migratePropertiesToVenues, purgeSampleVenues } from "@/lib/venueStore";
 import { startCloudSync } from "@/services/cloudSync";
 import { syncBookingsFromWix } from "@/services/wixSyncService";
@@ -29,6 +31,13 @@ export default function App() {
       migratePropertiesToVenues(loadProperties());
       purgeSampleVenues();
       clearProperties();
+
+      // Guarantee a baseline of events even if the Wix booking sync fails or
+      // returns nothing (e.g. the key can't read Bookings yet).
+      if (loadEvents().length === 0) {
+        importBundledWixEvents();
+        window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "tt-events" } }));
+      }
 
       // Pull confirmed bookings from Wix as events (replaces the old bundled
       // snapshot). Best-effort — ignore failures so the app still loads offline.
