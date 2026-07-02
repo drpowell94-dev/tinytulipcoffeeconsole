@@ -56,16 +56,26 @@ function revenueFromPreOrders(n: number): number | undefined {
   return Math.round(n * 10);
 }
 
-/** Clean a Wix booking address/contact into a display venue name. */
-function venueNameFrom(addr: string | undefined, contact: string): string {
+// Test/owner bookings to exclude from the event list.
+const TEST_EMAILS = new Set([
+  "reneetest@gmail.com",
+  "drpowell94@gmail.com",
+  "drpxstatments@gmail.com",
+]);
+
+/** Is this booking a real client event (not a test or non-coffee service)? */
+function isRealBooking(b: any): boolean {
+  const email = (b.contactDetails?.email || "").toLowerCase();
+  const title = b.bookedEntity?.title || "";
+  if (TEST_EMAILS.has(email)) return false;
+  if (/keepsake/i.test(title)) return false;
+  return true;
+}
+
+/** Street-address first segment when it's a real address, else "". */
+function streetOf(addr: string | undefined): string {
   const a = (addr || "").trim();
-  // A real street address → use its first segment; otherwise fall back to the
-  // contact name (often the property/venue), then the raw address.
-  if (a && /\d/.test(a) && a.includes(",")) {
-    return a.split(",")[0].trim();
-  }
-  const c = (contact || "").trim();
-  return c || a || "Booking";
+  return a && /\d/.test(a) && a.includes(",") ? a.split(",")[0].trim() : "";
 }
 
 export default async function handler(request: Request): Promise<Response> {
@@ -92,9 +102,12 @@ export default async function handler(request: Request): Promise<Response> {
     const events: OutEvent[] = raw
       .map(x => x.booking)
       .filter(Boolean)
+      .filter(isRealBooking)
       .map((b: any): OutEvent => {
         const slot = b.bookedEntity?.slot ?? {};
         const addr = slot.location?.formattedAddress as string | undefined;
+        const realAddr = addr && /\d/.test(addr) && addr.includes(",") ? addr : undefined;
+        const street = streetOf(addr);
         const contact = `${b.contactDetails?.firstName ?? ""} ${b.contactDetails?.lastName ?? ""}`.trim();
         const start = slot.startDate || b.startDate || b.createdDate;
         const preOrders = preOrdersFromChoice(b.participantsChoices?.serviceChoices?.[0]?.choices?.[0]?.custom);
@@ -102,16 +115,20 @@ export default async function handler(request: Request): Promise<Response> {
         let status: string;
         if (wixStatus === "CANCELED" || wixStatus === "CANCELLED" || wixStatus === "DECLINED") status = "cancelled";
         else status = new Date(start).getTime() < now ? "completed" : "confirmed";
-        const venueName = venueNameFrom(addr, contact);
+
+        // Prefer the contact (usually the property/venue) for the display name;
+        // use the street address for location so it matches the venue book.
+        const name = contact || street || "Booking";
+        const location = street || contact || "TBD";
 
         return {
           id: `wix-booking:${b.id}`,
           wixEventId: `wix-booking:${b.id}`,
-          name: venueName,
+          name,
           eventType: eventTypeFromTitle(b.bookedEntity?.title),
           dateStart: new Date(start).toISOString(),
-          location: venueName,
-          address: addr && /\d/.test(addr) ? addr : undefined,
+          location,
+          address: realAddr,
           preOrders,
           estimatedRevenue: revenueFromPreOrders(preOrders),
           status,
