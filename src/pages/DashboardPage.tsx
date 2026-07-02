@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package, Zap, ExternalLink } from "lucide-react";
-import { upcomingEvents } from "@/lib/eventStore";
+import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package, Zap, ExternalLink, Bell } from "lucide-react";
+import { upcomingEvents, loadEvents, EVENT_TYPE_LABELS } from "@/lib/eventStore";
 import { lowStockItems } from "@/lib/inventoryStore";
 import { loadHistory } from "@/lib/drinkStore";
 import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
@@ -16,6 +16,7 @@ export default function DashboardPage() {
   const upcoming = upcomingEvents(7);
   const lowStock = lowStockItems();
   const history = loadHistory();
+  const allEvents = loadEvents();
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
   const [insightsError, setInsightsError] = useState(false);
 
@@ -33,12 +34,25 @@ export default function DashboardPage() {
   const monthStart = new Date();
   monthStart.setDate(1);
   monthStart.setHours(0, 0, 0, 0);
-  const monthRevenue = history
-    .filter(s => new Date(s.date) >= monthStart)
-    .reduce((sum, s) => sum + s.totalRevenue, 0);
-  const monthDrinks = history
-    .filter(s => new Date(s.date) >= monthStart)
-    .reduce((sum, s) => sum + s.totalDrinks, 0);
+
+  // Stats sourced from events (the primary data) so the numbers aren't dead when
+  // the drink counter hasn't been used.
+  const monthEvents = allEvents.filter(
+    e => new Date(e.dateStart) >= monthStart && e.status !== "cancelled"
+  );
+  const eventsThisMonth = monthEvents.length;
+  const revenueThisMonth = monthEvents.reduce((sum, e) => sum + (e.estimatedRevenue || 0), 0);
+
+  // "Today" focus: events happening today, and lead follow-ups due/overdue.
+  const todaysEvents = allEvents.filter(
+    e => daysUntil(e.dateStart) === 0 && e.status !== "cancelled"
+  );
+  const followUpsDue = allEvents
+    .filter(e => e.status === "inquiry" && e.followUpDate && daysUntil(e.followUpDate) <= 0)
+    .sort((a, b) => (a.followUpDate || "").localeCompare(b.followUpDate || ""));
+
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
@@ -49,16 +63,68 @@ export default function DashboardPage() {
   return (
     <div className="space-y-12">
       <div className="pt-2">
-        <h1 className="font-display text-4xl text-foreground leading-tight">Good morning</h1>
+        <h1 className="font-display text-4xl text-foreground leading-tight">{greeting}</h1>
         <p className="text-sm text-muted-foreground font-body mt-1">{today}</p>
       </div>
 
-      {/* Quick stats — whitespace-based layout */}
+      {/* Today — what needs attention right now */}
+      {(todaysEvents.length > 0 || followUpsDue.length > 0) && (
+        <section className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-4">
+          <h2 className="font-display text-lg text-foreground">Today</h2>
+
+          {todaysEvents.map(event => (
+            <div key={event.id} className="flex items-center justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="font-body font-semibold text-sm text-foreground truncate">{event.name}</p>
+                <p className="text-xs font-body text-muted-foreground mt-0.5 truncate">
+                  {event.location}
+                  {` • ${EVENT_TYPE_LABELS[event.eventType]}`}
+                  {event.preOrders > 0 && ` • ${event.preOrders} pre-orders`}
+                </p>
+              </div>
+              <Link
+                to={`/events/${event.id}/counter`}
+                className="shrink-0 flex items-center gap-1.5 rounded-lg bg-accent text-accent-foreground px-4 py-2 text-xs font-body font-semibold hover-scale active:scale-95 transition-all"
+              >
+                <Coffee size={14} /> Counter
+              </Link>
+            </div>
+          ))}
+
+          {followUpsDue.length > 0 && (
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-1.5 text-blue-600">
+                <Bell size={13} />
+                <p className="text-xs font-body font-semibold uppercase tracking-wide">
+                  Follow-ups due ({followUpsDue.length})
+                </p>
+              </div>
+              {followUpsDue.map(lead => (
+                <Link
+                  key={lead.id}
+                  to="/events"
+                  className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 hover:bg-background transition-colors"
+                >
+                  <div className="min-w-0">
+                    <p className="font-body font-semibold text-sm text-foreground truncate">{lead.name}</p>
+                    {lead.followUpNote && (
+                      <p className="text-xs font-body text-muted-foreground truncate">{lead.followUpNote}</p>
+                    )}
+                  </div>
+                  <span className="shrink-0 text-xs font-body font-semibold text-accent">Follow up →</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* Quick stats — sourced from events so they reflect real activity */}
       <div className="space-y-8">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          <StatCard icon={<CalendarDays size={20} />} label="Events This Week" value={String(upcoming.length)} />
-          <StatCard icon={<Coffee size={20} />} label="Drinks This Month" value={String(monthDrinks)} />
-          <StatCard icon={<TrendingUp size={20} />} label="Revenue This Month" value={formatCurrency(monthRevenue)} />
+          <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} />
+          <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} />
+          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} />
           <StatCard
             icon={<AlertTriangle size={20} />}
             label="Low Stock Items"
