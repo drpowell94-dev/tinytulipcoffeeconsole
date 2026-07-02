@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Minus, Trash2, Package } from "lucide-react";
+import { Plus, Minus, Trash2, Package, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadInventory,
@@ -18,8 +18,31 @@ export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>(() => loadInventory());
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
 
   useCloudSync(() => setItems(loadInventory()));
+
+  const startEdit = (item: InventoryItem) => {
+    setEditingId(item.id);
+    setEditForm({ name: item.name, unit: item.unit, quantity: item.quantity, reorderLevel: item.reorderLevel });
+  };
+
+  const saveEdit = (e: React.FormEvent, id: string) => {
+    e.preventDefault();
+    if (!editForm.name.trim()) {
+      toast.error("Item name is required");
+      return;
+    }
+    setItems(updateItem(id, {
+      name: editForm.name.trim(),
+      unit: editForm.unit.trim() || "units",
+      quantity: Math.max(0, editForm.quantity),
+      reorderLevel: Math.max(0, editForm.reorderLevel),
+    }));
+    setEditingId(null);
+    toast.success("Item updated");
+  };
 
   const lowCount = items.filter(i => i.quantity <= i.reorderLevel).length;
 
@@ -120,6 +143,28 @@ export default function InventoryPage() {
         ) : (
           items.map(item => {
             const isLow = item.quantity <= item.reorderLevel;
+
+            if (editingId === item.id) {
+              return (
+                <form
+                  key={item.id}
+                  onSubmit={e => saveEdit(e, item.id)}
+                  className="rounded-lg bg-muted/20 p-4 sm:p-5 space-y-3 sm:space-y-4"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+                    <input className={input} placeholder="Item name *" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} autoFocus />
+                    <input className={input} placeholder="Unit" value={editForm.unit} onChange={e => setEditForm({ ...editForm, unit: e.target.value })} />
+                    <input className={input} type="number" min={0} placeholder="Quantity" value={editForm.quantity || ""} onChange={e => setEditForm({ ...editForm, quantity: parseInt(e.target.value) || 0 })} />
+                    <input className={input} type="number" min={0} placeholder="Reorder at" value={editForm.reorderLevel || ""} onChange={e => setEditForm({ ...editForm, reorderLevel: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="submit" className="rounded-lg bg-primary text-primary-foreground px-4 sm:px-6 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm hover-scale active:scale-95 transition-all">Save</button>
+                    <button type="button" onClick={() => setEditingId(null)} className="rounded-lg bg-muted/50 px-4 sm:px-6 py-2 sm:py-2.5 font-body font-semibold text-xs sm:text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
+                  </div>
+                </form>
+              );
+            }
+
             return (
               <div
                 key={item.id}
@@ -161,6 +206,13 @@ export default function InventoryPage() {
                     <Plus size={16} strokeWidth={1.5} />
                   </button>
                   <span className="text-xs font-body text-muted-foreground w-10 sm:w-14 text-center">{item.unit}</span>
+                  <button
+                    onClick={() => startEdit(item)}
+                    className="p-2 sm:p-2.5 rounded-lg text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+                    aria-label={`Edit ${item.name}`}
+                  >
+                    <Pencil size={14} strokeWidth={1.5} />
+                  </button>
                   <button
                     onClick={() => {
                       setItems(removeItem(item.id));
