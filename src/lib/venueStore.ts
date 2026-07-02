@@ -111,12 +111,21 @@ export interface VenueEventStats {
  * combined list reflect real bookings without a separate propertyId.
  */
 export function getVenueStats(
-  venueName: string,
-  events: Array<{ location: string; status: string; dateStart: string; estimatedRevenue?: number }>
+  venue: { name: string; formattedAddress?: string },
+  events: Array<{ name?: string; location: string; status: string; dateStart: string; estimatedRevenue?: number }>
 ): VenueEventStats {
-  const norm = venueName.trim().toLowerCase();
+  const norm = (s?: string) => (s || "").trim().toLowerCase();
+  // A Wix-imported event stores the venue name in its title and the street
+  // address in its location; a form-created event stores the venue name in
+  // both. Match on the venue's name OR address against the event's title OR
+  // location so both shapes are counted.
+  const keys = new Set(
+    [venue.name, venue.formattedAddress, venue.formattedAddress?.split(",")[0]]
+      .map(norm)
+      .filter(Boolean)
+  );
   const matched = events.filter(
-    e => (e.location || "").trim().toLowerCase() === norm && e.status !== "cancelled"
+    e => e.status !== "cancelled" && (keys.has(norm(e.name)) || keys.has(norm(e.location)))
   );
   const completed = matched.filter(e => e.status === "completed");
   return {

@@ -278,7 +278,7 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
   const insights: DashboardInsight[] = [];
   const venues = loadVenues();
   const allEvents = loadEvents();
-  const venueStats = venues.map(v => ({ venue: v, stats: getVenueStats(v.name, allEvents) }));
+  const venueStats = venues.map(v => ({ venue: v, stats: getVenueStats(v, allEvents) }));
 
   // 1. Best venue by revenue
   const booked = venueStats.filter(vs => vs.stats.completedCount > 0 && vs.stats.totalRevenue > 0);

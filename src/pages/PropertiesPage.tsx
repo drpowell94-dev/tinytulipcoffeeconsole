@@ -49,7 +49,7 @@ export default function PropertiesPage() {
     setEvents(loadEvents());
   });
 
-  const statsFor = (venue: Venue) => getVenueStats(venue.name, events);
+  const statsFor = (venue: Venue) => getVenueStats(venue, events);
 
   const sorted = [...venues].sort((a, b) => {
     const sa = statsFor(a);
