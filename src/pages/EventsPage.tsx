@@ -15,7 +15,8 @@ import {
   type EventStatus,
 } from "@/lib/eventStore";
 import { getCharlotteApartments } from "@/lib/propertyStore";
-import { importBundledWixEvents, syncEventsFromSupabase } from "@/services/eventService";
+import { syncEventsFromSupabase } from "@/services/eventService";
+import { syncBookingsFromWix } from "@/services/wixSyncService";
 import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
 import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
@@ -160,21 +161,19 @@ export default function EventsPage() {
     });
   }, []);
 
-  const handleImportWix = () => {
+  const handleImportWix = async () => {
     setImporting(true);
-    const { created, updated, errors } = importBundledWixEvents();
+    const result = await syncBookingsFromWix();
     setEvents(loadEvents());
+    setVenues(loadVenues());
     setImporting(false);
 
-    if (created === 0 && updated === 0) {
-      toast.info("All Wix events already imported");
+    if ("error" in result) {
+      toast.error(`Wix sync failed: ${result.error}`);
+    } else if (result.created === 0 && result.updated === 0) {
+      toast.info("Already up to date with Wix");
     } else {
-      const msg = `Imported ${created} new${updated ? `, updated ${updated}` : ""}. Events sorted by most recent.`;
-      toast.success(msg);
-    }
-
-    if (errors > 0) {
-      toast.error(`Skipped ${errors} invalid record(s) — check console`);
+      toast.success(`Synced from Wix: ${result.created} new, ${result.updated} updated`);
     }
   };
 

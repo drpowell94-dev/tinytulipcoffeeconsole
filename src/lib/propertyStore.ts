@@ -27,6 +27,11 @@ function saveProperties(properties: Property[]): void {
   saveJSON(STORAGE_KEY, properties);
 }
 
+/** Empty the deprecated properties store (data now lives in venues). */
+export function clearProperties(): void {
+  if (loadProperties().length > 0) saveProperties([]);
+}
+
 export function createProperty(
   name: string,
   category: "charlotte_apartment" | "other_venue" = "other_venue",

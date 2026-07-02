@@ -11,11 +11,10 @@ import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import PropertiesPage from "@/pages/PropertiesPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
-import { importBundledWixEvents } from "@/services/eventService";
-import { loadEvents } from "@/lib/eventStore";
-import { loadProperties } from "@/lib/propertyStore";
-import { seedVenues, migratePropertiesToVenues } from "@/lib/venueStore";
+import { loadProperties, clearProperties } from "@/lib/propertyStore";
+import { seedVenues, migratePropertiesToVenues, purgeSampleVenues } from "@/lib/venueStore";
 import { startCloudSync } from "@/services/cloudSync";
+import { syncBookingsFromWix } from "@/services/wixSyncService";
 
 export default function App() {
   useEffect(() => {
@@ -24,18 +23,18 @@ export default function App() {
       // new device picks up existing data instead of re-seeding its own copy.
       await startCloudSync();
 
-      // Seed the venue address book, then fold any legacy Properties entries
-      // into it (venues are now the single source of truth for places).
+      // Seed the venue address book, fold any legacy Properties entries into it,
+      // then remove the old fake sample properties.
       seedVenues();
       migratePropertiesToVenues(loadProperties());
+      purgeSampleVenues();
+      clearProperties();
 
-      const initialized = localStorage.getItem("tt-bundled-events-imported");
-      if (!initialized && loadEvents().length === 0) {
-        const { created, updated } = importBundledWixEvents();
-        if (created > 0 || updated > 0) {
-          localStorage.setItem("tt-bundled-events-imported", "true");
-        }
-      }
+      // Pull confirmed bookings from Wix as events (replaces the old bundled
+      // snapshot). Best-effort — ignore failures so the app still loads offline.
+      syncBookingsFromWix()
+        .catch(() => undefined)
+        .finally(() => window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } })));
 
       // Nudge any mounted page to re-read after hydration.
       window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } }));

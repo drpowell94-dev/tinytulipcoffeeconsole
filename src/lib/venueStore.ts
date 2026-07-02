@@ -93,6 +93,23 @@ export function seedVenues(): void {
   saveVenues(Array.from(byId.values()));
 }
 
+// The old fake sample apartments that used to be seeded into Properties. They
+// get purged from venues so only real places remain.
+const SAMPLE_PROPERTY_NAMES = new Set([
+  "the retreat at southend",
+  "dilworth lofts",
+  "south end apartments",
+  "uptown place",
+  "noda lofts",
+]);
+
+/** Remove the fake seeded sample properties from the venue list (idempotent). */
+export function purgeSampleVenues(): void {
+  const all = loadVenues();
+  const kept = all.filter(v => !SAMPLE_PROPERTY_NAMES.has(v.name.trim().toLowerCase()));
+  if (kept.length !== all.length) saveVenues(kept);
+}
+
 export function findVenueByName(name: string): Venue | undefined {
   const normalized = name.trim().toLowerCase();
   return loadVenues().find(v => v.name.toLowerCase() === normalized);
