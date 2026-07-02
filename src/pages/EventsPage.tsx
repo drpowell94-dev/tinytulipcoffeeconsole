@@ -146,6 +146,7 @@ export default function EventsPage() {
   const [showAddVenue, setShowAddVenue] = useState(false);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
+  const [showPast, setShowPast] = useState(false);
   const venueManagerRef = useRef<HTMLElement | null>(null);
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
@@ -1241,16 +1242,38 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* Past events at bottom */}
-        {past.length > 0 && (
+        {/* Past events at bottom — collapsed by default to keep the focus on
+            upcoming work. Tap the header to expand the recent history. Hidden
+            on the All/Past tabs, where past events are already listed above. */}
+        {past.length > 0 && filter !== "past" && filter !== "all" && (
           <section className="space-y-4 border-t border-border/50 pt-8">
-            <div className="flex items-center gap-2">
-              <History size={18} className="text-accent" />
+            <button
+              type="button"
+              onClick={() => setShowPast(p => !p)}
+              className="flex w-full items-center gap-2 text-left"
+              aria-expanded={showPast}
+            >
+              <History size={18} className="text-accent shrink-0" />
               <h2 className="font-display text-lg text-foreground">Past Events ({past.length})</h2>
-            </div>
-            <div className="space-y-4">
-              {past.slice(0, 6).map(event => renderEvent(event))}
-            </div>
+              <ChevronDown
+                size={18}
+                className={cn("ml-auto text-muted-foreground transition-transform", showPast && "rotate-180")}
+              />
+            </button>
+            {showPast && (
+              <div className="space-y-4">
+                {past.slice(0, 12).map(event => renderEvent(event))}
+                {past.length > 12 && (
+                  <button
+                    type="button"
+                    onClick={() => setFilter("past")}
+                    className="w-full rounded-lg bg-muted/20 py-2.5 font-body text-sm font-semibold text-muted-foreground hover:bg-muted/35 transition-colors"
+                  >
+                    View all {past.length} past events →
+                  </button>
+                )}
+              </div>
+            )}
           </section>
         )}
       </div>
