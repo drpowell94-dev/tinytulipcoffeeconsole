@@ -179,6 +179,66 @@ export function resolveVenue(
   });
 }
 
+/**
+ * Split a formatted US address into venue fields. Handles the shapes Wix emits:
+ *   "650 E Brooklyn Vlg Ave, Charlotte, NC 28202, USA"
+ *   "327 W Tremont Ave, Charlotte, NC, 28203, US"
+ *   "The ellis apt, 512 N College St, Charlotte, NC 28202, USA"  (leading apt)
+ */
+export function parseAddress(formatted: string): {
+  streetNumber: string; streetName: string; apt: string;
+  city: string; state: string; zip: string;
+} {
+  const parts = formatted.split(",").map(s => s.trim()).filter(Boolean);
+  let streetIdx = parts.findIndex(p => /^\d/.test(p));
+  if (streetIdx === -1) streetIdx = 0;
+  const street = parts[streetIdx] || "";
+  const m = street.match(/^(\d+[a-z]?)\s+(.*)$/i);
+  const rest = parts.slice(streetIdx + 2).join(" ");
+  return {
+    streetNumber: m ? m[1] : "",
+    streetName: m ? m[2] : street,
+    apt: streetIdx > 0 ? parts.slice(0, streetIdx).join(", ") : "",
+    city: parts[streetIdx + 1] || "Charlotte",
+    state: (rest.match(/\b([A-Z]{2})\b/) || [])[1] || "NC",
+    zip: (rest.match(/\b(\d{5})\b/) || [])[1] || "",
+  };
+}
+
+/**
+ * Create (and persist) a venue from a geocoded address — used to auto-add a
+ * booking's venue to the address book when it isn't there yet. Keyed by name,
+ * so re-running is idempotent.
+ */
+export function createVenueFromAddress(opts: {
+  name: string;
+  formattedAddress: string;
+  lat: number;
+  lng: number;
+  defaultCategory?: Venue["defaultCategory"];
+  defaultStartTime?: string;
+}): Venue {
+  const p = parseAddress(opts.formattedAddress);
+  return upsertVenue({
+    name: opts.name.trim(),
+    streetNumber: p.streetNumber,
+    streetName: p.streetName,
+    apt: p.apt,
+    city: p.city,
+    state: p.state,
+    zip: p.zip,
+    formattedAddress: opts.formattedAddress.trim(),
+    lat: opts.lat,
+    lng: opts.lng,
+    defaultStartTime: opts.defaultStartTime || "09:00",
+    defaultCategory: opts.defaultCategory || "Pop Up",
+    logoMediaId: "",
+    logoUrl: "",
+    logoW: 1200,
+    logoH: 630,
+  });
+}
+
 export function upsertVenue(data: Omit<Venue, "id"> & { id?: string }): Venue {
   const id = data.id ?? nameToVenueId(data.name);
   const venue: Venue = { ...data, id };

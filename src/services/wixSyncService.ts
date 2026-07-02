@@ -1,25 +1,53 @@
 import wixEvents from "@/data/wixEvents.json";
-import { importEvents, loadEvents, saveEvents, type TulipEvent } from "@/lib/eventStore";
-import { loadVenues, resolveVenue } from "@/lib/venueStore";
+import { importEvents, loadEvents, saveEvents, type EventType, type TulipEvent } from "@/lib/eventStore";
+import { loadVenues, resolveVenue, streetKey, createVenueFromAddress, type Venue } from "@/lib/venueStore";
+import { geocodeAddress } from "@/services/geocodeService";
+
+const CATEGORY_BY_TYPE: Record<EventType, Venue["defaultCategory"]> = {
+  popup: "Pop Up",
+  farmers_market: "Grab & Go",
+  catering: "Private Event",
+  other: "Pop Up",
+};
 
 /**
- * Attach a stable venueId to each incoming booking (and backfill its street
- * address from the matched venue when the booking didn't carry one), so every
- * downstream feature — publish, venue stats, recommendations — links by id
- * instead of guessing from strings.
+ * Link each incoming booking to a venue:
+ *   - if it already matches one in the address book, stamp that venueId and
+ *     backfill the street address;
+ *   - if it doesn't but carries a real street address, geocode it and
+ *     auto-create the venue in the address book, then stamp the new id.
+ * This is what keeps the address book in step with real bookings without any
+ * manual re-entry.
  */
-function stampVenues(events: TulipEvent[]): TulipEvent[] {
+async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]> {
   const venues = loadVenues();
-  if (venues.length === 0) return events;
-  return events.map(ev => {
-    const venue = resolveVenue(ev, venues);
-    if (!venue) return ev;
-    return {
-      ...ev,
-      venueId: venue.id,
-      address: ev.address || venue.formattedAddress || undefined,
-    };
-  });
+  const out: TulipEvent[] = [];
+  for (const ev of events) {
+    let venue = resolveVenue(ev, venues);
+    if (!venue) {
+      const addr = ev.address || ev.location;
+      // Only auto-create from a real street address (has a number) and a name.
+      if (streetKey(addr) && (ev.name || ev.location)) {
+        const geo = await geocodeAddress(addr);
+        if (geo) {
+          venue = createVenueFromAddress({
+            name: ev.name || addr.split(",")[0],
+            formattedAddress: addr,
+            lat: geo.lat,
+            lng: geo.lng,
+            defaultCategory: CATEGORY_BY_TYPE[ev.eventType] ?? "Pop Up",
+          });
+          venues.push(venue); // so later events in this batch match in-memory
+        }
+      }
+    }
+    out.push(
+      venue
+        ? { ...ev, venueId: venue.id, address: ev.address || venue.formattedAddress || undefined }
+        : ev
+    );
+  }
+  return out;
 }
 
 // IDs of the old bundled Wix-Events snapshot. Live bookings supersede these, so
@@ -44,7 +72,7 @@ export async function syncBookingsFromWix(): Promise<WixSyncResult> {
     return { error: err instanceof Error ? err.message : "Network error" };
   }
 
-  const events = stampVenues((data.events || []) as TulipEvent[]);
+  const events = await stampAndCreateVenues((data.events || []) as TulipEvent[]);
 
   // If the fetch came back with no bookings (e.g. the key can't read Bookings
   // yet), do NOT touch existing events — never leave the user with nothing.

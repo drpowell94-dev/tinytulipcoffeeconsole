@@ -28,10 +28,12 @@ import {
   loadVenues,
   findVenueByName,
   resolveVenue,
+  parseAddress,
   upsertVenue,
   deleteVenue,
   type Venue,
 } from "@/lib/venueStore";
+import { geocodeAddress } from "@/services/geocodeService";
 import { publishToWix } from "@/services/wixPublishService";
 import { uploadLogoToWix } from "@/services/wixUploadService";
 import { useCloudSync } from "@/hooks/useCloudSync";
@@ -132,6 +134,7 @@ export default function EventsPage() {
   const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
   const [showAddVenue, setShowAddVenue] = useState(false);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
   const venueManagerRef = useRef<HTMLElement | null>(null);
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
@@ -350,16 +353,32 @@ export default function EventsPage() {
     }
   };
 
-  const handleAddVenue = (e: React.FormEvent) => {
+  const handleAddVenue = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!venueForm.name.trim() || !venueForm.formattedAddress.trim()) {
+    const formattedAddress = venueForm.formattedAddress.trim();
+    if (!venueForm.name.trim() || !formattedAddress) {
       toast.error("Venue name and address are required");
       return;
     }
-    if (!venueForm.lat || !venueForm.lng) {
-      toast.error("Lat/lng are required for Wix geocoding");
-      return;
+
+    // Coordinates are needed for Wix publishing. If the user didn't enter them,
+    // geocode the address automatically instead of blocking on a manual step.
+    let lat = parseFloat(venueForm.lat);
+    let lng = parseFloat(venueForm.lng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      setGeocoding(true);
+      const geo = await geocodeAddress(formattedAddress);
+      setGeocoding(false);
+      if (!geo) {
+        toast.error("Couldn't locate that address — enter lat/lng manually.");
+        return;
+      }
+      lat = geo.lat;
+      lng = geo.lng;
     }
+
+    // Backfill blank street fields from the address so the venue is publishable.
+    const parsed = parseAddress(formattedAddress);
 
     // Logo is optional — if blank, you'll be prompted to upload at publish time.
     let mediaId = venueForm.logoMediaId.trim();
@@ -372,15 +391,15 @@ export default function EventsPage() {
       // name changes; otherwise a new id is derived from the name.
       ...(editingVenueId ? { id: editingVenueId } : {}),
       name: venueForm.name.trim(),
-      streetNumber: venueForm.streetNumber.trim(),
-      streetName: venueForm.streetName.trim(),
-      apt: venueForm.apt.trim(),
-      city: venueForm.city.trim(),
-      state: venueForm.state.trim(),
-      zip: venueForm.zip.trim(),
-      formattedAddress: venueForm.formattedAddress.trim(),
-      lat: parseFloat(venueForm.lat),
-      lng: parseFloat(venueForm.lng),
+      streetNumber: venueForm.streetNumber.trim() || parsed.streetNumber,
+      streetName: venueForm.streetName.trim() || parsed.streetName,
+      apt: venueForm.apt.trim() || parsed.apt,
+      city: venueForm.city.trim() || parsed.city,
+      state: venueForm.state.trim() || parsed.state,
+      zip: venueForm.zip.trim() || parsed.zip,
+      formattedAddress,
+      lat,
+      lng,
       defaultStartTime: venueForm.defaultStartTime,
       defaultCategory: venueForm.defaultCategory,
       logoUrl: venueForm.logoUrl.trim(),
@@ -1243,14 +1262,14 @@ export default function EventsPage() {
                   <input className={input} placeholder="ZIP" value={venueForm.zip} onChange={e => setVenueForm({ ...venueForm, zip: e.target.value })} />
                 </div>
                 <div className="flex gap-2">
-                  <input className={input} placeholder="Latitude *" type="number" step="any" value={venueForm.lat} onChange={e => setVenueForm({ ...venueForm, lat: e.target.value })} />
-                  <input className={input} placeholder="Longitude *" type="number" step="any" value={venueForm.lng} onChange={e => setVenueForm({ ...venueForm, lng: e.target.value })} />
+                  <input className={input} placeholder="Latitude (auto-fills)" type="number" step="any" value={venueForm.lat} onChange={e => setVenueForm({ ...venueForm, lat: e.target.value })} />
+                  <input className={input} placeholder="Longitude (auto-fills)" type="number" step="any" value={venueForm.lng} onChange={e => setVenueForm({ ...venueForm, lng: e.target.value })} />
                 </div>
                 <input className={input} placeholder="Logo URL (optional — or upload at publish time)" value={venueForm.logoUrl} onChange={e => setVenueForm({ ...venueForm, logoUrl: e.target.value })} />
                 <input className={input} type="time" value={venueForm.defaultStartTime} onChange={e => setVenueForm({ ...venueForm, defaultStartTime: e.target.value })} />
               </div>
               <div className="flex gap-2">
-                <button type="submit" className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all">{editingVenueId ? "Update Venue" : "Save Venue"}</button>
+                <button type="submit" disabled={geocoding} className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all disabled:opacity-60">{geocoding ? "Locating…" : editingVenueId ? "Update Venue" : "Save Venue"}</button>
                 <button type="button" onClick={() => { setShowAddVenue(false); setEditingVenueId(null); setVenueForm(EMPTY_VENUE_FORM); }} className="rounded-lg bg-muted/50 px-4 py-2 font-body font-semibold text-sm text-muted-foreground hover:bg-muted/70 transition-colors">Cancel</button>
               </div>
             </form>
