@@ -45,25 +45,47 @@ export function seedVenues(): void {
 
   for (const raw of rawSeed) {
     const id = nameToVenueId(raw.name);
-    if (!byId.has(id)) {
+    const fromSeed: Venue = {
+      id,
+      name: raw.name,
+      streetNumber: raw.street_number,
+      streetName: raw.street_name,
+      apt: raw.apt,
+      city: raw.city,
+      state: raw.state,
+      zip: raw.zip,
+      formattedAddress: raw.formatted_address,
+      lat: raw.lat,
+      lng: raw.lng,
+      defaultStartTime: raw.default_start_time,
+      defaultCategory: raw.default_category as Venue["defaultCategory"],
+      logoMediaId: raw.logo_media_id,
+      logoUrl: raw.logo_url,
+      logoW: raw.logo_w,
+      logoH: raw.logo_h,
+    };
+
+    const current = byId.get(id);
+    if (!current) {
+      byId.set(id, fromSeed);
+    } else {
+      // Backfill publishing details the seed now provides but the stored venue
+      // is missing (e.g. venues added blank in a prior release). Never overwrite
+      // a non-empty stored value, and never touch CRM fields (IG/notes).
       byId.set(id, {
-        id,
-        name: raw.name,
-        streetNumber: raw.street_number,
-        streetName: raw.street_name,
-        apt: raw.apt,
-        city: raw.city,
-        state: raw.state,
-        zip: raw.zip,
-        formattedAddress: raw.formatted_address,
-        lat: raw.lat,
-        lng: raw.lng,
-        defaultStartTime: raw.default_start_time,
-        defaultCategory: raw.default_category as Venue["defaultCategory"],
-        logoMediaId: raw.logo_media_id,
-        logoUrl: raw.logo_url,
-        logoW: raw.logo_w,
-        logoH: raw.logo_h,
+        ...current,
+        formattedAddress: current.formattedAddress || fromSeed.formattedAddress,
+        streetNumber: current.streetNumber || fromSeed.streetNumber,
+        streetName: current.streetName || fromSeed.streetName,
+        city: current.city || fromSeed.city,
+        state: current.state || fromSeed.state,
+        zip: current.zip || fromSeed.zip,
+        lat: current.lat || fromSeed.lat,
+        lng: current.lng || fromSeed.lng,
+        logoUrl: current.logoUrl || fromSeed.logoUrl,
+        logoMediaId: current.logoMediaId || fromSeed.logoMediaId,
+        logoW: current.logoW || fromSeed.logoW,
+        logoH: current.logoH || fromSeed.logoH,
       });
     }
   }
