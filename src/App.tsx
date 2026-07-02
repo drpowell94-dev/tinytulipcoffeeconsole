@@ -13,8 +13,8 @@ import PropertiesPage from "@/pages/PropertiesPage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { importBundledWixEvents } from "@/services/eventService";
 import { loadEvents } from "@/lib/eventStore";
-import { seedCharlotteProperties } from "@/lib/seedData";
-import { seedVenues } from "@/lib/venueStore";
+import { loadProperties } from "@/lib/propertyStore";
+import { seedVenues, migratePropertiesToVenues } from "@/lib/venueStore";
 import { startCloudSync } from "@/services/cloudSync";
 
 export default function App() {
@@ -24,9 +24,10 @@ export default function App() {
       // new device picks up existing data instead of re-seeding its own copy.
       await startCloudSync();
 
-      // Seed local defaults only when nothing came down from the cloud.
-      seedCharlotteProperties();
+      // Seed the venue address book, then fold any legacy Properties entries
+      // into it (venues are now the single source of truth for places).
       seedVenues();
+      migratePropertiesToVenues(loadProperties());
 
       const initialized = localStorage.getItem("tt-bundled-events-imported");
       if (!initialized && loadEvents().length === 0) {

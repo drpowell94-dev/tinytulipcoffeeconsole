@@ -10,7 +10,7 @@ const NAV_ITEMS = [
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
   { to: "/checklists", label: "Checklists", icon: ClipboardCheck },
-  { to: "/properties", label: "Properties", icon: Building2 },
+  { to: "/properties", label: "Venues", icon: Building2 },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
 ];

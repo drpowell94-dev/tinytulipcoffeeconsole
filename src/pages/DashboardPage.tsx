@@ -305,15 +305,15 @@ function InsightCard({ insight }: { insight: DashboardInsight }) {
   let actionLink = null;
   let actionLabel = null;
 
-  if (insight.relatedPropertyId) {
-    actionLink = `/properties`;
-    actionLabel = "View Properties";
-  } else if (insight.relatedEventId) {
+  if (insight.relatedEventId) {
     actionLink = `/events/${insight.relatedEventId}`;
-    actionLabel = "Draft pitch";
-  } else if (insight.type === "inventory_low" && !insight.relatedPropertyId) {
+    actionLabel = "View event";
+  } else if (insight.relatedVenueName) {
     actionLink = `/properties`;
-    actionLabel = "Manage Properties";
+    actionLabel = "View venue";
+  } else {
+    actionLink = `/properties`;
+    actionLabel = "Manage venues";
   }
 
   return (
