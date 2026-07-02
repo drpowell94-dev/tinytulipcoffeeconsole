@@ -134,8 +134,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Inventory status — always visible so it never disappears */}
-      <section className={`space-y-4 p-5 rounded-lg ${lowStock.length > 0 ? "bg-destructive/5" : "bg-muted/15"}`}>
+      {/* Inventory status — always visible; low state is the prominent one */}
+      <section className={`space-y-4 p-5 rounded-lg border ${lowStock.length > 0 ? "bg-destructive/10 border-destructive/30" : "bg-muted/15 border-transparent"}`}>
         <div className="flex items-baseline justify-between">
           <h2 className={`font-display text-lg ${lowStock.length > 0 ? "text-destructive" : "text-foreground"}`}>
             {lowStock.length > 0 ? "Low Stock" : "Inventory"}
@@ -285,7 +285,7 @@ export default function DashboardPage() {
 
 function StatCard({ icon, label, value, alert }: { icon: React.ReactNode; label: string; value: string; alert?: boolean }) {
   return (
-    <div className={`rounded-lg p-5 transition-colors space-y-2 ${alert ? "bg-destructive/8" : "bg-muted/20"}`}>
+    <div className={`rounded-lg p-5 transition-colors space-y-2 border ${alert ? "bg-destructive/12 border-destructive/30" : "bg-muted/20 border-transparent"}`}>
       <div className={alert ? "text-destructive" : "text-foreground/60"}>
         {icon}
       </div>
