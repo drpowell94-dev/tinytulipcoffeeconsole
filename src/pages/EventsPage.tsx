@@ -29,6 +29,8 @@ import {
   findVenueByName,
   resolveVenue,
   parseAddress,
+  streetKey,
+  createVenueFromAddress,
   upsertVenue,
   deleteVenue,
   type Venue,
@@ -64,6 +66,15 @@ const PREORDER_DEFAULTS: Record<EventType, number> = {
   farmers_market: 25,
   catering: 30,
   other: 30,
+};
+
+// Reverse of categoryToEventType: pick a venue category when auto-creating a
+// venue from a new event's type.
+const CATEGORY_BY_EVENT_TYPE: Record<EventType, Venue["defaultCategory"]> = {
+  popup: "Pop Up",
+  farmers_market: "Grab & Go",
+  catering: "Private Event",
+  other: "Pop Up",
 };
 
 // Map a venue's Wix category to the app's event type, so selecting a property
@@ -181,22 +192,24 @@ export default function EventsPage() {
     }
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.location.trim()) {
+    const location = form.location.trim();
+    if (!location) {
       toast.error("Location (the event) is required");
       return;
     }
+    const address = form.address.trim();
     const event = createEvent({
       // Same mapping as the lead flow: the location/property is the event's
       // name (title + venue match); the Name field is the contact person.
-      name: form.location.trim(),
+      name: location,
       eventType: form.eventType,
       dateStart: form.dateStart
         ? new Date(`${form.dateStart}T${form.startTime || "09:00"}:00`).toISOString()
         : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      location: form.location.trim(),
-      address: form.address.trim() || undefined,
+      location,
+      address: address || undefined,
       preOrders: form.preOrders,
       status: form.status,
       depositStatus: "pending",
@@ -205,6 +218,31 @@ export default function EventsPage() {
       contactPhone: form.contactPhone.trim() || undefined,
       notes: form.notes.trim() || undefined,
     });
+
+    // Link the event to a venue: match an existing one, or — when a real street
+    // address was typed — geocode it and auto-add the venue to the address book.
+    let venue = resolveVenue({ location, name: location, address }, venues);
+    const addrForVenue = address || location;
+    if (!venue && streetKey(addrForVenue)) {
+      setGeocoding(true);
+      const geo = await geocodeAddress(addrForVenue);
+      setGeocoding(false);
+      if (geo) {
+        venue = createVenueFromAddress({
+          name: location,
+          formattedAddress: addrForVenue,
+          lat: geo.lat,
+          lng: geo.lng,
+          defaultCategory: CATEGORY_BY_EVENT_TYPE[form.eventType],
+        });
+        setVenues(loadVenues());
+        toast.success(`Added "${venue.name}" to the address book`);
+      }
+    }
+    if (venue) {
+      updateEvent(event.id, { venueId: venue.id, address: event.address || venue.formattedAddress || undefined });
+    }
+
     if (form.status === "confirmed") {
       createChecklistForEvent(event.id, event.name, event.eventType);
     }
