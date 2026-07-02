@@ -2,6 +2,12 @@ import wixEvents from "@/data/wixEvents.json";
 import { importEvents, loadEvents, saveEvents, type EventType, type TulipEvent } from "@/lib/eventStore";
 import { loadVenues, resolveVenue, streetKey, createVenueFromAddress, type Venue } from "@/lib/venueStore";
 import { geocodeAddress } from "@/services/geocodeService";
+import { recordSyncStatus } from "@/lib/syncStatus";
+
+// The serverless route caps each Wix call at 8s; give it room to fail cleanly
+// and report an error before giving up client-side. Without this, a stalled
+// request just hangs in the UI forever with no visible error.
+const SYNC_TIMEOUT_MS = 15000;
 
 const CATEGORY_BY_TYPE: Record<EventType, Venue["defaultCategory"]> = {
   popup: "Pop Up",
@@ -65,18 +71,39 @@ export type WixSyncResult = { created: number; updated: number } | { error: stri
 export async function syncBookingsFromWix(): Promise<WixSyncResult> {
   let data: { events?: TulipEvent[]; error?: string };
   try {
-    const res = await fetch("/api/wix-sync");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), SYNC_TIMEOUT_MS);
+    let res: Response;
+    try {
+      res = await fetch("/api/wix-sync", { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
     data = await res.json();
-    if (!res.ok) return { error: data.error || `HTTP ${res.status}` };
+    if (!res.ok) {
+      const error = data.error || `HTTP ${res.status}`;
+      recordSyncStatus({ ok: false, error });
+      return { error };
+    }
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "Network error" };
+    const error =
+      err instanceof Error && err.name === "AbortError"
+        ? `Timed out after ${SYNC_TIMEOUT_MS / 1000}s`
+        : err instanceof Error
+          ? err.message
+          : "Network error";
+    recordSyncStatus({ ok: false, error });
+    return { error };
   }
 
   const events = await stampAndCreateVenues((data.events || []) as TulipEvent[]);
 
   // If the fetch came back with no bookings (e.g. the key can't read Bookings
   // yet), do NOT touch existing events — never leave the user with nothing.
-  if (events.length === 0) return { created: 0, updated: 0 };
+  if (events.length === 0) {
+    recordSyncStatus({ ok: true });
+    return { created: 0, updated: 0 };
+  }
 
   // We have live bookings — now it's safe to drop the old bundled snapshot they
   // replace. User-created and Convert-published events are preserved.
@@ -84,5 +111,6 @@ export async function syncBookingsFromWix(): Promise<WixSyncResult> {
   const cleaned = current.filter(e => !(e.wixEventId && BUNDLED_WIX_IDS.has(e.wixEventId)));
   if (cleaned.length !== current.length) saveEvents(cleaned);
 
+  recordSyncStatus({ ok: true });
   return importEvents(events);
 }

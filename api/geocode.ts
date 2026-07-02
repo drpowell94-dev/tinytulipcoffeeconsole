@@ -9,11 +9,26 @@ interface GeoResult {
   source: "census" | "nominatim";
 }
 
+// Cap each upstream geocoder call so a stall fails fast instead of hanging
+// until the platform kills the function (which drops the connection to the
+// client with no error, rather than returning one).
+const GEOCODE_UPSTREAM_TIMEOUT_MS = 6000;
+
+async function fetchWithTimeout(url: string, init?: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), GEOCODE_UPSTREAM_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function geocodeCensus(address: string): Promise<GeoResult | null> {
   const url =
     "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress" +
     `?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url);
   if (!res.ok) return null;
   const json = await res.json();
   const match = json?.result?.addressMatches?.[0]?.coordinates;
@@ -25,7 +40,7 @@ async function geocodeNominatim(address: string): Promise<GeoResult | null> {
   const url =
     "https://nominatim.openstreetmap.org/search" +
     `?q=${encodeURIComponent(address)}&format=json&limit=1`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: { "User-Agent": "TinyTulipCoffeeConsole/1.0 (venue geocoding)" },
   });
   if (!res.ok) return null;
@@ -44,8 +59,10 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ error: "Missing address parameter" }, { status: 400 });
   }
 
+  // Try Census first; if it errors, times out, or has no match, fall back to
+  // Nominatim rather than failing the whole request.
   try {
-    const result = (await geocodeCensus(address)) ?? (await geocodeNominatim(address));
+    const result = (await geocodeCensus(address).catch(() => null)) ?? (await geocodeNominatim(address));
     if (!result) {
       return Response.json({ error: "No match found", address }, { status: 404 });
     }

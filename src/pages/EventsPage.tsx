@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -23,7 +23,8 @@ import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkSt
 import { savePost } from "@/lib/contentStore";
 import { generateEventRecap } from "@/lib/blogWriter";
 import { DrinkIcon, TulipLogo } from "@/components/drinks/DrinkIcon";
-import { cn, formatCurrency, formatDate, daysUntil } from "@/lib/utils";
+import { cn, formatCurrency, formatDate, daysUntil, timeAgo } from "@/lib/utils";
+import { loadSyncStatus, type SyncStatus } from "@/lib/syncStatus";
 import {
   loadVenues,
   findVenueByName,
@@ -147,6 +148,7 @@ export default function EventsPage() {
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const [geocoding, setGeocoding] = useState(false);
   const [showPast, setShowPast] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(() => loadSyncStatus());
   const venueManagerRef = useRef<HTMLElement | null>(null);
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
@@ -157,11 +159,14 @@ export default function EventsPage() {
     }
   }, [showVenueManager]);
 
-  // Re-read when a teammate's edit arrives (or tab refocuses).
+  // Re-read when a teammate's edit arrives (or tab refocuses). Also picks up
+  // the outcome of the silent background Wix sync that runs on app load, so a
+  // failure (or a hang that times out) surfaces here instead of going unseen.
   useCloudSync(() => {
     setEvents(loadEvents());
     setVenues(loadVenues());
     setHistory(loadHistory());
+    setSyncStatus(loadSyncStatus());
   });
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
@@ -182,6 +187,7 @@ export default function EventsPage() {
     const result = await syncBookingsFromWix();
     setEvents(loadEvents());
     setVenues(loadVenues());
+    setSyncStatus(loadSyncStatus());
     setImporting(false);
 
     if ("error" in result) {
@@ -868,6 +874,27 @@ export default function EventsPage() {
 
       {/* Lead response time alert */}
       <LeadResponseAlert userId="default-user" />
+
+      {/* Wix sync failure banner — the background sync on app load fails
+          silently by design (so the app still works offline), but a failure
+          should still be visible rather than a silent trap. */}
+      {syncStatus && !syncStatus.ok && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg bg-destructive/10 border border-destructive/30 px-4 py-3">
+          <AlertTriangle size={18} className="text-destructive shrink-0" />
+          <p className="flex-1 text-sm font-body text-foreground">
+            <span className="font-semibold">Wix sync failed</span> ({timeAgo(syncStatus.lastAttempt)}) — showing last known data.
+            {syncStatus.error && <span className="text-muted-foreground"> {syncStatus.error}</span>}
+          </p>
+          <button
+            onClick={handleImportWix}
+            disabled={importing}
+            className="flex items-center justify-center gap-1.5 rounded-lg bg-destructive/15 hover:bg-destructive/25 text-destructive px-3 py-1.5 font-body font-semibold text-xs shrink-0 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={importing ? "animate-spin" : undefined} />
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Quick lead form - always accessible */}
       {showLeadForm && (

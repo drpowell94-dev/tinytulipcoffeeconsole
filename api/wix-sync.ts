@@ -20,16 +20,34 @@ interface OutEvent {
   createdAt: string;
 }
 
+// Cap each Wix call so a stalled upstream request fails fast with a clear
+// error instead of hanging until the platform kills the function — which
+// otherwise looks like a dropped connection to the client, not an error.
+const WIX_TIMEOUT_MS = 8000;
+
 async function wixFetch(path: string, body: unknown): Promise<any> {
-  const res = await fetch(`${WIX_BASE}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: WIX_API_KEY,
-      "wix-site-id": WIX_SITE_ID,
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), WIX_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${WIX_BASE}${path}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: WIX_API_KEY,
+        "wix-site-id": WIX_SITE_ID,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Wix ${path} timed out after ${WIX_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json();
   if (!res.ok) throw new Error(`Wix ${path} ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
   return json;
