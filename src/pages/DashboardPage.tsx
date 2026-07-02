@@ -119,20 +119,48 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {/* Quick stats — sourced from events so they reflect real activity */}
+      {/* Quick stats — Low Stock first (most time-sensitive), all event-sourced */}
       <div className="space-y-8">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
-          <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} />
-          <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} />
-          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} />
           <StatCard
             icon={<AlertTriangle size={20} />}
             label="Low Stock Items"
             value={String(lowStock.length)}
             alert={lowStock.length > 0}
           />
+          <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} />
+          <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} />
+          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} />
         </div>
       </div>
+
+      {/* Inventory status — always visible so it never disappears */}
+      <section className={`space-y-4 p-5 rounded-lg ${lowStock.length > 0 ? "bg-destructive/5" : "bg-muted/15"}`}>
+        <div className="flex items-baseline justify-between">
+          <h2 className={`font-display text-lg ${lowStock.length > 0 ? "text-destructive" : "text-foreground"}`}>
+            {lowStock.length > 0 ? "Low Stock" : "Inventory"}
+          </h2>
+          <Link to="/inventory" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
+            {lowStock.length > 0 ? "Restock →" : "View →"}
+          </Link>
+        </div>
+        {lowStock.length > 0 ? (
+          <div className="space-y-2">
+            {lowStock.map(item => (
+              <p key={item.id} className="text-sm font-body text-foreground">
+                <span className="font-semibold">{item.name}</span>{" "}
+                <span className="text-muted-foreground">
+                  {item.quantity} {item.unit} left · reorder at {item.reorderLevel}
+                </span>
+              </p>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm font-body text-muted-foreground">
+            Everything's stocked above its reorder level. ✓
+          </p>
+        )}
+      </section>
 
       {/* Upcoming events */}
       <section className="space-y-6">
@@ -213,28 +241,6 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
-
-      {/* Inventory alerts */}
-      {lowStock.length > 0 && (
-        <section className="space-y-4 p-5 rounded-lg bg-destructive/5">
-          <div className="flex items-baseline justify-between">
-            <h2 className="font-display text-lg text-destructive">Low Stock</h2>
-            <Link to="/inventory" className="text-xs font-body font-semibold text-accent hover:opacity-70 transition-opacity">
-              Restock →
-            </Link>
-          </div>
-          <div className="space-y-2">
-            {lowStock.map(item => (
-              <p key={item.id} className="text-sm font-body text-foreground">
-                <span className="font-semibold">{item.name}</span>{" "}
-                <span className="text-muted-foreground">
-                  {item.quantity} {item.unit} left · reorder at {item.reorderLevel}
-                </span>
-              </p>
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* Past Sessions */}
       {history.length > 0 && (
