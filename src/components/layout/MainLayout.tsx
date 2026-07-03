@@ -7,14 +7,17 @@ import { cn } from "@/lib/utils";
 import { signOut } from "@/hooks/useAuth";
 import { isSupabaseEnabled } from "@/services/supabase";
 
+// Ordered by actual usage: daily operational flow first (dashboard check-in,
+// event tracking + drink counter, packing lists, inventory checks), then
+// reference data (venues), then periodic marketing tasks (content, email).
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
-  { to: "/content", label: "Content", icon: FileText },
   { to: "/checklists", label: "Lists", icon: ClipboardCheck },
-  { to: "/properties", label: "Venues", icon: Building2 },
-  { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },
+  { to: "/properties", label: "Venues", icon: Building2 },
+  { to: "/content", label: "Content", icon: FileText },
+  { to: "/email-campaigns", label: "Email", icon: Mail },
 ];
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {

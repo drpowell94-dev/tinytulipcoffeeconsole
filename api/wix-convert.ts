@@ -49,6 +49,56 @@ const EVENT_TYPE_TO_CATEGORY: Record<string, string> = {
   other: "Pop Up",
 };
 
+const NY_TIME_ZONE = "America/New_York";
+
+// Convert a wall-clock time in America/New_York to the correct UTC instant,
+// DST-aware, without pulling in a new dependency. Native Intl.DateTimeFormat
+// can report the actual offset in effect for a given date, so we build a
+// first guess assuming UTC, ask Intl what NY's offset was at that instant,
+// then correct — this converges in one pass except right at a DST
+// transition edge, where a second pass guarantees correctness.
+export function nyWallClockToUtc(year: number, month: number, day: number, hour: number, minute: number): Date {
+  const offsetMinutesAt = (utcGuess: Date): number => {
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: NY_TIME_ZONE,
+      hourCycle: "h23",
+      year: "numeric", month: "2-digit", day: "2-digit",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+    }).formatToParts(utcGuess);
+    const get = (type: string) => Number(parts.find(p => p.type === type)?.value ?? 0);
+    const asUtc = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+    return (asUtc - utcGuess.getTime()) / 60000;
+  };
+
+  let utc = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  for (let i = 0; i < 2; i++) {
+    const offset = offsetMinutesAt(utc);
+    utc = new Date(Date.UTC(year, month - 1, day, hour, minute) - offset * 60000);
+  }
+  return utc;
+}
+
+// event.dateStart may or may not carry a real time. Events created without an
+// explicit time are stored at UTC midnight for the given day — detect that
+// and fall back to the venue's default start time (or 9am ET) so we always
+// build a valid dateAndTimeSettings instead of publishing a bogus midnight
+// start, or worse, failing validation entirely.
+export function resolveStartDate(dateStart: string, venueDefaultStartTime: string | undefined): Date | null {
+  const raw = new Date(dateStart);
+  if (isNaN(raw.getTime())) return null;
+
+  const isTimeless = raw.getUTCHours() === 0 && raw.getUTCMinutes() === 0 && raw.getUTCSeconds() === 0;
+  if (!isTimeless) return raw;
+
+  const [hourStr, minuteStr] = (venueDefaultStartTime || "09:00").split(":");
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  if (isNaN(hour) || isNaN(minute)) {
+    return nyWallClockToUtc(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate(), 9, 0);
+  }
+  return nyWallClockToUtc(raw.getUTCFullYear(), raw.getUTCMonth() + 1, raw.getUTCDate(), hour, minute);
+}
+
 async function wixFetch(path: string, method: string, body?: unknown): Promise<unknown> {
   const res = await fetch(`${WIX_BASE}${path}`, {
     method,
@@ -121,9 +171,9 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ error: "Missing required fields: event.name, event.dateStart, venue.formattedAddress" }, { status: 400 });
   }
 
-  const startDate = new Date(event.dateStart);
-  if (isNaN(startDate.getTime())) {
-    return Response.json({ error: "Invalid event.dateStart" }, { status: 400 });
+  const startDate = resolveStartDate(event.dateStart, venue.defaultStartTime);
+  if (!startDate) {
+    return Response.json({ error: "Set a date before publishing" }, { status: 400 });
   }
 
   const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
@@ -140,12 +190,11 @@ export default async function handler(request: Request): Promise<Response> {
   const wixEvent: Record<string, unknown> = {
     title: event.name,
     shortDescription: "",
-    scheduling: {
-      config: {
-        startDate: startDate.toISOString(),
-        endDate: endDate.toISOString(),
-        timeZoneId: "America/New_York",
-      },
+    dateAndTimeSettings: {
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      timeZoneId: NY_TIME_ZONE,
+      recurrenceStatus: "ONE_TIME",
     },
     location: {
       name: venue.name,
@@ -202,6 +251,8 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ wixEventId }, { status: 200 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
+    console.error("Wix publish failed. Request body sent:", JSON.stringify({ event: wixEvent }));
+    console.error("Wix error:", message);
     return Response.json({ error: message }, { status: 502 });
   }
 }
