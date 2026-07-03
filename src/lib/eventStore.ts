@@ -114,6 +114,46 @@ export function importEvents(incoming: TulipEvent[]): { created: number; updated
   return { created, updated };
 }
 
+export interface DuplicatePair {
+  /** The live-synced booking — richer data (contact info), kept by default. */
+  keep: TulipEvent;
+  /** The bundled historical record for the same real-world event. */
+  remove: TulipEvent;
+}
+
+/**
+ * Find event pairs where one record came from the bundled historical Wix
+ * Events snapshot (a bare-UUID wixEventId) and the other from the live Wix
+ * Bookings sync (a "wix-booking:"-prefixed wixEventId), both at the same
+ * venue on the same calendar day. That combination is a much stronger signal
+ * than same-venue/same-day alone — it means the exact same real booking was
+ * captured by two different Wix products, not just two events that happen to
+ * coincide. The live record is recommended to keep since it carries contact
+ * details the historical snapshot never had.
+ */
+export function findBundledLiveDuplicates(events: TulipEvent[]): DuplicatePair[] {
+  const isLive = (e: TulipEvent) => e.wixEventId?.startsWith("wix-booking:") ?? false;
+  const isBundled = (e: TulipEvent) => !!e.wixEventId && !isLive(e);
+
+  const groups = new Map<string, TulipEvent[]>();
+  for (const e of events) {
+    if (e.status === "cancelled" || !e.venueId) continue;
+    const key = `${e.venueId}|${e.dateStart.slice(0, 10)}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(e);
+    else groups.set(key, [e]);
+  }
+
+  const pairs: DuplicatePair[] = [];
+  for (const group of groups.values()) {
+    const bundled = group.filter(isBundled);
+    const live = group.filter(isLive);
+    if (bundled.length === 0 || live.length === 0) continue;
+    for (const b of bundled) pairs.push({ keep: live[0], remove: b });
+  }
+  return pairs;
+}
+
 export function upcomingEvents(withinDays = 7): TulipEvent[] {
   const now = new Date();
   const cutoff = new Date(now.getTime() + withinDays * 86400000);

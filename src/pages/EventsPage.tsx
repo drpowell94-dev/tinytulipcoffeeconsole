@@ -8,11 +8,13 @@ import {
   createEvent,
   deleteEvent,
   updateEvent,
+  findBundledLiveDuplicates,
   EVENT_TYPE_LABELS,
   STATUS_LABELS,
   type TulipEvent,
   type EventType,
   type EventStatus,
+  type DuplicatePair,
 } from "@/lib/eventStore";
 import { getCharlotteApartments } from "@/lib/propertyStore";
 import { syncEventsFromSupabase } from "@/services/eventService";
@@ -171,6 +173,28 @@ export default function EventsPage() {
     }
     return dupes;
   }, [events]);
+
+  // A stronger, safe-to-bulk-resolve signal than duplicateEventIds above: a
+  // bundled historical record and a live-synced booking, same venue, same
+  // day. That combination means two different Wix products captured the
+  // exact same real event, not just a coincidence — the live record is kept
+  // since it carries contact details the historical snapshot never had.
+  const bundledLiveDuplicates = useMemo(() => findBundledLiveDuplicates(events), [events]);
+
+  const handleResolveDuplicate = (pair: DuplicatePair) => {
+    setEvents(deleteEvent(pair.remove.id));
+    toast.success(`Removed duplicate "${pair.remove.name}" — kept the live-synced version`);
+  };
+
+  const handleResolveAllDuplicates = () => {
+    const count = bundledLiveDuplicates.length;
+    let latest: TulipEvent[] = events;
+    for (const pair of bundledLiveDuplicates) {
+      latest = deleteEvent(pair.remove.id);
+    }
+    setEvents(latest);
+    toast.success(`Resolved ${count} duplicate event${count === 1 ? "" : "s"}`);
+  };
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
   // (the panel lives below the event list).
@@ -971,6 +995,51 @@ export default function EventsPage() {
             <RefreshCw size={14} className={importing ? "animate-spin" : undefined} />
             Retry
           </button>
+        </div>
+      )}
+
+      {/* Bundled-vs-live duplicate review — a historical (Wix Events) record
+          and a live-synced (Wix Bookings) record for the same venue on the
+          same day almost certainly describe the same real booking captured
+          by two different Wix products. Safe to bulk-resolve by keeping the
+          live version, which carries contact details the old snapshot never
+          had. */}
+      {bundledLiveDuplicates.length > 0 && (
+        <div className="rounded-lg bg-accent/8 border border-accent/20 p-4 space-y-3">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <AlertTriangle size={16} className="text-accent shrink-0" />
+              <p className="text-sm font-body font-semibold text-foreground">
+                {bundledLiveDuplicates.length} likely duplicate{bundledLiveDuplicates.length === 1 ? "" : "s"} found
+              </p>
+            </div>
+            <button
+              onClick={handleResolveAllDuplicates}
+              className="rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
+            >
+              Resolve all (keep live versions)
+            </button>
+          </div>
+          <p className="text-xs text-muted-foreground font-body">
+            Same venue, same day, recorded by both the old historical snapshot and the live Wix booking sync — almost certainly one real event, not two.
+          </p>
+          <div className="space-y-2">
+            {bundledLiveDuplicates.map(pair => (
+              <div key={pair.remove.id} className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 flex-wrap">
+                <p className="text-xs font-body text-foreground">
+                  <span className="font-semibold">{formatDate(pair.remove.dateStart)}</span> — keep{" "}
+                  <span className="text-accent">"{pair.keep.name}"</span> (live), remove{" "}
+                  <span className="text-muted-foreground">"{pair.remove.name}"</span> (historical)
+                </p>
+                <button
+                  onClick={() => handleResolveDuplicate(pair)}
+                  className="rounded-lg bg-muted/50 hover:bg-muted/70 px-2.5 py-1 font-body font-semibold text-[11px] text-muted-foreground transition-colors shrink-0"
+                >
+                  Remove this one
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
