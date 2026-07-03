@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, Download, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, Sparkles, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -830,7 +830,21 @@ export default function EventsPage() {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
         <div className="flex-1">
-          <h1 className="font-display text-3xl sm:text-4xl text-foreground leading-tight">Events</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="font-display text-3xl sm:text-4xl text-foreground leading-tight">Events</h1>
+            {/* Manual re-check for a booking that came in since the app loaded —
+                background sync already covers page load, and sync failures get
+                their own Retry in the banner below. This is just a quick nudge. */}
+            <button
+              onClick={handleImportWix}
+              disabled={importing}
+              title="Check Wix for new bookings"
+              aria-label="Check Wix for new bookings"
+              className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors disabled:opacity-50 shrink-0"
+            >
+              <RefreshCw size={16} strokeWidth={2} className={importing ? "animate-spin" : undefined} />
+            </button>
+          </div>
           <p className="text-xs sm:text-sm text-muted-foreground font-body mt-2">
             Pop-ups, farmers markets, private events with live drink counting
           </p>
@@ -843,15 +857,6 @@ export default function EventsPage() {
             <Building2 size={16} strokeWidth={2} />
             <span className="hidden sm:inline">Venues ({venues.length})</span>
             <span className="sm:hidden">Venues</span>
-          </button>
-          <button
-            onClick={handleImportWix}
-            disabled={importing}
-            className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-br from-muted/50 to-muted/30 hover:from-muted/70 hover:to-muted/50 text-foreground px-3 sm:px-4 py-2.5 sm:py-3 font-body font-semibold text-xs sm:text-sm active:scale-95 transition-all disabled:opacity-50 border border-border/30"
-          >
-            <Download size={16} strokeWidth={2} />
-            <span className="hidden sm:inline">Import from Wix</span>
-            <span className="sm:hidden">Import</span>
           </button>
           <button
             onClick={() => setShowLeadForm(!showLeadForm)}
