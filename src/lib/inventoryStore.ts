@@ -23,7 +23,14 @@ const SEED: InventoryItem[] = [
 export function loadInventory(): InventoryItem[] {
   const items = loadJSON<InventoryItem[] | null>(KEY, null);
   if (items === null) {
-    saveJSON(KEY, SEED);
+    // Seed localStorage only - do NOT push to the cloud here. This can run
+    // before the initial cloud hydrate finishes (it's called synchronously
+    // on page mount; hydrate is async), and pushing would overwrite real
+    // shared inventory with these defaults and win the race against the
+    // correct data arriving moments later. startCloudSync() already pushes
+    // local-only collections to the cloud, but only for keys the cloud
+    // truly doesn't have yet - that's the right place for this to happen.
+    if (typeof localStorage !== "undefined") localStorage.setItem(KEY, JSON.stringify(SEED));
     return SEED;
   }
   return items;
