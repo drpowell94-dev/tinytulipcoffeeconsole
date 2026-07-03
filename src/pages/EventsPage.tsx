@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Plus, Coffee, MapPin, Trash2, History, Sparkles, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
@@ -151,6 +151,26 @@ export default function EventsPage() {
   const [showPast, setShowPast] = useState(false);
   const [syncStatus, setSyncStatus] = useState<SyncStatus | null>(() => loadSyncStatus());
   const venueManagerRef = useRef<HTMLElement | null>(null);
+
+  // Two non-cancelled events at the same venue on the same calendar day are
+  // almost always the same real booking recorded twice (e.g. a resubmission
+  // in Wix), not two separate events — flag them for manual review rather
+  // than guessing which one to keep.
+  const duplicateEventIds = useMemo(() => {
+    const groups = new Map<string, string[]>();
+    for (const e of events) {
+      if (e.status === "cancelled" || !e.venueId) continue;
+      const key = `${e.venueId}|${e.dateStart.slice(0, 10)}`;
+      const ids = groups.get(key) ?? [];
+      ids.push(e.id);
+      groups.set(key, ids);
+    }
+    const dupes = new Set<string>();
+    for (const ids of groups.values()) {
+      if (ids.length > 1) ids.forEach(id => dupes.add(id));
+    }
+    return dupes;
+  }, [events]);
 
   // When the Venue Manager opens, scroll it into view so it's obvious it opened
   // (the panel lives below the event list).
@@ -550,6 +570,20 @@ export default function EventsPage() {
 
   const renderEvent = (event: TulipEvent) => {
     const days = daysUntil(event.dateStart);
+    // Wix Bookings names an event after whoever booked it (often the
+    // property manager, e.g. "Angelina Russo"), while older historical data
+    // named it after the venue itself (e.g. "The Campbell"). Once an event is
+    // linked to a venue, show the venue's name as the primary title so the
+    // same place always reads the same way regardless of which Wix product
+    // the record came from — with the raw booking name kept as a secondary
+    // detail rather than lost.
+    const linkedVenue = resolveVenue(event, venues);
+    const displayName = linkedVenue?.name || event.name;
+    const bookedBy =
+      linkedVenue && event.name.trim().toLowerCase() !== linkedVenue.name.trim().toLowerCase()
+        ? event.name
+        : null;
+    const isPossibleDuplicate = duplicateEventIds.has(event.id);
 
     // Edit mode — show inline form instead of card
     if (editingId === event.id) {
@@ -636,13 +670,21 @@ export default function EventsPage() {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap mb-2 sm:mb-3">
-                <h3 className="font-body font-semibold text-foreground text-base">{event.name}</h3>
+                <h3 className="font-body font-semibold text-foreground text-base">{displayName}</h3>
                 <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-body font-semibold", STATUS_STYLES[event.status])}>
                   {event.status === "inquiry" ? "New Lead" : STATUS_LABELS[event.status]}
                 </span>
                 {event.wixEventId && (
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-purple-500/10 text-purple-600">
                     Wix ✓
+                  </span>
+                )}
+                {isPossibleDuplicate && (
+                  <span
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-body font-semibold bg-destructive/10 text-destructive"
+                    title="Another event shares this venue and date — likely the same booking recorded twice"
+                  >
+                    <AlertTriangle size={10} /> Possible duplicate
                   </span>
                 )}
                 {event.followUpDate && event.status === "inquiry" && days >= 0 && (
@@ -671,12 +713,9 @@ export default function EventsPage() {
                     📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
                   </span>
                 )}
-                {event.venueId && (() => {
-                  const linked = venues.find(v => v.id === event.venueId);
-                  return linked && linked.name !== event.location ? (
-                    <span className="block text-accent/70">🔗 Venue: {linked.name}</span>
-                  ) : null;
-                })()}
+                {bookedBy && (
+                  <span className="block text-muted-foreground/70">Booked by {bookedBy}</span>
+                )}
                 {event.followUpNote && event.status === "inquiry" && days >= 0 && (
                   <span className="block text-muted-foreground italic">{event.followUpNote}</span>
                 )}
