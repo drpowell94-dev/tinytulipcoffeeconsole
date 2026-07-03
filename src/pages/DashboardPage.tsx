@@ -127,10 +127,11 @@ export default function DashboardPage() {
             label="Low Stock Items"
             value={String(lowStock.length)}
             alert={lowStock.length > 0}
+            to="/inventory"
           />
-          <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} />
-          <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} />
-          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} />
+          <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} to="/events" />
+          <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} to="/events" />
+          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} to="/events" />
         </div>
       </div>
 
@@ -283,15 +284,18 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value, alert }: { icon: React.ReactNode; label: string; value: string; alert?: boolean }) {
+function StatCard({ icon, label, value, alert, to }: { icon: React.ReactNode; label: string; value: string; alert?: boolean; to: string }) {
   return (
-    <div className={`rounded-lg p-5 transition-colors space-y-2 border ${alert ? "bg-destructive/12 border-destructive/30" : "bg-muted/20 border-transparent"}`}>
+    <Link
+      to={to}
+      className={`flex flex-col rounded-lg p-5 transition-colors space-y-2 border hover-scale active:scale-95 ${alert ? "bg-destructive/12 border-destructive/30 hover:bg-destructive/18" : "bg-muted/20 border-transparent hover:bg-muted/35"}`}
+    >
       <div className={alert ? "text-destructive" : "text-foreground/60"}>
         {icon}
       </div>
       <p className="font-display text-3xl text-foreground">{value}</p>
       <p className="text-xs font-body text-muted-foreground">{label}</p>
-    </div>
+    </Link>
   );
 }
 
