@@ -5,6 +5,7 @@ import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
   loadEvents,
+  saveEvents,
   createEvent,
   deleteEvent,
   updateEvent,
@@ -181,18 +182,41 @@ export default function EventsPage() {
   // since it carries contact details the historical snapshot never had.
   const bundledLiveDuplicates = useMemo(() => findBundledLiveDuplicates(events), [events]);
 
+  // The venue, not whoever booked it, is the event's identity — the surviving
+  // record's name is normalized to the venue name (falling back to its
+  // current name if the venue can't be resolved), with the booker kept as
+  // contact info rather than the headline.
+  const resolvedNameFor = (event: TulipEvent): string =>
+    venues.find(v => v.id === event.venueId)?.name || event.name;
+
+  // Apply every pending resolution as a single write. Doing this one pair at
+  // a time (repeated delete calls, each firing its own async cloud push) let
+  // the pushes race and land out of order, so the last one to arrive could
+  // silently undo an earlier deletion — that's why counts weren't updating.
+  const applyDuplicateResolutions = (pairs: DuplicatePair[]) => {
+    const removeIds = new Set(pairs.map(p => p.remove.id));
+    const keepUpdates = new Map(pairs.map(p => [p.keep.id, p]));
+    const updated = loadEvents()
+      .filter(e => !removeIds.has(e.id))
+      .map(e => {
+        const pair = keepUpdates.get(e.id);
+        if (!pair) return e;
+        const venueName = resolvedNameFor(e);
+        if (e.name === venueName) return e;
+        return { ...e, name: venueName, contactName: e.contactName || pair.remove.name || pair.keep.name };
+      });
+    saveEvents(updated);
+    setEvents(updated);
+  };
+
   const handleResolveDuplicate = (pair: DuplicatePair) => {
-    setEvents(deleteEvent(pair.remove.id));
-    toast.success(`Removed duplicate "${pair.remove.name}" — kept the live-synced version`);
+    applyDuplicateResolutions([pair]);
+    toast.success(`Kept "${resolvedNameFor(pair.keep)}" — removed the historical duplicate`);
   };
 
   const handleResolveAllDuplicates = () => {
     const count = bundledLiveDuplicates.length;
-    let latest: TulipEvent[] = events;
-    for (const pair of bundledLiveDuplicates) {
-      latest = deleteEvent(pair.remove.id);
-    }
-    setEvents(latest);
+    applyDuplicateResolutions(bundledLiveDuplicates);
     toast.success(`Resolved ${count} duplicate event${count === 1 ? "" : "s"}`);
   };
 
@@ -1017,28 +1041,35 @@ export default function EventsPage() {
               onClick={handleResolveAllDuplicates}
               className="rounded-lg bg-accent text-accent-foreground px-3 py-1.5 font-body font-semibold text-xs hover-scale active:scale-95 transition-all"
             >
-              Resolve all (keep live versions)
+              Merge all
             </button>
           </div>
           <p className="text-xs text-muted-foreground font-body">
-            Same venue, same day, recorded by both the old historical snapshot and the live Wix booking sync — almost certainly one real event, not two.
+            Same venue, same day, recorded by both the old historical snapshot and the live Wix booking sync — almost certainly one real event, not two. The venue stays the event's name; whoever booked it is kept as contact info.
           </p>
           <div className="space-y-2">
-            {bundledLiveDuplicates.map(pair => (
-              <div key={pair.remove.id} className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 flex-wrap">
-                <p className="text-xs font-body text-foreground">
-                  <span className="font-semibold">{formatDate(pair.remove.dateStart)}</span> — keep{" "}
-                  <span className="text-accent">"{pair.keep.name}"</span> (live), remove{" "}
-                  <span className="text-muted-foreground">"{pair.remove.name}"</span> (historical)
-                </p>
-                <button
-                  onClick={() => handleResolveDuplicate(pair)}
-                  className="rounded-lg bg-muted/50 hover:bg-muted/70 px-2.5 py-1 font-body font-semibold text-[11px] text-muted-foreground transition-colors shrink-0"
-                >
-                  Remove this one
-                </button>
-              </div>
-            ))}
+            {bundledLiveDuplicates.map(pair => {
+              const venueName = resolvedNameFor(pair.keep);
+              const booker = pair.remove.name || pair.keep.name;
+              return (
+                <div key={pair.remove.id} className="flex items-center justify-between gap-3 rounded-lg bg-background/60 px-3 py-2 flex-wrap">
+                  <p className="text-xs font-body text-foreground">
+                    <span className="font-semibold">{formatDate(pair.remove.dateStart)}</span> —{" "}
+                    <span className="text-accent font-semibold">{venueName}</span>
+                    {booker && booker !== venueName && (
+                      <span className="text-muted-foreground"> (booked by {booker})</span>
+                    )}
+                    <span className="text-muted-foreground"> · merging 2 records into 1</span>
+                  </p>
+                  <button
+                    onClick={() => handleResolveDuplicate(pair)}
+                    className="rounded-lg bg-muted/50 hover:bg-muted/70 px-2.5 py-1 font-body font-semibold text-[11px] text-muted-foreground transition-colors shrink-0"
+                  >
+                    Merge
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
