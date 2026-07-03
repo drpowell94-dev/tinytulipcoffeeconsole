@@ -28,12 +28,23 @@ export const SYNC_KEYS = [
 // Guards against echoing a remote change straight back to the cloud.
 let applyingRemote = false;
 
+// The realtime subscription below re-delivers every write back to the same
+// client that made it (Supabase doesn't suppress your own echo). Track the
+// timestamp of each key's last local write so an echo — or any update that
+// isn't actually newer — never overwrites a more recent local edit made
+// while that echo was still in flight. Without this, saving twice in quick
+// succession (or deleting something) could be silently reverted by a
+// delayed echo of the earlier, now-stale state.
+const lastLocalWrite = new Map<string, string>();
+
 /** Push one collection's value to the cloud (fire-and-forget). */
 export function pushState(key: string, value: unknown) {
   if (!supabase || applyingRemote || !SYNC_KEYS.includes(key)) return;
+  const updatedAt = new Date().toISOString();
+  lastLocalWrite.set(key, updatedAt);
   supabase
     .from(TABLE)
-    .upsert({ key, data: value, updated_at: new Date().toISOString() }, { onConflict: "key" })
+    .upsert({ key, data: value, updated_at: updatedAt }, { onConflict: "key" })
     .then(({ error }) => {
       if (error) console.warn(`[cloudSync] push "${key}" failed:`, error.message);
     });
@@ -75,10 +86,17 @@ function subscribeToCloud() {
       "postgres_changes",
       { event: "*", schema: "public", table: TABLE },
       payload => {
-        const row = payload.new as { key?: string; data?: unknown } | null;
-        if (row?.key && SYNC_KEYS.includes(row.key) && "data" in row) {
-          applyRemote(row.key, row.data);
-        }
+        const row = payload.new as { key?: string; data?: unknown; updated_at?: string } | null;
+        if (!row?.key || !SYNC_KEYS.includes(row.key) || !("data" in row)) return;
+
+        // Skip anything not strictly newer than our own last write to this
+        // key — this is what makes echoes of our own pushes (and any
+        // out-of-order delivery) harmless instead of silently reverting a
+        // more recent local edit.
+        const lastWrite = lastLocalWrite.get(row.key);
+        if (lastWrite && row.updated_at && row.updated_at <= lastWrite) return;
+
+        applyRemote(row.key, row.data);
       }
     )
     .subscribe();
