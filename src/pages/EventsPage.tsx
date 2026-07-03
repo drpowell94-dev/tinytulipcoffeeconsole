@@ -389,13 +389,17 @@ export default function EventsPage() {
     toast(`Declined lead: "${lead.name}"`);
   };
 
-  // Push the event payload to Wix and store the returned ID. Re-publishing an
-  // event that's already been published sends a PATCH ("Update Wix"). Note
-  // this stores the result in wixPublishedEventId, not wixEventId — for a
+  // Push the event payload to Wix and store the returned ID. Note this
+  // stores the result in wixPublishedEventId, not wixEventId — for a
   // booking-synced event, wixEventId is the Bookings sync tracking key
   // ("wix-booking:..."), and overwriting it here would break future re-sync
   // matching for that booking.
   const doPublish = async (event: TulipEvent, venue: Venue) => {
+    // Already live on the public site — refuse to re-upload. This used to
+    // fall through to a PATCH ("Update Wix"), but a race between the publish
+    // button and a stale local state let the same event get POSTed to Wix
+    // twice, creating duplicate live listings.
+    if (event.wixPublishedEventId) return;
     setConverting(prev => ({ ...prev, [event.id]: true }));
     try {
       const { wixEventId } = await publishToWix({
@@ -412,7 +416,7 @@ export default function EventsPage() {
       });
       updateEvent(event.id, { wixPublishedEventId: wixEventId });
       setEvents(loadEvents());
-      toast.success(event.wixPublishedEventId ? `"${event.name}" updated on Wix` : `"${event.name}" published to Wix!`);
+      toast.success(`"${event.name}" published to Wix!`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       toast.error(`Wix publish failed: ${message}`);
@@ -818,20 +822,34 @@ export default function EventsPage() {
                   </Link>
                 )}
                 {event.status === "confirmed" && (
-                  <button
-                    onClick={() => handlePublishToWix(event)}
-                    disabled={converting[event.id] || uploadingLogo[event.id]}
-                    className="flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 text-white px-3 py-2 font-body font-semibold text-xs sm:text-sm hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-60"
-                  >
-                    {converting[event.id] ? (
-                      <Loader size={14} className="animate-spin" />
-                    ) : (
-                      <Upload size={14} strokeWidth={1.75} />
-                    )}
-                    <span className="hidden sm:inline">
-                      {converting[event.id] ? "Publishing…" : event.wixPublishedEventId ? "Update Wix" : "Publish to Wix"}
+                  event.wixPublishedEventId ? (
+                    // Already live on the public site — no re-upload action.
+                    // Re-publishing here has caused duplicate live events on
+                    // Wix in the past; editing an already-published event
+                    // should happen on Wix directly, not from this button.
+                    <span
+                      className="flex items-center justify-center gap-1.5 rounded-lg bg-muted/40 text-muted-foreground px-3 py-2 font-body font-semibold text-xs sm:text-sm"
+                      title="Already live on tinytulipcoffee.com — edit on Wix directly"
+                    >
+                      <CheckCircle2 size={14} strokeWidth={1.75} />
+                      <span className="hidden sm:inline">On Wix</span>
                     </span>
-                  </button>
+                  ) : (
+                    <button
+                      onClick={() => handlePublishToWix(event)}
+                      disabled={converting[event.id] || uploadingLogo[event.id]}
+                      className="flex items-center justify-center gap-1.5 rounded-lg bg-purple-600 text-white px-3 py-2 font-body font-semibold text-xs sm:text-sm hover:bg-purple-700 active:scale-95 transition-all disabled:opacity-60"
+                    >
+                      {converting[event.id] ? (
+                        <Loader size={14} className="animate-spin" />
+                      ) : (
+                        <Upload size={14} strokeWidth={1.75} />
+                      )}
+                      <span className="hidden sm:inline">
+                        {converting[event.id] ? "Publishing…" : "Publish to Wix"}
+                      </span>
+                    </button>
+                  )
                 )}
                 <button
                   onClick={() => handleDelete(event)}
