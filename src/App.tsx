@@ -17,9 +17,17 @@ import { importBundledWixEvents } from "@/services/eventService";
 import { seedVenues, migratePropertiesToVenues, purgeSampleVenues } from "@/lib/venueStore";
 import { startCloudSync } from "@/services/cloudSync";
 import { syncBookingsFromWix } from "@/services/wixSyncService";
+import { useAuth } from "@/hooks/useAuth";
+import LoginGate from "@/components/auth/LoginGate";
+import { TulipLogo } from "@/components/drinks/DrinkIcon";
 
 export default function App() {
+  const { status } = useAuth();
+
   useEffect(() => {
+    // Wait for the shared team session before touching cloud data — once the
+    // database requires auth, syncing any earlier would just fail silently.
+    if (status !== "authed") return;
     (async () => {
       // Pull the team's shared data first (and subscribe to live changes), so a
       // new device picks up existing data instead of re-seeding its own copy.
@@ -48,7 +56,19 @@ export default function App() {
       // Nudge any mounted page to re-read after hydration.
       window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } }));
     })();
-  }, []);
+  }, [status]);
+
+  if (status === "checking") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <TulipLogo size={48} className="animate-pulse" />
+      </div>
+    );
+  }
+
+  if (status === "anon") {
+    return <LoginGate />;
+  }
 
   return (
     <BrowserRouter>

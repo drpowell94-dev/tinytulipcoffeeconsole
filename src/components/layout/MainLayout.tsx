@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X, Mail, Building2 } from "lucide-react";
+import { Home, CalendarDays, FileText, ClipboardCheck, Package, Menu, X, Mail, Building2, LogOut } from "lucide-react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import BottomNav from "@/components/layout/BottomNav";
 import { cn } from "@/lib/utils";
+import { signOut } from "@/hooks/useAuth";
+import { isSupabaseEnabled } from "@/services/supabase";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
@@ -61,8 +63,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             </NavLink>
           ))}
         </nav>
-        <div className="px-4 py-6 text-xs text-muted-foreground font-body leading-relaxed">
-          Purely a pop-up. Where the people are.
+        <div className="px-4 py-6 space-y-3">
+          {isSupabaseEnabled && (
+            <button
+              onClick={() => signOut()}
+              className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-body font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <LogOut size={14} strokeWidth={1.5} />
+              Log out
+            </button>
+          )}
+          <p className="text-xs text-muted-foreground font-body leading-relaxed">
+            Purely a pop-up. Where the people are.
+          </p>
         </div>
       </aside>
 
@@ -115,8 +128,19 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                   </NavLink>
                 ))}
               </nav>
-              <div className="px-4 py-6 text-xs text-muted-foreground font-body leading-relaxed">
-                Purely a pop-up. Where the people are.
+              <div className="px-4 py-6 space-y-3">
+                {isSupabaseEnabled && (
+                  <button
+                    onClick={() => signOut()}
+                    className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-body font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                  >
+                    <LogOut size={14} strokeWidth={1.5} />
+                    Log out
+                  </button>
+                )}
+                <p className="text-xs text-muted-foreground font-body leading-relaxed">
+                  Purely a pop-up. Where the people are.
+                </p>
               </div>
             </aside>
           </>
