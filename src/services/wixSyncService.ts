@@ -1,5 +1,5 @@
 import { importEvents, type EventType, type TulipEvent } from "@/lib/eventStore";
-import { loadVenues, resolveVenue, streetKey, createVenueFromAddress, type Venue } from "@/lib/venueStore";
+import { loadVenues, resolveVenue, streetKey, buildVenueFromAddress, upsertVenues, type Venue } from "@/lib/venueStore";
 import { geocodeAddress } from "@/services/geocodeService";
 import { recordSyncStatus } from "@/lib/syncStatus";
 
@@ -24,10 +24,15 @@ const CATEGORY_BY_TYPE: Record<EventType, Venue["defaultCategory"]> = {
  *   - if it doesn't but carries a real street address, geocode it and
  *     auto-create the venue in the address book, then stamp the new id.
  * This is what keeps the address book in step with real bookings without any
- * manual re-entry.
+ * manual re-entry. New venues are built in memory and saved once at the end
+ * (via upsertVenues) rather than one at a time — a batch of bookings can
+ * introduce several new venues in one sync, and saving each individually
+ * would fire that many independent async cloud pushes with no ordering
+ * guarantee between them, risking one silently dropping another.
  */
 async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]> {
   const venues = loadVenues();
+  const newVenues: Venue[] = [];
   const out: TulipEvent[] = [];
   for (const ev of events) {
     let venue = resolveVenue(ev, venues);
@@ -37,7 +42,7 @@ async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]>
       if (streetKey(addr) && (ev.name || ev.location)) {
         const geo = await geocodeAddress(addr);
         if (geo) {
-          venue = createVenueFromAddress({
+          venue = buildVenueFromAddress({
             name: ev.name || addr.split(",")[0],
             formattedAddress: addr,
             lat: geo.lat,
@@ -45,6 +50,7 @@ async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]>
             defaultCategory: CATEGORY_BY_TYPE[ev.eventType] ?? "Pop Up",
           });
           venues.push(venue); // so later events in this batch match in-memory
+          newVenues.push(venue);
         }
       }
     }
@@ -54,6 +60,7 @@ async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]>
         : ev
     );
   }
+  upsertVenues(newVenues);
   return out;
 }
 

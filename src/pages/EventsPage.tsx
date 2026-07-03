@@ -390,7 +390,11 @@ export default function EventsPage() {
   };
 
   // Push the event payload to Wix and store the returned ID. Re-publishing an
-  // event that already has a wixEventId sends a PATCH ("Update Wix").
+  // event that's already been published sends a PATCH ("Update Wix"). Note
+  // this stores the result in wixPublishedEventId, not wixEventId — for a
+  // booking-synced event, wixEventId is the Bookings sync tracking key
+  // ("wix-booking:..."), and overwriting it here would break future re-sync
+  // matching for that booking.
   const doPublish = async (event: TulipEvent, venue: Venue) => {
     setConverting(prev => ({ ...prev, [event.id]: true }));
     try {
@@ -402,12 +406,13 @@ export default function EventsPage() {
           dateStart: event.dateStart,
           notes: event.notes,
           wixEventId: event.wixEventId,
+          wixPublishedEventId: event.wixPublishedEventId,
         },
         venue,
       });
-      updateEvent(event.id, { wixEventId });
+      updateEvent(event.id, { wixPublishedEventId: wixEventId });
       setEvents(loadEvents());
-      toast.success(event.wixEventId ? `"${event.name}" updated on Wix` : `"${event.name}" published to Wix!`);
+      toast.success(event.wixPublishedEventId ? `"${event.name}" updated on Wix` : `"${event.name}" published to Wix!`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       toast.error(`Wix publish failed: ${message}`);
@@ -824,7 +829,7 @@ export default function EventsPage() {
                       <Upload size={14} strokeWidth={1.75} />
                     )}
                     <span className="hidden sm:inline">
-                      {converting[event.id] ? "Publishing…" : event.wixEventId ? "Update Wix" : "Publish to Wix"}
+                      {converting[event.id] ? "Publishing…" : event.wixPublishedEventId ? "Update Wix" : "Publish to Wix"}
                     </span>
                   </button>
                 )}

@@ -2,7 +2,7 @@ import type { Venue } from "@/lib/venueStore";
 import type { TulipEvent } from "@/lib/eventStore";
 
 export interface WixConvertPayload {
-  event: Pick<TulipEvent, "id" | "name" | "eventType" | "dateStart" | "notes" | "wixEventId">;
+  event: Pick<TulipEvent, "id" | "name" | "eventType" | "dateStart" | "notes" | "wixEventId" | "wixPublishedEventId">;
   venue: Venue;
 }
 

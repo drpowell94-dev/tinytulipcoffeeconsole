@@ -209,12 +209,10 @@ export function parseAddress(formatted: string): {
   };
 }
 
-/**
- * Create (and persist) a venue from a geocoded address — used to auto-add a
- * booking's venue to the address book when it isn't there yet. Keyed by name,
- * so re-running is idempotent.
- */
-export function createVenueFromAddress(opts: {
+/** Build a venue from a geocoded address without persisting it — lets a
+ * caller creating several new venues in one batch collect them and save
+ * once via upsertVenues(), instead of one independent save per venue. */
+export function buildVenueFromAddress(opts: {
   name: string;
   formattedAddress: string;
   lat: number;
@@ -223,8 +221,10 @@ export function createVenueFromAddress(opts: {
   defaultStartTime?: string;
 }): Venue {
   const p = parseAddress(opts.formattedAddress);
-  return upsertVenue({
-    name: opts.name.trim(),
+  const name = opts.name.trim();
+  return {
+    id: nameToVenueId(name),
+    name,
     streetNumber: p.streetNumber,
     streetName: p.streetName,
     apt: p.apt,
@@ -240,7 +240,37 @@ export function createVenueFromAddress(opts: {
     logoUrl: "",
     logoW: 1200,
     logoH: 630,
-  });
+  };
+}
+
+/**
+ * Create (and persist) a venue from a geocoded address — used to auto-add a
+ * booking's venue to the address book when it isn't there yet. Keyed by name,
+ * so re-running is idempotent. For creating several venues in one batch,
+ * prefer buildVenueFromAddress() + upsertVenues() to avoid one save per item.
+ */
+export function createVenueFromAddress(opts: {
+  name: string;
+  formattedAddress: string;
+  lat: number;
+  lng: number;
+  defaultCategory?: Venue["defaultCategory"];
+  defaultStartTime?: string;
+}): Venue {
+  return upsertVenue(buildVenueFromAddress(opts));
+}
+
+/**
+ * Merge multiple venues into the store with a single save. Use this instead
+ * of calling upsertVenue() in a loop — each upsertVenue() call fires its own
+ * independent async cloud push, and with no ordering guarantee between them,
+ * a later one can land before an earlier one and silently drop it.
+ */
+export function upsertVenues(list: Venue[]): void {
+  if (list.length === 0) return;
+  const byId = new Map(loadVenues().map(v => [v.id, v]));
+  for (const v of list) byId.set(v.id, v);
+  saveVenues(Array.from(byId.values()));
 }
 
 export function upsertVenue(data: Omit<Venue, "id"> & { id?: string }): Venue {
@@ -316,11 +346,19 @@ export function migratePropertiesToVenues(
   properties: Array<{ name: string; address?: string; zipCode?: string; instagramHandle?: string; instagramFollowing?: boolean; notes?: string }>
 ): void {
   if (!properties || properties.length === 0) return;
-  const byName = new Map(loadVenues().map(v => [v.name.trim().toLowerCase(), v]));
+  // Accumulate every change in memory and save once at the end — calling
+  // upsertVenue() (its own load+save+cloud push) per property fired one
+  // independent async push per item; with no ordering guarantee between
+  // them, a later push could land before an earlier one and silently drop
+  // whichever venue's push arrived last.
+  const byId = new Map(loadVenues().map(v => [v.id, v]));
+  const idByName = new Map(Array.from(byId.values()).map(v => [v.name.trim().toLowerCase(), v.id]));
+  let changed = false;
 
   for (const p of properties) {
     if (!p.name?.trim()) continue;
-    const existing = byName.get(p.name.trim().toLowerCase());
+    const key = p.name.trim().toLowerCase();
+    const existing = idByName.has(key) ? byId.get(idByName.get(key)!) : undefined;
     if (existing) {
       // Merge CRM fields onto the venue only where it's missing them.
       const needsMerge =
@@ -328,15 +366,18 @@ export function migratePropertiesToVenues(
         (p.instagramFollowing && !existing.instagramFollowing) ||
         (p.notes && !existing.notes);
       if (needsMerge) {
-        upsertVenue({
+        byId.set(existing.id, {
           ...existing,
           instagramHandle: existing.instagramHandle || p.instagramHandle,
           instagramFollowing: existing.instagramFollowing || p.instagramFollowing,
           notes: existing.notes || p.notes,
         });
+        changed = true;
       }
     } else {
-      upsertVenue({
+      const id = nameToVenueId(p.name);
+      byId.set(id, {
+        id,
         name: p.name.trim(),
         streetNumber: "",
         streetName: "",
@@ -357,6 +398,10 @@ export function migratePropertiesToVenues(
         instagramFollowing: p.instagramFollowing,
         notes: p.notes,
       });
+      idByName.set(key, id);
+      changed = true;
     }
   }
+
+  if (changed) saveVenues(Array.from(byId.values()));
 }

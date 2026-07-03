@@ -34,6 +34,7 @@ interface EventPayload {
   dateStart: string;
   notes?: string;
   wixEventId?: string;
+  wixPublishedEventId?: string;
 }
 
 interface ConvertBody {
@@ -172,12 +173,21 @@ export default async function handler(request: Request): Promise<Response> {
     ...(categoryId ? { categories: [{ id: categoryId }] } : {}),
   };
 
+  // A "wix-booking:"-prefixed wixEventId is this app's own Bookings sync
+  // tracking key, not a real Wix Events GUID — sending it to the Events API
+  // fails validation ("id is not a valid GUID"). Only treat wixEventId as an
+  // existing Wix Events record when it isn't that sync marker; otherwise this
+  // event has never actually been published to Wix Events yet.
+  const existingWixEventsId =
+    event.wixPublishedEventId ||
+    (event.wixEventId && !event.wixEventId.startsWith("wix-booking:") ? event.wixEventId : undefined);
+
   try {
     let wixEventId: string;
 
-    if (event.wixEventId) {
-      const updated = await wixFetch(`/events/v3/events/${event.wixEventId}`, "PATCH", { event: wixEvent }) as { event?: { id: string } };
-      wixEventId = updated.event?.id ?? event.wixEventId;
+    if (existingWixEventsId) {
+      const updated = await wixFetch(`/events/v3/events/${existingWixEventsId}`, "PATCH", { event: wixEvent }) as { event?: { id: string } };
+      wixEventId = updated.event?.id ?? existingWixEventsId;
     } else {
       const created = await wixFetch("/events/v3/events", "POST", { event: wixEvent }) as { event?: { id: string } };
       wixEventId = created.event?.id ?? "";

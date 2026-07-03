@@ -37,6 +37,17 @@ let applyingRemote = false;
 // delayed echo of the earlier, now-stale state.
 const lastLocalWrite = new Map<string, string>();
 
+/**
+ * True if an incoming remote update for a key is safe to apply — i.e. it's
+ * genuinely newer than the last thing this device wrote for that key, or
+ * there's no local write to compare against yet. Pulled out as a pure
+ * function so the ordering logic itself is directly testable.
+ */
+export function isNewerThanLastWrite(lastWriteAt: string | undefined, incomingUpdatedAt: string | undefined): boolean {
+  if (!lastWriteAt || !incomingUpdatedAt) return true;
+  return incomingUpdatedAt > lastWriteAt;
+}
+
 /** Push one collection's value to the cloud (fire-and-forget). */
 export function pushState(key: string, value: unknown) {
   if (!supabase || applyingRemote || !SYNC_KEYS.includes(key)) return;
@@ -93,8 +104,7 @@ function subscribeToCloud() {
         // key — this is what makes echoes of our own pushes (and any
         // out-of-order delivery) harmless instead of silently reverting a
         // more recent local edit.
-        const lastWrite = lastLocalWrite.get(row.key);
-        if (lastWrite && row.updated_at && row.updated_at <= lastWrite) return;
+        if (!isNewerThanLastWrite(lastLocalWrite.get(row.key), row.updated_at)) return;
 
         applyRemote(row.key, row.data);
       }

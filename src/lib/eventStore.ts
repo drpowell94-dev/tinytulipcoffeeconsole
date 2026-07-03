@@ -22,8 +22,20 @@ export interface TulipEvent {
   contactEmail?: string;
   contactPhone?: string;
   notes?: string;
-  /** Wix Events ID when this event originated from / syncs with Wix. */
+  /**
+   * Sync tracking id. Either a bare Wix Events GUID (bundled historical
+   * events) or a "wix-booking:<id>" tracking key for events that came from
+   * the live Wix Bookings sync — the latter is NOT a real Wix Events GUID
+   * and must never be sent to the Wix Events API directly.
+   */
   wixEventId?: string;
+  /**
+   * The real Wix Events product GUID once this event has actually been
+   * published there via "Publish to Wix" — kept separate from wixEventId so
+   * publishing a booking-synced event doesn't clobber its Bookings tracking
+   * id (which would break future re-sync dedup).
+   */
+  wixPublishedEventId?: string;
   /** Stable link to a venue in the address book (resolved at sync time). */
   venueId?: string;
   /** Link to a tracked property/venue for recommendations. */
