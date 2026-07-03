@@ -11,7 +11,7 @@ const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: Home },
   { to: "/events", label: "Events", icon: CalendarDays },
   { to: "/content", label: "Content", icon: FileText },
-  { to: "/checklists", label: "Checklists", icon: ClipboardCheck },
+  { to: "/checklists", label: "Lists", icon: ClipboardCheck },
   { to: "/properties", label: "Venues", icon: Building2 },
   { to: "/email-campaigns", label: "Email", icon: Mail },
   { to: "/inventory", label: "Inventory", icon: Package },

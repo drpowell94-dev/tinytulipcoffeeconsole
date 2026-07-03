@@ -327,7 +327,7 @@ export default function EventsPage() {
     setForm(EMPTY_FORM);
     setShowForm(false);
     const statusLabel = form.status === "inquiry" ? "lead" : "event";
-    toast.success(`"${event.name}" created as ${statusLabel}${form.status === "confirmed" ? " — packing checklist auto-generated" : ""}`);
+    toast.success(`"${event.name}" created as ${statusLabel}${form.status === "confirmed" ? " — packing list auto-generated" : ""}`);
   };
 
   const handleDelete = (event: TulipEvent) => {

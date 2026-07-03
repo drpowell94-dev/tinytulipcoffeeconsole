@@ -150,7 +150,7 @@ export default function ChecklistsPage() {
     const next = deleteChecklist(list.id);
     setEventLists(next);
     if (openEventId === list.id) setOpenEventId(next[0]?.id ?? null);
-    toast(`Deleted checklist for "${list.eventName}"`);
+    toast(`Deleted list for "${list.eventName}"`);
   };
 
   const handlePrint = () => window.print();
@@ -158,7 +158,7 @@ export default function ChecklistsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="font-display text-4xl text-foreground">Checklists</h1>
+        <h1 className="font-display text-4xl text-foreground">Lists</h1>
         <p className="text-sm text-muted-foreground font-body mt-1">
           Event prep, daily tasks, and to-do list
         </p>
@@ -205,7 +205,7 @@ export default function ChecklistsPage() {
             <div className="rounded-lg bg-muted/20 p-12 text-center">
               <ClipboardList size={40} strokeWidth={1.25} className="mx-auto mb-3 text-muted-foreground" />
               <p className="font-body text-muted-foreground">
-                No event checklists yet. Create an event and its packing list appears here.
+                No event lists yet. Create an event and its packing list appears here.
               </p>
             </div>
           ) : (
@@ -240,14 +240,14 @@ export default function ChecklistsPage() {
                       <button
                         onClick={handlePrint}
                         className="p-2 rounded-lg text-foreground/60 hover:bg-muted/30 transition-colors"
-                        aria-label="Print checklist"
+                        aria-label="Print list"
                       >
                         <Printer size={18} strokeWidth={1.5} />
                       </button>
                       <button
                         onClick={() => handleDeleteEvent(openEvent)}
                         className="p-2 rounded-lg text-foreground/60 hover:bg-destructive/10 hover:text-destructive transition-colors"
-                        aria-label="Delete checklist"
+                        aria-label="Delete list"
                       >
                         <Trash2 size={18} strokeWidth={1.5} />
                       </button>
