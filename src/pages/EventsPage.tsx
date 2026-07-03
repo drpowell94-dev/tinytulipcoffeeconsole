@@ -123,6 +123,7 @@ const EMPTY_FORM = {
   dayOfSetupLocation: "",
   dayOfArrivalTime: "",
   dayOfOtherNotes: "",
+  venueId: "" as string,
 };
 
 export default function EventsPage() {
@@ -513,6 +514,7 @@ export default function EventsPage() {
       dayOfSetupLocation: event.dayOfSetupLocation || "",
       dayOfArrivalTime: event.dayOfArrivalTime || "",
       dayOfOtherNotes: event.dayOfOtherNotes || "",
+      venueId: event.venueId || "",
     });
   };
 
@@ -539,6 +541,7 @@ export default function EventsPage() {
       dayOfSetupLocation: editForm.dayOfSetupLocation.trim() || undefined,
       dayOfArrivalTime: editForm.dayOfArrivalTime || undefined,
       dayOfOtherNotes: editForm.dayOfOtherNotes.trim() || undefined,
+      venueId: editForm.venueId || undefined,
     });
     setEvents(loadEvents());
     setEditingId(null);
@@ -576,6 +579,30 @@ export default function EventsPage() {
               ))}
             </datalist>
             <input className={input} placeholder="Address (autofills from the property)" value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} />
+            <div>
+              <label className="block text-xs font-body font-semibold text-foreground mb-1">Link to venue</label>
+              <select
+                className={input}
+                value={editForm.venueId}
+                onChange={e => {
+                  const venueId = e.target.value;
+                  const venue = venues.find(v => v.id === venueId);
+                  setEditForm({
+                    ...editForm,
+                    venueId,
+                    ...(venue && !editForm.address ? { address: venue.formattedAddress } : {}),
+                  });
+                }}
+              >
+                <option value="">— Not linked —</option>
+                {venues.map(v => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+              <p className="text-[11px] text-muted-foreground font-body mt-1">
+                Ties this event to a venue for stats and publishing, even if the name/location above doesn't match it exactly.
+              </p>
+            </div>
             <input className={input} placeholder="Name" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
             <input className={input} placeholder="Email" type="email" value={editForm.contactEmail} onChange={e => setEditForm({ ...editForm, contactEmail: e.target.value })} />
             <input className={input} placeholder="Phone" value={editForm.contactPhone} onChange={e => setEditForm({ ...editForm, contactPhone: e.target.value })} />
@@ -644,6 +671,12 @@ export default function EventsPage() {
                     📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
                   </span>
                 )}
+                {event.venueId && (() => {
+                  const linked = venues.find(v => v.id === event.venueId);
+                  return linked && linked.name !== event.location ? (
+                    <span className="block text-accent/70">🔗 Venue: {linked.name}</span>
+                  ) : null;
+                })()}
                 {event.followUpNote && event.status === "inquiry" && days >= 0 && (
                   <span className="block text-muted-foreground italic">{event.followUpNote}</span>
                 )}

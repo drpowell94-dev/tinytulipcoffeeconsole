@@ -1,5 +1,4 @@
-import wixEvents from "@/data/wixEvents.json";
-import { importEvents, loadEvents, saveEvents, type EventType, type TulipEvent } from "@/lib/eventStore";
+import { importEvents, type EventType, type TulipEvent } from "@/lib/eventStore";
 import { loadVenues, resolveVenue, streetKey, createVenueFromAddress, type Venue } from "@/lib/venueStore";
 import { geocodeAddress } from "@/services/geocodeService";
 import { recordSyncStatus } from "@/lib/syncStatus";
@@ -58,11 +57,6 @@ async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]>
   return out;
 }
 
-// IDs of the old bundled Wix-Events snapshot. Live bookings supersede these, so
-// they're cleared on sync to avoid duplicates. Events published via Convert
-// (their own Wix id) and user-created events (no wixEventId) are preserved.
-const BUNDLED_WIX_IDS = new Set((wixEvents as Array<{ wixEventId: string }>).map(e => e.wixEventId));
-
 export type WixSyncResult = { created: number; updated: number } | { error: string };
 
 /**
@@ -99,20 +93,15 @@ export async function syncBookingsFromWix(): Promise<WixSyncResult> {
   }
 
   const events = await stampAndCreateVenues((data.events || []) as TulipEvent[]);
-
-  // If the fetch came back with no bookings (e.g. the key can't read Bookings
-  // yet), do NOT touch existing events — never leave the user with nothing.
-  if (events.length === 0) {
-    recordSyncStatus({ ok: true });
-    return { created: 0, updated: 0 };
-  }
-
-  // We have live bookings — now it's safe to drop the old bundled snapshot they
-  // replace. User-created and Convert-published events are preserved.
-  const current = loadEvents();
-  const cleaned = current.filter(e => !(e.wixEventId && BUNDLED_WIX_IDS.has(e.wixEventId)));
-  if (cleaned.length !== current.length) saveEvents(cleaned);
-
   recordSyncStatus({ ok: true });
+
+  // Live Wix Bookings and the bundled historical Wix Events snapshot are
+  // different, non-overlapping products/datasets (confirmed: none of the
+  // bundled events' addresses appear in live bookings) — they never collide
+  // on id, so there's no reason to delete one when the other arrives. This
+  // used to clear the bundled snapshot on every successful sync, which
+  // silently erased real historical event counts (e.g. a venue's past-event
+  // stats) the moment live syncing started working.
+  if (events.length === 0) return { created: 0, updated: 0 };
   return importEvents(events);
 }
