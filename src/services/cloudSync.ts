@@ -76,14 +76,21 @@ function applyRemote(key: string, value: unknown) {
 async function hydrateFromCloud(): Promise<Set<string>> {
   const found = new Set<string>();
   if (!supabase) return found;
-  const { data, error } = await supabase.from(TABLE).select("key,data").in("key", SYNC_KEYS);
+  const { data, error } = await supabase.from(TABLE).select("key,data,updated_at").in("key", SYNC_KEYS);
   if (error) {
     console.warn("[cloudSync] hydrate failed:", error.message);
     return found;
   }
-  for (const row of (data ?? []) as Array<{ key: string; data: unknown }>) {
-    applyRemote(row.key, row.data);
+  for (const row of (data ?? []) as Array<{ key: string; data: unknown; updated_at?: string }>) {
     found.add(row.key);
+    // startCloudSync() (and this hydrate) can run more than once per session -
+    // e.g. a Supabase auth token refresh on tab focus flips `status` briefly,
+    // re-triggering the effect that calls it. Without this guard, a hydrate
+    // that races a local edit made moments earlier would silently overwrite
+    // it with the older cloud value, since this path (unlike the realtime
+    // subscription) had no ordering check at all.
+    if (!isNewerThanLastWrite(lastLocalWrite.get(row.key), row.updated_at)) continue;
+    applyRemote(row.key, row.data);
   }
   return found;
 }
