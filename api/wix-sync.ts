@@ -25,38 +25,57 @@ interface OutEvent {
 // otherwise looks like a dropped connection to the client, not an error.
 const WIX_TIMEOUT_MS = 6000;
 
-// The pagination loop can call wixFetch up to 10 times; even with a per-call
-// cap, that sequence could still run past a client's own timeout with nothing
-// returned yet. Cap the whole handler's Wix work so it always has time to
-// respond with a real error before the client gives up blind.
-const HANDLER_DEADLINE_MS = 9000;
+// Stay safely under Vercel's platform-level function duration limit. Every
+// production request to this route was coming back as a bare 504 from
+// Vercel itself (confirmed in the runtime logs) — meaning the function never
+// returned *any* response in time, so the platform killed it. AbortController
+// alone didn't prevent that (the underlying request apparently doesn't always
+// honor cancellation promptly in this runtime), so wixFetch below races every
+// call against a hard timer instead: even if the network call never settles,
+// the race resolves and the function can still return a real response.
+const OVERALL_BUDGET_MS = 8000;
+
+/** Resolves/rejects after `ms` regardless of what `promise` does. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    promise.then(
+      value => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      err => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
 
 async function wixFetch(path: string, body: unknown): Promise<any> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), WIX_TIMEOUT_MS);
-  let res: Response;
+  const attempt = fetch(`${WIX_BASE}${path}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: WIX_API_KEY,
+      "wix-site-id": WIX_SITE_ID,
+    },
+    body: JSON.stringify(body),
+    signal: controller.signal,
+  }).then(async res => {
+    const json = await res.json();
+    if (!res.ok) throw new Error(`Wix ${path} ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
+    return json;
+  });
+
   try {
-    res = await fetch(`${WIX_BASE}${path}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: WIX_API_KEY,
-        "wix-site-id": WIX_SITE_ID,
-      },
-      body: JSON.stringify(body),
-      signal: controller.signal,
-    });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Wix ${path} timed out after ${WIX_TIMEOUT_MS}ms`);
-    }
-    throw err;
+    return await withTimeout(attempt, WIX_TIMEOUT_MS, `Wix ${path}`);
   } finally {
-    clearTimeout(timer);
+    // Best-effort cancellation; the timeout guarantee above doesn't depend on
+    // this actually working.
+    controller.abort();
   }
-  const json = await res.json();
-  if (!res.ok) throw new Error(`Wix ${path} ${res.status}: ${JSON.stringify(json).slice(0, 300)}`);
-  return json;
 }
 
 function eventTypeFromTitle(title: string): string {
@@ -110,14 +129,20 @@ export default async function handler(request: Request): Promise<Response> {
   const startedAt = Date.now();
 
   try {
-    // Pull all bookings (paginated), bailing out with a clear error if the
-    // whole sequence is taking too long rather than silently running past
-    // however long the client is willing to wait.
+    // Pull all bookings (paginated). Only start another page if there's
+    // enough time budget left for it to run its full course — otherwise stop
+    // and return whatever was gathered (or a clear error if nothing yet).
+    // This is what keeps the function's total runtime bounded regardless of
+    // how many pages exist, so it can never run into the platform's own kill.
     let offset = 0;
     const raw: any[] = [];
     for (let i = 0; i < 10; i++) {
-      if (Date.now() - startedAt > HANDLER_DEADLINE_MS) {
-        throw new Error(`Wix booking pagination exceeded ${HANDLER_DEADLINE_MS}ms after page ${i}`);
+      const elapsed = Date.now() - startedAt;
+      if (elapsed + WIX_TIMEOUT_MS > OVERALL_BUDGET_MS) {
+        if (raw.length === 0) {
+          throw new Error(`Wix booking fetch exceeded time budget after page ${i}`);
+        }
+        break;
       }
       const res = await wixFetch("/_api/bookings-reader/v2/extended-bookings/query", {
         query: { filter: {}, paging: { limit: 100, offset } },
