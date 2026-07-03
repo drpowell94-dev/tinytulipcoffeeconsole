@@ -1,3 +1,10 @@
+// Force the Edge runtime — see api/wix-sync.ts for why this matters. This is
+// also what caused the isSameOrigin check added recently to throw
+// (`request.headers.get is not a function`): under the legacy Node calling
+// convention this file was actually running under, `request` isn't a
+// Web-standard Request at all.
+export const config = { runtime: "edge" };
+
 const WIX_API_KEY = process.env.WIX_API_KEY ?? "";
 const WIX_SITE_ID = process.env.WIX_SITE_ID ?? "";
 const WIX_BASE = "https://www.wixapis.com";

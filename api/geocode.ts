@@ -3,6 +3,10 @@
 // lat/lng fields in the venue form. No API key required: the US Census geocoder
 // is free and accurate for US addresses; OpenStreetMap/Nominatim is a fallback.
 
+// Force the Edge runtime — see api/wix-sync.ts for why this matters. Without
+// it, this handler's returned Response gets silently discarded too.
+export const config = { runtime: "edge" };
+
 interface GeoResult {
   lat: number;
   lng: number;

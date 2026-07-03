@@ -1,3 +1,6 @@
+// Force the Edge runtime — see api/wix-sync.ts for why this matters.
+export const config = { runtime: "edge" };
+
 const WIX_API_KEY = process.env.WIX_API_KEY ?? "";
 const WIX_SITE_ID = process.env.WIX_SITE_ID ?? "";
 

@@ -1,3 +1,11 @@
+// Force the Edge runtime, which uses the Web-standard Request→Response
+// signature this file is written against. Without this, Vercel was invoking
+// it via the legacy Node (req, res) convention instead — the handler still
+// ran and returned a Response, but that return value was silently discarded
+// (nothing ever called res.end()), so every request hung until the platform
+// killed it with a 504. Confirmed directly in the runtime logs.
+export const config = { runtime: "edge" };
+
 const WIX_API_KEY = process.env.WIX_API_KEY ?? "";
 const WIX_SITE_ID = process.env.WIX_SITE_ID ?? "";
 const WIX_BASE = "https://www.wixapis.com";
