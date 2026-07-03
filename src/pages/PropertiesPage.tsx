@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, MapPin, Instagram, Zap, Pencil, Coffee, User } from "lucide-react";
+import { Plus, Trash2, MapPin, Instagram, Zap, Pencil, Coffee, User, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadVenues,
@@ -286,15 +286,30 @@ export default function PropertiesPage() {
                       </span>
                     </div>
                   )}
-                  {venue.instagramFollowing ? (
-                    <button onClick={() => toggleInstagram(venue)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-blue-500/10 text-blue-600 hover:bg-blue-500/20 transition-colors font-body text-sm font-semibold" title="Click to unfollow">
-                      <Instagram size={14} /> Following
-                    </button>
-                  ) : venue.instagramHandle ? (
-                    <button onClick={() => toggleInstagram(venue)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-muted/30 text-muted-foreground hover:bg-blue-500/10 hover:text-blue-600 transition-colors font-body text-sm font-semibold" title="Click to follow">
-                      <Instagram size={14} /> {venue.instagramHandle}
-                    </button>
-                  ) : null}
+                  {venue.instagramHandle && (
+                    <div
+                      className={`flex items-center gap-1 pl-3 pr-1.5 py-1 rounded-lg font-body text-sm font-semibold ${
+                        venue.instagramFollowing ? "bg-blue-500/10 text-blue-600" : "bg-muted/30 text-muted-foreground"
+                      }`}
+                    >
+                      <a
+                        href={`https://instagram.com/${venue.instagramHandle.replace(/^@/, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 py-1 hover:opacity-70 transition-opacity"
+                        title="Open on Instagram"
+                      >
+                        <Instagram size={14} /> {venue.instagramHandle}
+                      </a>
+                      <button
+                        onClick={() => toggleInstagram(venue)}
+                        className="p-1.5 rounded-md hover:bg-blue-500/20 transition-colors"
+                        title={venue.instagramFollowing ? "Click to unfollow" : "Click to mark as followed"}
+                      >
+                        {venue.instagramFollowing ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {venue.notes && <p className="text-xs text-muted-foreground font-body italic">{venue.notes}</p>}
