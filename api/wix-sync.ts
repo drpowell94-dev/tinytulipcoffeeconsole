@@ -23,7 +23,13 @@ interface OutEvent {
 // Cap each Wix call so a stalled upstream request fails fast with a clear
 // error instead of hanging until the platform kills the function — which
 // otherwise looks like a dropped connection to the client, not an error.
-const WIX_TIMEOUT_MS = 8000;
+const WIX_TIMEOUT_MS = 6000;
+
+// The pagination loop can call wixFetch up to 10 times; even with a per-call
+// cap, that sequence could still run past a client's own timeout with nothing
+// returned yet. Cap the whole handler's Wix work so it always has time to
+// respond with a real error before the client gives up blind.
+const HANDLER_DEADLINE_MS = 9000;
 
 async function wixFetch(path: string, body: unknown): Promise<any> {
   const controller = new AbortController();
@@ -101,11 +107,18 @@ export default async function handler(request: Request): Promise<Response> {
     return Response.json({ error: "Wix credentials not configured" }, { status: 500 });
   }
 
+  const startedAt = Date.now();
+
   try {
-    // Pull all bookings (paginated).
+    // Pull all bookings (paginated), bailing out with a clear error if the
+    // whole sequence is taking too long rather than silently running past
+    // however long the client is willing to wait.
     let offset = 0;
     const raw: any[] = [];
     for (let i = 0; i < 10; i++) {
+      if (Date.now() - startedAt > HANDLER_DEADLINE_MS) {
+        throw new Error(`Wix booking pagination exceeded ${HANDLER_DEADLINE_MS}ms after page ${i}`);
+      }
       const res = await wixFetch("/_api/bookings-reader/v2/extended-bookings/query", {
         query: { filter: {}, paging: { limit: 100, offset } },
       });

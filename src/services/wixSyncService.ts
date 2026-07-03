@@ -4,10 +4,12 @@ import { loadVenues, resolveVenue, streetKey, createVenueFromAddress, type Venue
 import { geocodeAddress } from "@/services/geocodeService";
 import { recordSyncStatus } from "@/lib/syncStatus";
 
-// The serverless route caps each Wix call at 8s; give it room to fail cleanly
-// and report an error before giving up client-side. Without this, a stalled
-// request just hangs in the UI forever with no visible error.
-const SYNC_TIMEOUT_MS = 15000;
+// The serverless route caps its total Wix work at 9s (HANDLER_DEADLINE_MS in
+// api/wix-sync.ts) so it can always respond with a real error. Wait well past
+// that here so the server gets the chance to report what's actually wrong,
+// instead of the client giving up first and hiding the real error behind a
+// generic "timed out" with no information.
+const SYNC_TIMEOUT_MS = 20000;
 
 const CATEGORY_BY_TYPE: Record<EventType, Venue["defaultCategory"]> = {
   popup: "Pop Up",
