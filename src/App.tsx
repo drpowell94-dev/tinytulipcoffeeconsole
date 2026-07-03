@@ -10,6 +10,7 @@ import ChecklistsPage from "@/pages/ChecklistsPage";
 import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import PropertiesPage from "@/pages/PropertiesPage";
+import RevenuePage from "@/pages/RevenuePage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { loadProperties, clearProperties } from "@/lib/propertyStore";
 import { loadEvents } from "@/lib/eventStore";
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/email-campaigns" element={<EmailCampaignsPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
           <Route path="/properties" element={<PropertiesPage />} />
+          <Route path="/revenue" element={<RevenuePage />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </MainLayout>

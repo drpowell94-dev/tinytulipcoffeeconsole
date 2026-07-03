@@ -131,7 +131,7 @@ export default function DashboardPage() {
           />
           <StatCard icon={<CalendarDays size={20} />} label="Upcoming (7 days)" value={String(upcoming.length)} to="/events" />
           <StatCard icon={<Coffee size={20} />} label="Events This Month" value={String(eventsThisMonth)} to="/events" />
-          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} to="/events" />
+          <StatCard icon={<TrendingUp size={20} />} label="Est. Revenue This Month" value={formatCurrency(revenueThisMonth)} to="/revenue" />
         </div>
       </div>
 
