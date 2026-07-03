@@ -191,7 +191,8 @@ export default function EventsPage() {
     setImporting(false);
 
     if ("error" in result) {
-      toast.error(`Wix sync failed: ${result.error}`);
+      // No toast here — the failure banner below is the single, persistent
+      // place this shows up, instead of duplicating it in a pop-up too.
     } else if (result.created === 0 && result.updated === 0) {
       toast.info("Already up to date with Wix");
     } else {

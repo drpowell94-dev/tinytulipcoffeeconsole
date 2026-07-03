@@ -23,6 +23,10 @@ export interface Venue {
   instagramHandle?: string;
   instagramFollowing?: boolean;
   notes?: string;
+  /** Property manager / point of contact at this venue. */
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
 }
 
 const VENUES_KEY = "tt-venues";

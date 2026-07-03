@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, MapPin, Instagram, Zap, Pencil, Coffee } from "lucide-react";
+import { Plus, Trash2, MapPin, Instagram, Zap, Pencil, Coffee, User } from "lucide-react";
 import { toast } from "sonner";
 import {
   loadVenues,
@@ -35,6 +35,9 @@ const EMPTY_FORM = {
   instagramHandle: "",
   instagramFollowing: false,
   notes: "",
+  contactName: "",
+  contactEmail: "",
+  contactPhone: "",
 };
 
 export default function PropertiesPage() {
@@ -86,6 +89,9 @@ export default function PropertiesPage() {
       instagramHandle: v.instagramHandle || "",
       instagramFollowing: v.instagramFollowing || false,
       notes: v.notes || "",
+      contactName: v.contactName || "",
+      contactEmail: v.contactEmail || "",
+      contactPhone: v.contactPhone || "",
     });
     setShowForm(true);
   };
@@ -121,6 +127,9 @@ export default function PropertiesPage() {
       instagramHandle: form.instagramHandle.trim() || undefined,
       instagramFollowing: form.instagramFollowing,
       notes: form.notes.trim() || undefined,
+      contactName: form.contactName.trim() || undefined,
+      contactEmail: form.contactEmail.trim() || undefined,
+      contactPhone: form.contactPhone.trim() || undefined,
     });
     setVenues(loadVenues());
     setShowForm(false);
@@ -188,6 +197,11 @@ export default function PropertiesPage() {
             <input className={input} placeholder="Logo URL (optional — upload at publish time)" value={form.logoUrl} onChange={e => setForm({ ...form, logoUrl: e.target.value })} />
             <input className={input} placeholder="Instagram handle (optional)" value={form.instagramHandle} onChange={e => setForm({ ...form, instagramHandle: e.target.value })} />
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input className={input} placeholder="Manager / contact name" value={form.contactName} onChange={e => setForm({ ...form, contactName: e.target.value })} />
+            <input className={input} placeholder="Contact email" type="email" value={form.contactEmail} onChange={e => setForm({ ...form, contactEmail: e.target.value })} />
+            <input className={input} placeholder="Contact phone" type="tel" value={form.contactPhone} onChange={e => setForm({ ...form, contactPhone: e.target.value })} />
+          </div>
           <label className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors">
             <input type="checkbox" checked={form.instagramFollowing} onChange={e => setForm({ ...form, instagramFollowing: e.target.checked })} className="w-4 h-4 rounded border-border" />
             <span className="text-sm font-body text-foreground">Following on Instagram</span>
@@ -224,6 +238,16 @@ export default function PropertiesPage() {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground font-body mt-1">
                         <MapPin size={12} className="shrink-0" />
                         <span className="truncate">{venue.formattedAddress}</span>
+                      </div>
+                    )}
+                    {venue.contactName && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground font-body mt-1">
+                        <User size={12} className="shrink-0" />
+                        <span className="truncate">
+                          {venue.contactName}
+                          {venue.contactEmail && ` · ${venue.contactEmail}`}
+                          {venue.contactPhone && ` · ${venue.contactPhone}`}
+                        </span>
                       </div>
                     )}
                     <p className="text-[11px] font-body text-muted-foreground/70 mt-0.5">
