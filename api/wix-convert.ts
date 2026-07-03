@@ -74,9 +74,26 @@ async function resolveCategoryId(label: string): Promise<string | undefined> {
   }
 }
 
+// Reject requests that didn't originate from this app. This isn't real auth —
+// the app has none yet — but it stops automated scanners/scripts from hitting
+// this write endpoint directly and spamming events onto the live Wix site.
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin") || request.headers.get("referer") || "";
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (!WIX_API_KEY || !WIX_SITE_ID) {

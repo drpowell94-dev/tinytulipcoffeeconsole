@@ -13,9 +13,26 @@ function mediaIdFromUrl(url: string): string {
   return url.slice(idx + marker.length).split("?")[0];
 }
 
+// Reject requests that didn't originate from this app. This isn't real auth —
+// the app has none yet — but it stops automated scanners/scripts from hitting
+// this write endpoint directly and uploading arbitrary files to Wix media.
+function isSameOrigin(request: Request): boolean {
+  const origin = request.headers.get("origin") || request.headers.get("referer") || "";
+  if (!origin) return false;
+  try {
+    return new URL(origin).host === new URL(request.url).host;
+  } catch {
+    return false;
+  }
+}
+
 export default async function handler(request: Request): Promise<Response> {
   if (request.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405 });
+  }
+
+  if (!isSameOrigin(request)) {
+    return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
   if (!WIX_API_KEY || !WIX_SITE_ID) {
