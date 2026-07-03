@@ -238,14 +238,15 @@ export default async function handler(request: Request): Promise<Response> {
       const updated = await wixFetch(`/events/v3/events/${existingWixEventsId}`, "PATCH", { event: wixEvent }) as { event?: { id: string } };
       wixEventId = updated.event?.id ?? existingWixEventsId;
     } else {
+      // CreateEvent publishes the event immediately unless `draft: true` is
+      // passed — there is no separate publish step needed (and calling
+      // /publish afterward now fails with 428 EVENT_ALREADY_PUBLISHED).
       const created = await wixFetch("/events/v3/events", "POST", { event: wixEvent }) as { event?: { id: string } };
       wixEventId = created.event?.id ?? "";
 
       if (!wixEventId) {
         return Response.json({ error: "Wix did not return event ID", raw: created }, { status: 502 });
       }
-
-      await wixFetch(`/events/v3/events/${wixEventId}/publish`, "POST");
     }
 
     return Response.json({ wixEventId }, { status: 200 });
