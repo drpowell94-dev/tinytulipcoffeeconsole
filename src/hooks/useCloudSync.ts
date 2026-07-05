@@ -1,21 +1,24 @@
 import { useEffect, useRef } from "react";
+import { subscribeToTable } from "@/services/cloudSync";
 
 /**
- * Re-run `reload` whenever shared data changes — either another user's edit
- * arrives via the realtime subscription, or the tab regains focus. Lets a page
- * re-read its localStorage-backed state so team edits show up live.
+ * Re-run `reload` whenever any of the given `coffee.*` tables change (via a
+ * Supabase realtime subscription) or the tab regains focus. Lets a page
+ * re-fetch its Supabase-backed state so teammates' edits show up live.
  */
-export function useCloudSync(reload: () => void) {
+export function useCloudSync(tables: string[], reload: () => void) {
   const ref = useRef(reload);
   ref.current = reload;
+  const key = tables.join(",");
 
   useEffect(() => {
     const handler = () => ref.current();
-    window.addEventListener("tt-sync", handler);
+    const unsubscribes = tables.map(table => subscribeToTable(table, handler));
     window.addEventListener("focus", handler);
     return () => {
-      window.removeEventListener("tt-sync", handler);
+      unsubscribes.forEach(unsubscribe => unsubscribe());
       window.removeEventListener("focus", handler);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 }

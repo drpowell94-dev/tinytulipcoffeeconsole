@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Trash2, Save, Globe, Sparkles, PenLine, ChevronDown, Share2, Mail, Tag, Instagram, LogIn } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/lib/contentStore";
 import { generateBlogDraft } from "@/lib/blogWriter";
 import { generateInstagramAuthUrl } from "@/services/instagramService";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 type Tab = "blog" | "website" | "social";
 
@@ -108,7 +109,7 @@ function TabButton({ active, onClick, children }: { active: boolean; onClick: ()
 }
 
 function BlogGenerator() {
-  const [posts, setPosts] = useState<BlogPost[]>(() => loadPosts());
+  const [posts, setPosts] = useState<BlogPost[]>([]);
   const [editingId, setEditingId] = useState<string | undefined>();
   const [title, setTitle] = useState("");
   const [template, setTemplate] = useState(BLOG_TEMPLATES[0].id);
@@ -124,14 +125,25 @@ function BlogGenerator() {
   const [generating, setGenerating] = useState(false);
   const autosave = useRef<number>();
 
+  const reload = useCallback(() => {
+    loadPosts().then(setPosts);
+  }, []);
+
+  useEffect(() => {
+    loadPosts().then(setPosts);
+  }, []);
+
+  useCloudSync(["blog_posts"], reload);
+
   // Auto-save draft 2s after typing stops (only once a title exists)
   useEffect(() => {
     window.clearTimeout(autosave.current);
     if (!title.trim()) return;
     autosave.current = window.setTimeout(() => {
-      const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "draft" });
-      setPosts(next);
-      if (!editingId) setEditingId(next[0].id);
+      savePost({ id: editingId, title, template, tone, keywords, body, status: "draft" }).then(next => {
+        setPosts(next);
+        if (!editingId) setEditingId(next[0].id);
+      });
     }, 2000);
     return () => window.clearTimeout(autosave.current);
   }, [title, template, tone, keywords, body, editingId]);
@@ -188,12 +200,12 @@ function BlogGenerator() {
     toast.success("Draft written — give it your voice and publish");
   };
 
-  const handlePublish = () => {
+  const handlePublish = async () => {
     if (!title.trim()) {
       toast.error("Add a title first");
       return;
     }
-    const next = savePost({ id: editingId, title, template, tone, keywords, body, status: "published" });
+    const next = await savePost({ id: editingId, title, template, tone, keywords, body, status: "published" });
     setPosts(next);
     resetForm();
     toast.success("Post published!");
@@ -371,7 +383,7 @@ function BlogGenerator() {
                   </p>
                 </button>
                 <button
-                  onClick={() => setPosts(deletePost(post.id))}
+                  onClick={() => deletePost(post.id).then(setPosts)}
                   className="p-1.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0"
                   aria-label={`Delete ${post.title}`}
                 >
@@ -387,12 +399,21 @@ function BlogGenerator() {
 }
 
 function WebsiteUpdater() {
-  const [settings, setSettings] = useState<WebsiteSettings>(() => loadSiteSettings());
+  const [settings, setSettings] = useState<WebsiteSettings | null>(null);
+
+  useEffect(() => {
+    loadSiteSettings().then(setSettings);
+  }, []);
 
   const handleSave = () => {
+    if (!settings) return;
     saveSiteSettings(settings);
     toast.success("Website settings saved");
   };
+
+  if (!settings) {
+    return <p className="font-body text-sm text-muted-foreground py-8 text-center">Loading…</p>;
+  }
 
   return (
     <div className="rounded-lg bg-muted/20 p-5 space-y-6 max-w-2xl">

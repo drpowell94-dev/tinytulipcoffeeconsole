@@ -1,6 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
-
-vi.mock("@/services/cloudSync", () => ({ pushState: vi.fn() }));
+import { describe, it, expect } from "vitest";
 
 import { findBundledLiveDuplicates, type TulipEvent } from "./eventStore";
 

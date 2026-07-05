@@ -1,4 +1,5 @@
-import { loadJSON, saveJSON, uid } from "./storage";
+import { uid } from "./storage";
+import { supabase } from "@/services/supabase";
 
 export type BlogTone = "friendly" | "professional" | "casual";
 
@@ -47,42 +48,115 @@ export interface WebsiteSettings {
   alertActive: boolean;
 }
 
-const POSTS_KEY = "tt-blog-posts";
-const SITE_KEY = "tt-website-settings";
-
-export function loadPosts(): BlogPost[] {
-  return loadJSON<BlogPost[]>(POSTS_KEY, []);
+interface BlogPostRow {
+  id: string;
+  title: string;
+  body: string | null;
+  status: string | null;
+  template: string | null;
+  tone: string | null;
+  keywords: string | null;
+  updated_at: string;
 }
 
-export function savePost(post: Omit<BlogPost, "id" | "updatedAt"> & { id?: string }): BlogPost[] {
-  const posts = loadPosts();
-  const updatedAt = new Date().toISOString();
-  if (post.id) {
-    const next = posts.map(p => (p.id === post.id ? { ...p, ...post, updatedAt } as BlogPost : p));
-    saveJSON(POSTS_KEY, next);
-    return next;
+function rowToPost(row: BlogPostRow): BlogPost {
+  return {
+    id: row.id,
+    title: row.title,
+    template: row.template ?? "",
+    tone: (row.tone as BlogTone) ?? "friendly",
+    keywords: row.keywords ?? "",
+    body: row.body ?? "",
+    status: (row.status as BlogPost["status"]) ?? "draft",
+    updatedAt: row.updated_at,
+  };
+}
+
+export async function loadPosts(): Promise<BlogPost[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .schema("coffee")
+    .from("blog_posts")
+    .select("*")
+    .order("updated_at", { ascending: false });
+  if (error) {
+    console.warn("[contentStore] loadPosts failed:", error.message);
+    return [];
   }
-  const created: BlogPost = { ...post, id: uid(), updatedAt } as BlogPost;
-  posts.unshift(created);
-  saveJSON(POSTS_KEY, posts);
-  return posts;
+  return (data ?? []).map(rowToPost);
 }
 
-export function deletePost(id: string): BlogPost[] {
-  const posts = loadPosts().filter(p => p.id !== id);
-  saveJSON(POSTS_KEY, posts);
-  return posts;
+export async function savePost(post: Omit<BlogPost, "id" | "updatedAt"> & { id?: string }): Promise<BlogPost[]> {
+  if (supabase) {
+    const updatedAt = new Date().toISOString();
+    const id = post.id ?? uid();
+    const { error } = await supabase
+      .schema("coffee")
+      .from("blog_posts")
+      .upsert(
+        {
+          id,
+          title: post.title,
+          template: post.template,
+          tone: post.tone,
+          keywords: post.keywords,
+          body: post.body,
+          status: post.status,
+          updated_at: updatedAt,
+        },
+        { onConflict: "id" }
+      );
+    if (error) console.warn("[contentStore] savePost failed:", error.message);
+  }
+  return loadPosts();
 }
 
-export function loadSiteSettings(): WebsiteSettings {
-  return loadJSON<WebsiteSettings>(SITE_KEY, {
-    hours: "Mon–Fri: 7am–2pm\nSat: 8am–12pm (farmers market)\nSun: Closed",
-    seasonalMenu: "Lavender Latte\nStrawberry Matcha\nMaple Cold Brew",
-    alertBanner: "",
-    alertActive: false,
-  });
+export async function deletePost(id: string): Promise<BlogPost[]> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("blog_posts").delete().eq("id", id);
+    if (error) console.warn("[contentStore] deletePost failed:", error.message);
+  }
+  return loadPosts();
 }
 
-export function saveSiteSettings(settings: WebsiteSettings) {
-  saveJSON(SITE_KEY, settings);
+const DEFAULT_SITE_SETTINGS: WebsiteSettings = {
+  hours: "Mon–Fri: 7am–2pm\nSat: 8am–12pm (farmers market)\nSun: Closed",
+  seasonalMenu: "Lavender Latte\nStrawberry Matcha\nMaple Cold Brew",
+  alertBanner: "",
+  alertActive: false,
+};
+
+export async function loadSiteSettings(): Promise<WebsiteSettings> {
+  if (!supabase) return DEFAULT_SITE_SETTINGS;
+  const { data, error } = await supabase.schema("coffee").from("settings").select("*").eq("id", 1).maybeSingle();
+  if (error) {
+    console.warn("[contentStore] loadSiteSettings failed:", error.message);
+    return DEFAULT_SITE_SETTINGS;
+  }
+  if (!data) return DEFAULT_SITE_SETTINGS;
+  return {
+    hours: data.hours ?? DEFAULT_SITE_SETTINGS.hours,
+    seasonalMenu: data.seasonal_menu ?? DEFAULT_SITE_SETTINGS.seasonalMenu,
+    alertBanner: data.alert_banner ?? DEFAULT_SITE_SETTINGS.alertBanner,
+    alertActive: data.alert_active ?? DEFAULT_SITE_SETTINGS.alertActive,
+  };
+}
+
+export async function saveSiteSettings(settings: WebsiteSettings): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase
+    .schema("coffee")
+    .from("settings")
+    .upsert(
+      {
+        id: 1,
+        hours: settings.hours,
+        seasonal_menu: settings.seasonalMenu,
+        alert_banner: settings.alertBanner,
+        alert_active: settings.alertActive,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "id" }
+    );
+  if (error) console.warn("[contentStore] saveSiteSettings failed:", error.message);
 }

@@ -31,7 +31,7 @@ const CATEGORY_BY_TYPE: Record<EventType, Venue["defaultCategory"]> = {
  * guarantee between them, risking one silently dropping another.
  */
 async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]> {
-  const venues = loadVenues();
+  const venues = await loadVenues();
   const newVenues: Venue[] = [];
   const out: TulipEvent[] = [];
   for (const ev of events) {
@@ -60,7 +60,7 @@ async function stampAndCreateVenues(events: TulipEvent[]): Promise<TulipEvent[]>
         : ev
     );
   }
-  upsertVenues(newVenues);
+  await upsertVenues(newVenues);
   return out;
 }
 
@@ -110,5 +110,5 @@ export async function syncBookingsFromWix(): Promise<WixSyncResult> {
   // silently erased real historical event counts (e.g. a venue's past-event
   // stats) the moment live syncing started working.
   if (events.length === 0) return { created: 0, updated: 0 };
-  return importEvents(events);
+  return await importEvents(events);
 }

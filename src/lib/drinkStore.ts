@@ -1,4 +1,5 @@
 import { loadJSON, saveJSON, removeKey, uid } from "./storage";
+import { supabase } from "@/services/supabase";
 
 export interface DrinkProduct {
   id: string;
@@ -36,13 +37,16 @@ export interface SavedSession {
   totalRevenue: number;
   extraSales: number;
   productCounts: Record<string, number>;
-  orders: OrderItem[];
 }
+// coffee.sessions/coffee.product_counts only store the aggregate totals -
+// the individual timestamped orders (OrderItem[]) have no home in the cloud
+// schema and are dropped on archive (confirmed nothing reads them back).
 
 // Active session orders are keyed per-event so a barista can pause one
-// event's counter and open another without losing counts.
+// event's counter and open another without losing counts. This is the LIVE
+// per-event order log - it was never cloud-synced before this migration and
+// stays exactly as-is: local-only, synchronous, keyed by eventId.
 const sessionKey = (eventId: string) => `tt-session-${eventId}`;
-const HISTORY_KEY = "tt-session-history";
 
 export function loadSession(eventId: string): OrderItem[] {
   return loadJSON<OrderItem[]>(sessionKey(eventId), []);
@@ -82,18 +86,58 @@ export function extraSales(orders: OrderItem[], preOrders: number): { units: num
   return { units: extras.length, revenue: extras.reduce((s, o) => s + o.price, 0) };
 }
 
-export function loadHistory(): SavedSession[] {
-  return loadJSON<SavedSession[]>(HISTORY_KEY, []);
+interface SessionRow {
+  id: string;
+  event_id: string;
+  event_name: string | null;
+  total_drinks: number | null;
+  total_revenue: number | null;
+  pre_orders: number | null;
+  extra_sales: number | null;
+  created_at: string;
+  product_counts: Array<{ product: string; quantity: number }> | null;
 }
 
-export function archiveSession(
+function rowToSession(row: SessionRow): SavedSession {
+  const productCounts: Record<string, number> = {};
+  for (const pc of row.product_counts ?? []) productCounts[pc.product] = pc.quantity;
+  return {
+    id: row.id,
+    eventId: row.event_id,
+    eventName: row.event_name ?? "",
+    date: row.created_at,
+    preOrders: row.pre_orders ?? 0,
+    totalDrinks: row.total_drinks ?? 0,
+    totalRevenue: row.total_revenue ?? 0,
+    extraSales: row.extra_sales ?? 0,
+    productCounts,
+  };
+}
+
+export async function loadHistory(): Promise<SavedSession[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .schema("coffee")
+    .from("sessions")
+    .select("*, product_counts(product, quantity)")
+    .order("created_at", { ascending: false })
+    .limit(100);
+  if (error) {
+    console.warn("[drinkStore] loadHistory failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map(rowToSession);
+}
+
+export async function archiveSession(
   eventId: string,
   eventName: string,
   preOrders: number,
   orders: OrderItem[]
-): SavedSession | null {
+): Promise<SavedSession | null> {
   if (orders.length === 0) return null;
   const extra = extraSales(orders, preOrders);
+  const counts = countByProduct(orders);
   const saved: SavedSession = {
     id: uid(),
     eventId,
@@ -103,19 +147,49 @@ export function archiveSession(
     totalDrinks: orders.length,
     totalRevenue: totalRevenue(orders),
     extraSales: extra.revenue,
-    productCounts: countByProduct(orders),
-    orders,
+    productCounts: counts,
   };
-  const history = loadHistory();
-  history.unshift(saved);
-  saveJSON(HISTORY_KEY, history.slice(0, 100));
+
+  if (supabase) {
+    const { data, error } = await supabase
+      .schema("coffee")
+      .from("sessions")
+      .insert({
+        event_id: eventId,
+        event_name: saved.eventName,
+        total_drinks: saved.totalDrinks,
+        total_revenue: saved.totalRevenue,
+        pre_orders: preOrders,
+        extra_sales: extra.revenue,
+      })
+      .select()
+      .single();
+    if (error) {
+      console.warn("[drinkStore] archiveSession failed:", error.message);
+    } else if (data) {
+      saved.id = data.id;
+      saved.date = data.created_at;
+      const rows = Object.entries(counts).map(([product, quantity]) => ({
+        session_id: data.id,
+        product,
+        quantity,
+      }));
+      if (rows.length > 0) {
+        const { error: countsError } = await supabase.schema("coffee").from("product_counts").insert(rows);
+        if (countsError) console.warn("[drinkStore] archiveSession product_counts failed:", countsError.message);
+      }
+    }
+  }
   return saved;
 }
 
-export function deleteFromHistory(id: string): SavedSession[] {
-  const history = loadHistory().filter(s => s.id !== id);
-  saveJSON(HISTORY_KEY, history);
-  return history;
+export async function deleteFromHistory(id: string): Promise<SavedSession[]> {
+  if (supabase) {
+    await supabase.schema("coffee").from("product_counts").delete().eq("session_id", id);
+    const { error } = await supabase.schema("coffee").from("sessions").delete().eq("id", id);
+    if (error) console.warn("[drinkStore] deleteFromHistory failed:", error.message);
+  }
+  return loadHistory();
 }
 
 export function generateSummary(eventName: string, preOrders: number, orders: OrderItem[]): string {

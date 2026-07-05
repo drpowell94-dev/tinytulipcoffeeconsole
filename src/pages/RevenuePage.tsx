@@ -1,12 +1,33 @@
+import { useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import { loadEvents, EVENT_TYPE_LABELS } from "@/lib/eventStore";
-import { loadVenues, resolveVenue } from "@/lib/venueStore";
+import { loadEvents, EVENT_TYPE_LABELS, type TulipEvent } from "@/lib/eventStore";
+import { loadVenues, resolveVenue, type Venue } from "@/lib/venueStore";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 export default function RevenuePage() {
-  const venues = loadVenues();
-  const events = loadEvents()
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [allEvents, setAllEvents] = useState<TulipEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const reload = useCallback(() => {
+    loadVenues().then(setVenues);
+    loadEvents().then(setAllEvents);
+  }, []);
+
+  useEffect(() => {
+    Promise.all([loadVenues(), loadEvents()])
+      .then(([v, e]) => {
+        setVenues(v);
+        setAllEvents(e);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useCloudSync(["venues", "events"], reload);
+
+  const events = allEvents
     .filter(e => e.status !== "cancelled" && (e.estimatedRevenue || 0) > 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
@@ -41,22 +62,30 @@ export default function RevenuePage() {
             </tr>
           </thead>
           <tbody>
-            {events.map(e => {
-              const venue = resolveVenue(e, venues);
-              return (
-                <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/15">
-                  <td className="px-4 py-3 text-foreground font-semibold">{venue?.name || e.name}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{formatDate(e.dateStart)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{EVENT_TYPE_LABELS[e.eventType]}</td>
-                  <td className="px-4 py-3 text-muted-foreground capitalize">{e.status}</td>
-                  <td className="px-4 py-3 text-right text-foreground font-semibold">{formatCurrency(e.estimatedRevenue || 0)}</td>
-                </tr>
-              );
-            })}
-            {events.length === 0 && (
+            {loading ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No revenue recorded yet.</td>
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">Loading…</td>
               </tr>
+            ) : (
+              <>
+                {events.map(e => {
+                  const venue = resolveVenue(e, venues);
+                  return (
+                    <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/15">
+                      <td className="px-4 py-3 text-foreground font-semibold">{venue?.name || e.name}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{formatDate(e.dateStart)}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{EVENT_TYPE_LABELS[e.eventType]}</td>
+                      <td className="px-4 py-3 text-muted-foreground capitalize">{e.status}</td>
+                      <td className="px-4 py-3 text-right text-foreground font-semibold">{formatCurrency(e.estimatedRevenue || 0)}</td>
+                    </tr>
+                  );
+                })}
+                {events.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">No revenue recorded yet.</td>
+                  </tr>
+                )}
+              </>
             )}
           </tbody>
         </table>

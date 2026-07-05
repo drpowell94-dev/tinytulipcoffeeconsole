@@ -1,3 +1,6 @@
+import { uid } from "./storage";
+import { supabase } from "@/services/supabase";
+
 export interface DailyChecklistItem {
   id: string;
   task: string;
@@ -10,80 +13,91 @@ export interface DailyChecklist {
   items: DailyChecklistItem[];
 }
 
-import { saveJSON } from "./storage";
-
-const STORAGE_KEY = "tiny_tulip_daily_checklist";
-
-export function loadDailyChecklist(): DailyChecklist {
-  if (typeof window === "undefined") {
-    return { date: new Date().toISOString().split("T")[0], items: [] };
-  }
-
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) {
-      return { date: new Date().toISOString().split("T")[0], items: [] };
-    }
-
-    const parsed = JSON.parse(stored) as DailyChecklist;
-    const today = new Date().toISOString().split("T")[0];
-
-    if (parsed.date !== today) {
-      return { date: today, items: [] };
-    }
-
-    return parsed;
-  } catch (err) {
-    console.error("Failed to load daily checklist:", err);
-    return { date: new Date().toISOString().split("T")[0], items: [] };
-  }
+function today(): string {
+  return new Date().toISOString().split("T")[0];
 }
 
-export function saveDailyChecklist(checklist: DailyChecklist): DailyChecklist {
-  if (typeof window === "undefined") return checklist;
-
-  try {
-    saveJSON(STORAGE_KEY, checklist);
-    return checklist;
-  } catch (err) {
-    console.error("Failed to save daily checklist:", err);
-    return checklist;
-  }
+interface DailyChecklistItemRow {
+  id: string;
+  task: string;
+  completed: boolean | null;
+  completed_at: string | null;
+  created_at: string;
 }
 
-export function addDailyTask(task: string): DailyChecklist {
-  const checklist = loadDailyChecklist();
-  const newItem: DailyChecklistItem = {
-    id: `task-${Date.now()}`,
-    task,
-    completed: false,
+function rowToItem(row: DailyChecklistItemRow): DailyChecklistItem {
+  return {
+    id: row.id,
+    task: row.task,
+    completed: row.completed ?? false,
+    completedAt: row.completed_at ?? undefined,
   };
-  checklist.items.push(newItem);
-  return saveDailyChecklist(checklist);
 }
 
-export function toggleDailyTask(taskId: string): DailyChecklist {
-  const checklist = loadDailyChecklist();
-  const item = checklist.items.find(i => i.id === taskId);
-  if (item) {
-    item.completed = !item.completed;
-    if (item.completed) {
-      item.completedAt = new Date().toISOString();
-    } else {
-      item.completedAt = undefined;
-    }
+/**
+ * Only ever queries/shows rows where date = today's local date - replicates
+ * the old localStorage behavior of resetting to an empty list whenever the
+ * stored date wasn't today.
+ */
+export async function loadDailyChecklist(): Promise<DailyChecklist> {
+  const date = today();
+  if (!supabase) return { date, items: [] };
+  const { data, error } = await supabase
+    .schema("coffee")
+    .from("daily_checklist_items")
+    .select("*")
+    .eq("date", date)
+    .order("created_at", { ascending: true });
+  if (error) {
+    console.warn("[dailyChecklistStore] load failed:", error.message);
+    return { date, items: [] };
   }
-  return saveDailyChecklist(checklist);
+  return { date, items: (data ?? []).map(rowToItem) };
 }
 
-export function removeDailyTask(taskId: string): DailyChecklist {
-  const checklist = loadDailyChecklist();
-  checklist.items = checklist.items.filter(i => i.id !== taskId);
-  return saveDailyChecklist(checklist);
+export async function addDailyTask(task: string): Promise<DailyChecklist> {
+  if (supabase) {
+    const { error } = await supabase
+      .schema("coffee")
+      .from("daily_checklist_items")
+      .insert({ id: uid(), date: today(), task, completed: false });
+    if (error) console.warn("[dailyChecklistStore] addDailyTask failed:", error.message);
+  }
+  return loadDailyChecklist();
 }
 
-export function clearCompletedDailyTasks(): DailyChecklist {
-  const checklist = loadDailyChecklist();
-  checklist.items = checklist.items.filter(i => !i.completed);
-  return saveDailyChecklist(checklist);
+export async function toggleDailyTask(taskId: string): Promise<DailyChecklist> {
+  if (supabase) {
+    const checklist = await loadDailyChecklist();
+    const item = checklist.items.find(i => i.id === taskId);
+    const nextCompleted = !(item?.completed ?? false);
+    const { error } = await supabase
+      .schema("coffee")
+      .from("daily_checklist_items")
+      .update({ completed: nextCompleted, completed_at: nextCompleted ? new Date().toISOString() : null })
+      .eq("id", taskId);
+    if (error) console.warn("[dailyChecklistStore] toggleDailyTask failed:", error.message);
+  }
+  return loadDailyChecklist();
+}
+
+export async function removeDailyTask(taskId: string): Promise<DailyChecklist> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("daily_checklist_items").delete().eq("id", taskId);
+    if (error) console.warn("[dailyChecklistStore] removeDailyTask failed:", error.message);
+  }
+  return loadDailyChecklist();
+}
+
+export async function clearCompletedDailyTasks(): Promise<DailyChecklist> {
+  if (supabase) {
+    const { error } = await supabase
+      .schema("coffee")
+      .from("daily_checklist_items")
+      .delete()
+      .eq("date", today())
+      .eq("completed", true);
+    if (error) console.warn("[dailyChecklistStore] clearCompletedDailyTasks failed:", error.message);
+  }
+  return loadDailyChecklist();
 }

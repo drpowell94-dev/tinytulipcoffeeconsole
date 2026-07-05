@@ -7,16 +7,10 @@ import EventsPage from "@/pages/EventsPage";
 import DrinkCounterPage from "@/pages/DrinkCounterPage";
 import ContentPage from "@/pages/ContentPage";
 import ChecklistsPage from "@/pages/ChecklistsPage";
-import LogisticsPage from "@/pages/LogisticsPage";
 import InventoryPage from "@/pages/InventoryPage";
 import PropertiesPage from "@/pages/PropertiesPage";
 import RevenuePage from "@/pages/RevenuePage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
-import { loadProperties, clearProperties } from "@/lib/propertyStore";
-import { loadEvents } from "@/lib/eventStore";
-import { importBundledWixEvents } from "@/services/eventService";
-import { seedVenues, migratePropertiesToVenues, purgeSampleVenues } from "@/lib/venueStore";
-import { startCloudSync } from "@/services/cloudSync";
 import { syncBookingsFromWix } from "@/services/wixSyncService";
 import { useAuth } from "@/hooks/useAuth";
 import LoginGate from "@/components/auth/LoginGate";
@@ -29,34 +23,13 @@ export default function App() {
     // Wait for the shared team session before touching cloud data — once the
     // database requires auth, syncing any earlier would just fail silently.
     if (status !== "authed") return;
-    (async () => {
-      // Pull the team's shared data first (and subscribe to live changes), so a
-      // new device picks up existing data instead of re-seeding its own copy.
-      await startCloudSync();
 
-      // Seed the venue address book, fold any legacy Properties entries into it,
-      // then remove the old fake sample properties.
-      seedVenues();
-      migratePropertiesToVenues(loadProperties());
-      purgeSampleVenues();
-      clearProperties();
-
-      // Guarantee a baseline of events even if the Wix booking sync fails or
-      // returns nothing (e.g. the key can't read Bookings yet).
-      if (loadEvents().length === 0) {
-        importBundledWixEvents();
-        window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "tt-events" } }));
-      }
-
-      // Pull confirmed bookings from Wix as events (replaces the old bundled
-      // snapshot). Best-effort — ignore failures so the app still loads offline.
-      syncBookingsFromWix()
-        .catch(() => undefined)
-        .finally(() => window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } })));
-
-      // Nudge any mounted page to re-read after hydration.
-      window.dispatchEvent(new CustomEvent("tt-sync", { detail: { key: "*" } }));
-    })();
+    // The `coffee` schema already holds the team's real data, so there's
+    // nothing left to seed or migrate on boot (no more localStorage-first
+    // hydrate, no venue/property seeding). The only remaining bootstrap work
+    // is a best-effort pull of newly confirmed Wix bookings into events —
+    // pages themselves now load their own data straight from Supabase.
+    syncBookingsFromWix().catch(() => undefined);
   }, [status]);
 
   if (status === "checking") {

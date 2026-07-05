@@ -1,24 +1,32 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { CalendarDays, Coffee, AlertTriangle, TrendingUp, Plus, FileText, Package, Zap, ExternalLink, Bell } from "lucide-react";
-import { upcomingEvents, loadEvents, EVENT_TYPE_LABELS } from "@/lib/eventStore";
-import { lowStockItems } from "@/lib/inventoryStore";
-import { loadHistory } from "@/lib/drinkStore";
+import { upcomingEvents, loadEvents, EVENT_TYPE_LABELS, type TulipEvent } from "@/lib/eventStore";
+import { lowStockItems, type InventoryItem } from "@/lib/inventoryStore";
+import { loadHistory, type SavedSession } from "@/lib/drinkStore";
 import { generateInsights, type DashboardInsight } from "@/services/analyticsService";
 import { formatCurrency, formatDate, daysUntil } from "@/lib/utils";
 import ConversionFunnelWidget from "@/components/dashboard/ConversionFunnelWidget";
 import { useCloudSync } from "@/hooks/useCloudSync";
 
 export default function DashboardPage() {
-  const [, forceTick] = useState(0);
-  useCloudSync(() => forceTick(t => t + 1));
-
-  const upcoming = upcomingEvents(7);
-  const lowStock = lowStockItems();
-  const history = loadHistory();
-  const allEvents = loadEvents();
+  const [allEvents, setAllEvents] = useState<TulipEvent[]>([]);
+  const [lowStock, setLowStock] = useState<InventoryItem[]>([]);
+  const [history, setHistory] = useState<SavedSession[]>([]);
   const [insights, setInsights] = useState<DashboardInsight[]>([]);
   const [insightsError, setInsightsError] = useState(false);
+
+  const reload = useCallback(() => {
+    loadEvents().then(setAllEvents);
+    lowStockItems().then(setLowStock);
+    loadHistory().then(setHistory);
+  }, []);
+
+  useEffect(() => {
+    reload();
+  }, [reload]);
+
+  useCloudSync(["events", "inventory", "sessions", "product_counts"], reload);
 
   useEffect(() => {
     setInsightsError(false);
@@ -30,6 +38,8 @@ export default function DashboardPage() {
         setInsightsError(true);
       });
   }, []);
+
+  const upcoming = upcomingEvents(allEvents, 7);
 
   const monthStart = new Date();
   monthStart.setDate(1);
