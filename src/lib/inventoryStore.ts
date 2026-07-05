@@ -1,4 +1,5 @@
-import { loadJSON, saveJSON, uid } from "./storage";
+import { uid } from "./storage";
+import { supabase } from "@/services/supabase";
 
 export interface InventoryItem {
   id: string;
@@ -10,55 +11,76 @@ export interface InventoryItem {
   lastRestocked?: string;
 }
 
-const KEY = "tt-inventory";
+function rowToItem(row: {
+  id: string;
+  name: string;
+  unit: string;
+  quantity: number;
+  reorder_level: number;
+  supplier: string | null;
+  last_restocked: string | null;
+}): InventoryItem {
+  return {
+    id: row.id,
+    name: row.name,
+    unit: row.unit,
+    quantity: row.quantity,
+    reorderLevel: row.reorder_level,
+    supplier: row.supplier ?? undefined,
+    lastRestocked: row.last_restocked ?? undefined,
+  };
+}
 
-const SEED: InventoryItem[] = [
-  { id: "beans", name: "Coffee Beans", unit: "bags", quantity: 12, reorderLevel: 4 },
-  { id: "oat-milk", name: "Oat Milk", unit: "cartons", quantity: 8, reorderLevel: 6 },
-  { id: "whole-milk", name: "Whole Milk", unit: "gallons", quantity: 5, reorderLevel: 3 },
-  { id: "cups-12oz", name: "12oz Cups", unit: "boxes", quantity: 3, reorderLevel: 2 },
-  { id: "lids", name: "Lids", unit: "boxes", quantity: 4, reorderLevel: 2 },
-];
-
-export function loadInventory(): InventoryItem[] {
-  const items = loadJSON<InventoryItem[] | null>(KEY, null);
-  if (items === null) {
-    // Seed localStorage only - do NOT push to the cloud here. This can run
-    // before the initial cloud hydrate finishes (it's called synchronously
-    // on page mount; hydrate is async), and pushing would overwrite real
-    // shared inventory with these defaults and win the race against the
-    // correct data arriving moments later. startCloudSync() already pushes
-    // local-only collections to the cloud, but only for keys the cloud
-    // truly doesn't have yet - that's the right place for this to happen.
-    if (typeof localStorage !== "undefined") localStorage.setItem(KEY, JSON.stringify(SEED));
-    return SEED;
+export async function loadInventory(): Promise<InventoryItem[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.schema("coffee").from("inventory").select("*").order("name");
+  if (error) {
+    console.warn("[inventoryStore] load failed:", error.message);
+    return [];
   }
-  return items;
+  return (data ?? []).map(rowToItem);
 }
 
-export function saveInventory(items: InventoryItem[]) {
-  saveJSON(KEY, items);
+export async function addItem(data: Omit<InventoryItem, "id">): Promise<InventoryItem[]> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("inventory").insert({
+      id: uid(),
+      name: data.name,
+      unit: data.unit,
+      quantity: data.quantity,
+      reorder_level: data.reorderLevel,
+      supplier: data.supplier ?? null,
+      last_restocked: data.lastRestocked ?? null,
+    });
+    if (error) console.warn("[inventoryStore] addItem failed:", error.message);
+  }
+  return loadInventory();
 }
 
-export function addItem(data: Omit<InventoryItem, "id">): InventoryItem[] {
-  const items = loadInventory();
-  items.push({ ...data, id: uid() });
-  saveInventory(items);
-  return items;
+export async function updateItem(id: string, patch: Partial<InventoryItem>): Promise<InventoryItem[]> {
+  if (supabase) {
+    const update: Record<string, unknown> = {};
+    if (patch.name !== undefined) update.name = patch.name;
+    if (patch.unit !== undefined) update.unit = patch.unit;
+    if (patch.quantity !== undefined) update.quantity = patch.quantity;
+    if (patch.reorderLevel !== undefined) update.reorder_level = patch.reorderLevel;
+    if (patch.supplier !== undefined) update.supplier = patch.supplier ?? null;
+    if (patch.lastRestocked !== undefined) update.last_restocked = patch.lastRestocked ?? null;
+    const { error } = await supabase.schema("coffee").from("inventory").update(update).eq("id", id);
+    if (error) console.warn("[inventoryStore] updateItem failed:", error.message);
+  }
+  return loadInventory();
 }
 
-export function updateItem(id: string, patch: Partial<InventoryItem>): InventoryItem[] {
-  const items = loadInventory().map(i => (i.id === id ? { ...i, ...patch } : i));
-  saveInventory(items);
-  return items;
+export async function removeItem(id: string): Promise<InventoryItem[]> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("inventory").delete().eq("id", id);
+    if (error) console.warn("[inventoryStore] removeItem failed:", error.message);
+  }
+  return loadInventory();
 }
 
-export function removeItem(id: string): InventoryItem[] {
-  const items = loadInventory().filter(i => i.id !== id);
-  saveInventory(items);
-  return items;
-}
-
-export function lowStockItems(): InventoryItem[] {
-  return loadInventory().filter(i => i.quantity <= i.reorderLevel);
+export async function lowStockItems(): Promise<InventoryItem[]> {
+  const items = await loadInventory();
+  return items.filter(i => i.quantity <= i.reorderLevel);
 }

@@ -211,73 +211,13 @@ export async function calculateRevenueMetrics(
 }
 
 /**
- * Get past events from localStorage (for local Wix imports and app events).
- * Used to drive recommendations even without Supabase sync.
- */
-function getLocalPastEventsByVenue(daysBack: number = 90): PastEventMetrics | null {
-  const events = loadEvents().filter(e => e.status === "completed");
-
-  if (events.length === 0) {
-    return {
-      totalEvents: 0,
-      highestRevenueEvent: null,
-      topVenues: [],
-    };
-  }
-
-  // Group by venue
-  const venueMap = new Map<
-    string,
-    { location: string; events: number; revenue: number }
-  >();
-
-  events.forEach((e: any) => {
-    const key = e.location || "Unknown";
-    const current = venueMap.get(key) || {
-      location: e.location,
-      events: 0,
-      revenue: 0,
-    };
-    current.events += 1;
-    current.revenue += e.estimatedRevenue ?? 0;
-    venueMap.set(key, current);
-  });
-
-  const topVenues = Array.from(venueMap.values())
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5)
-    .map((v) => ({
-      zipCode: undefined,
-      location: v.location,
-      eventCount: v.events,
-      totalRevenue: v.revenue,
-      avgRevenue: v.revenue / v.events,
-    }));
-
-  const highestRevenueEvent = events.sort((a, b) => (b.estimatedRevenue ?? 0) - (a.estimatedRevenue ?? 0))[0]
-    ? {
-        eventId: events[0].id,
-        eventName: events[0].name,
-        location: events[0].location || "Unknown",
-        revenue: events[0].estimatedRevenue ?? 0,
-      }
-    : null;
-
-  return {
-    totalEvents: events.length,
-    highestRevenueEvent,
-    topVenues,
-  };
-}
-
-/**
  * Generate actionable insights for dashboard based on current business state.
  * Recommendations are keyed off venues matched to events by location name.
  */
 export async function generateInsights(): Promise<DashboardInsight[]> {
   const insights: DashboardInsight[] = [];
-  const venues = loadVenues();
-  const allEvents = loadEvents();
+  const venues = await loadVenues();
+  const allEvents = await loadEvents();
   const venueStats = venues.map(v => ({ venue: v, stats: getVenueStats(v, allEvents) }));
 
   // 1. Best venue by revenue
@@ -364,9 +304,9 @@ export async function generateInsights(): Promise<DashboardInsight[]> {
     }
   }
 
-  // Fall back to localStorage
+  // Fall back to events already loaded above
   if (!monthlyData) {
-    monthlyData = loadEvents()
+    monthlyData = allEvents
       .filter(e => e.status === "completed" && new Date(e.dateStart) >= lastMonth)
       .map(e => ({ estimated_revenue: e.estimatedRevenue, date_start: e.dateStart }));
   }

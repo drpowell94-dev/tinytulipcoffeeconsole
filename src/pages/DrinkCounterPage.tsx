@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, ClipboardCopy, RotateCcw, CheckCircle2 } from "lucide-react";
 import confetti from "canvas-confetti";
 import { toast } from "sonner";
-import { loadEvents, updateEvent } from "@/lib/eventStore";
+import { loadEvents, updateEvent, type TulipEvent } from "@/lib/eventStore";
 import {
   DRINKS,
   loadSession,
@@ -24,13 +24,24 @@ import { generateEventRecap } from "@/lib/blogWriter";
 import { TapButton } from "@/components/drinks/TapButton";
 import { OrderLog } from "@/components/drinks/OrderLog";
 import { formatCurrency } from "@/lib/utils";
+import { useCloudSync } from "@/hooks/useCloudSync";
 
 const CONFETTI_COLORS = ["#e45b3c", "#b8a89b", "#8b7355", "#6d412a", "#fffbf4"];
 
 export default function DrinkCounterPage() {
   const { eventId = "" } = useParams();
   const navigate = useNavigate();
-  const event = useMemo(() => loadEvents().find(e => e.id === eventId), [eventId]);
+  const [event, setEvent] = useState<TulipEvent | null | undefined>(undefined);
+
+  const reloadEvent = useCallback(() => {
+    loadEvents().then(events => setEvent(events.find(e => e.id === eventId) ?? null));
+  }, [eventId]);
+
+  useEffect(() => {
+    reloadEvent();
+  }, [reloadEvent]);
+
+  useCloudSync(["events"], reloadEvent);
 
   const [orders, setOrders] = useState<OrderItem[]>(() => loadSession(eventId));
   const [celebrated, setCelebrated] = useState(false);
@@ -80,9 +91,9 @@ export default function DrinkCounterPage() {
     window.open(`mailto:tinytulipcoffee@gmail.com?subject=${subject}&body=${body}`, "_self");
   };
 
-  const handleEndSession = () => {
+  const handleEndSession = async () => {
     if (!event) return;
-    const saved = archiveSession(event.id, event.name, preOrders, orders);
+    const saved = await archiveSession(event.id, event.name, preOrders, orders);
     if (saved) {
       archiveSessionRemote({
         eventId: saved.eventId,
@@ -93,9 +104,9 @@ export default function DrinkCounterPage() {
         extraSales: saved.extraSales,
         productCounts: saved.productCounts,
       });
-      updateEvent(event.id, { status: "completed" });
+      await updateEvent(event.id, { status: "completed" });
       const recap = generateEventRecap(saved);
-      savePost({
+      await savePost({
         title: recap.title,
         template: "community-update",
         tone: "friendly",
@@ -113,15 +124,23 @@ export default function DrinkCounterPage() {
     navigate("/events");
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     if (orders.length > 0 && event) {
-      archiveSession(event.id, event.name, preOrders, orders);
+      await archiveSession(event.id, event.name, preOrders, orders);
       toast.success("Previous counts saved to history");
     }
     clearSession(eventId);
     setOrders([]);
     setCelebrated(false);
   };
+
+  if (event === undefined) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3">
+        <p className="font-body text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
 
   if (!event) {
     return (

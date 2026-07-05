@@ -1,5 +1,4 @@
-import { loadJSON, saveJSON } from "./storage";
-import rawSeed from "@/data/venues-seed.json";
+import { supabase } from "@/services/supabase";
 
 export interface Venue {
   id: string;
@@ -10,6 +9,12 @@ export interface Venue {
   city: string;
   state: string;
   zip: string;
+  /**
+   * Full display address. coffee.venues has no single "formatted address"
+   * column - this is derived from the structured street/city/state/zip
+   * fields on every read (and ignored on write), instead of round-tripping
+   * the original free-text string Wix/geocoding produced.
+   */
   formattedAddress: string;
   lat: number;
   lng: number;
@@ -29,94 +34,123 @@ export interface Venue {
   contactPhone?: string;
 }
 
-const VENUES_KEY = "tt-venues";
-
 export function nameToVenueId(name: string): string {
   return name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
-export function loadVenues(): Venue[] {
-  return loadJSON<Venue[]>(VENUES_KEY, []);
+/** Reconstruct a display address from the structured fields (see Venue.formattedAddress).
+ * Matches the original Wix-emitted convention this app's own docs describe
+ * ("650 E Brooklyn Vlg Ave, Charlotte, NC 28202, USA" / apt-prefixed forms
+ * like "The ellis apt, 512 N College St, Charlotte, NC 28202, USA") - apt
+ * (when present) leads, followed by street, city, state+zip, and a trailing
+ * "USA". This string is sent verbatim to Wix as `location.address.formattedAddress`
+ * when publishing an event (see api/wix-convert.ts), so it's not purely
+ * cosmetic inside this app - it's what shows up on the public Wix listing. */
+function buildFormattedAddress(v: { apt?: string; streetNumber?: string; streetName?: string; city?: string; state?: string; zip?: string }): string {
+  const street = [v.streetNumber, v.streetName].filter(Boolean).join(" ");
+  const stateZip = [v.state, v.zip].filter(Boolean).join(" ");
+  const parts = [v.apt, street, v.city, stateZip].filter(Boolean);
+  if (parts.length === 0) return "";
+  return `${parts.join(", ")}, USA`;
 }
 
-function saveVenues(venues: Venue[]): void {
-  saveJSON(VENUES_KEY, venues);
+interface VenueRow {
+  id: string;
+  name: string;
+  street_number: string | null;
+  street_name: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  apt: string | null;
+  lat: number | null;
+  lng: number | null;
+  logo_url: string | null;
+  logo_media_id: string | null;
+  logo_w: number | null;
+  logo_h: number | null;
+  instagram_handle: string | null;
+  instagram_following: boolean | null;
+  notes: string | null;
+  default_category: string | null;
+  default_start_time: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
 }
 
-export function seedVenues(): void {
-  const existing = loadVenues();
-  const byId = new Map(existing.map(v => [v.id, v]));
+function rowToVenue(row: VenueRow): Venue {
+  const base = {
+    streetNumber: row.street_number ?? "",
+    streetName: row.street_name ?? "",
+    apt: row.apt ?? "",
+    city: row.city ?? "",
+    state: row.state ?? "",
+    zip: row.zip ?? "",
+  };
+  return {
+    id: row.id,
+    name: row.name,
+    ...base,
+    formattedAddress: buildFormattedAddress(base),
+    lat: row.lat ?? 0,
+    lng: row.lng ?? 0,
+    defaultStartTime: row.default_start_time ?? "09:00",
+    defaultCategory: (row.default_category as Venue["defaultCategory"]) ?? "Pop Up",
+    logoMediaId: row.logo_media_id ?? "",
+    logoUrl: row.logo_url ?? "",
+    logoW: row.logo_w ?? 1200,
+    logoH: row.logo_h ?? 630,
+    instagramHandle: row.instagram_handle ?? undefined,
+    instagramFollowing: row.instagram_following ?? false,
+    notes: row.notes ?? undefined,
+    contactName: row.contact_name ?? undefined,
+    contactEmail: row.contact_email ?? undefined,
+    contactPhone: row.contact_phone ?? undefined,
+  };
+}
 
-  for (const raw of rawSeed) {
-    const id = nameToVenueId(raw.name);
-    const fromSeed: Venue = {
-      id,
-      name: raw.name,
-      streetNumber: raw.street_number,
-      streetName: raw.street_name,
-      apt: raw.apt,
-      city: raw.city,
-      state: raw.state,
-      zip: raw.zip,
-      formattedAddress: raw.formatted_address,
-      lat: raw.lat,
-      lng: raw.lng,
-      defaultStartTime: raw.default_start_time,
-      defaultCategory: raw.default_category as Venue["defaultCategory"],
-      logoMediaId: raw.logo_media_id,
-      logoUrl: raw.logo_url,
-      logoW: raw.logo_w,
-      logoH: raw.logo_h,
-    };
+/** Venue -> row payload for insert/update. `formattedAddress` has no column and is never sent. */
+function venueToRow(v: Omit<Venue, "id">): Record<string, unknown> {
+  return {
+    name: v.name,
+    street_number: v.streetNumber,
+    street_name: v.streetName,
+    apt: v.apt,
+    city: v.city,
+    state: v.state,
+    zip: v.zip,
+    lat: v.lat,
+    lng: v.lng,
+    default_start_time: v.defaultStartTime,
+    default_category: v.defaultCategory,
+    logo_media_id: v.logoMediaId,
+    logo_url: v.logoUrl,
+    logo_w: v.logoW,
+    logo_h: v.logoH,
+    instagram_handle: v.instagramHandle ?? null,
+    instagram_following: v.instagramFollowing ?? false,
+    notes: v.notes ?? null,
+    contact_name: v.contactName ?? null,
+    contact_email: v.contactEmail ?? null,
+    contact_phone: v.contactPhone ?? null,
+  };
+}
 
-    const current = byId.get(id);
-    if (!current) {
-      byId.set(id, fromSeed);
-    } else {
-      // Backfill publishing details the seed now provides but the stored venue
-      // is missing (e.g. venues added blank in a prior release). Never overwrite
-      // a non-empty stored value, and never touch CRM fields (IG/notes).
-      byId.set(id, {
-        ...current,
-        formattedAddress: current.formattedAddress || fromSeed.formattedAddress,
-        streetNumber: current.streetNumber || fromSeed.streetNumber,
-        streetName: current.streetName || fromSeed.streetName,
-        city: current.city || fromSeed.city,
-        state: current.state || fromSeed.state,
-        zip: current.zip || fromSeed.zip,
-        lat: current.lat || fromSeed.lat,
-        lng: current.lng || fromSeed.lng,
-        logoUrl: current.logoUrl || fromSeed.logoUrl,
-        logoMediaId: current.logoMediaId || fromSeed.logoMediaId,
-        logoW: current.logoW || fromSeed.logoW,
-        logoH: current.logoH || fromSeed.logoH,
-      });
-    }
+export async function loadVenues(): Promise<Venue[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase.schema("coffee").from("venues").select("*").order("name");
+  if (error) {
+    console.warn("[venueStore] load failed:", error.message);
+    return [];
   }
-
-  saveVenues(Array.from(byId.values()));
+  return (data ?? []).map(rowToVenue);
 }
 
-// The old fake sample apartments that used to be seeded into Properties. They
-// get purged from venues so only real places remain.
-const SAMPLE_PROPERTY_NAMES = new Set([
-  "the retreat at southend",
-  "dilworth lofts",
-  "south end apartments",
-  "uptown place",
-  "noda lofts",
-]);
-
-/** Remove the fake seeded sample properties from the venue list (idempotent). */
-export function purgeSampleVenues(): void {
-  const all = loadVenues();
-  const kept = all.filter(v => !SAMPLE_PROPERTY_NAMES.has(v.name.trim().toLowerCase()));
-  if (kept.length !== all.length) saveVenues(kept);
-}
-
-export function findVenueByName(name: string): Venue | undefined {
+/** Find a venue by exact (case-insensitive) name in an already-loaded list. */
+export function findVenueByName(name: string, venues: Venue[]): Venue | undefined {
   const normalized = name.trim().toLowerCase();
-  return loadVenues().find(v => v.name.toLowerCase() === normalized);
+  return venues.find(v => v.name.toLowerCase() === normalized);
 }
 
 // Common US street abbreviations, normalized so "650 E Brooklyn Vlg Ave" and
@@ -160,7 +194,7 @@ export function streetKey(input?: string): string {
  */
 export function resolveVenue(
   ev: { venueId?: string; location?: string; name?: string; address?: string },
-  venues: Venue[] = loadVenues()
+  venues: Venue[]
 ): Venue | undefined {
   if (ev.venueId) {
     const byId = venues.find(v => v.id === ev.venueId);
@@ -231,7 +265,7 @@ export function buildVenueFromAddress(opts: {
     city: p.city,
     state: p.state,
     zip: p.zip,
-    formattedAddress: opts.formattedAddress.trim(),
+    formattedAddress: buildFormattedAddress(p),
     lat: opts.lat,
     lng: opts.lng,
     defaultStartTime: opts.defaultStartTime || "09:00",
@@ -249,46 +283,46 @@ export function buildVenueFromAddress(opts: {
  * so re-running is idempotent. For creating several venues in one batch,
  * prefer buildVenueFromAddress() + upsertVenues() to avoid one save per item.
  */
-export function createVenueFromAddress(opts: {
+export async function createVenueFromAddress(opts: {
   name: string;
   formattedAddress: string;
   lat: number;
   lng: number;
   defaultCategory?: Venue["defaultCategory"];
   defaultStartTime?: string;
-}): Venue {
+}): Promise<Venue> {
   return upsertVenue(buildVenueFromAddress(opts));
 }
 
 /**
- * Merge multiple venues into the store with a single save. Use this instead
- * of calling upsertVenue() in a loop — each upsertVenue() call fires its own
- * independent async cloud push, and with no ordering guarantee between them,
- * a later one can land before an earlier one and silently drop it.
+ * Merge multiple venues into the store with a single batched upsert. Use this
+ * instead of calling upsertVenue() in a loop, which would fire one independent
+ * request per venue.
  */
-export function upsertVenues(list: Venue[]): void {
-  if (list.length === 0) return;
-  const byId = new Map(loadVenues().map(v => [v.id, v]));
-  for (const v of list) byId.set(v.id, v);
-  saveVenues(Array.from(byId.values()));
+export async function upsertVenues(list: Venue[]): Promise<void> {
+  if (list.length === 0 || !supabase) return;
+  const rows = list.map(v => ({ id: v.id, ...venueToRow(v) }));
+  const { error } = await supabase.schema("coffee").from("venues").upsert(rows, { onConflict: "id" });
+  if (error) console.warn("[venueStore] upsertVenues failed:", error.message);
 }
 
-export function upsertVenue(data: Omit<Venue, "id"> & { id?: string }): Venue {
+export async function upsertVenue(data: Omit<Venue, "id"> & { id?: string }): Promise<Venue> {
   const id = data.id ?? nameToVenueId(data.name);
   const venue: Venue = { ...data, id };
-  const venues = loadVenues();
-  const idx = venues.findIndex(v => v.id === id);
-  if (idx >= 0) {
-    venues[idx] = venue;
-  } else {
-    venues.push(venue);
+  if (supabase) {
+    const { error } = await supabase
+      .schema("coffee")
+      .from("venues")
+      .upsert({ id, ...venueToRow(venue) }, { onConflict: "id" });
+    if (error) console.warn("[venueStore] upsertVenue failed:", error.message);
   }
-  saveVenues(venues);
   return venue;
 }
 
-export function deleteVenue(id: string): void {
-  saveVenues(loadVenues().filter(v => v.id !== id));
+export async function deleteVenue(id: string): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase.schema("coffee").from("venues").delete().eq("id", id);
+  if (error) console.warn("[venueStore] deleteVenue failed:", error.message);
 }
 
 export interface VenueEventStats {
@@ -335,73 +369,4 @@ export function getVenueStats(
     totalRevenue: completed.reduce((s, e) => s + (e.estimatedRevenue || 0), 0),
     lastEventDate: matched.map(e => e.dateStart).sort().pop(),
   };
-}
-
-/**
- * One-time fold of the legacy Properties list into venues (keyed by name):
- * existing venues gain the property's Instagram/notes; property-only entries
- * become CRM venues (address/geocode blank until filled in). Idempotent.
- */
-export function migratePropertiesToVenues(
-  properties: Array<{ name: string; address?: string; zipCode?: string; instagramHandle?: string; instagramFollowing?: boolean; notes?: string }>
-): void {
-  if (!properties || properties.length === 0) return;
-  // Accumulate every change in memory and save once at the end — calling
-  // upsertVenue() (its own load+save+cloud push) per property fired one
-  // independent async push per item; with no ordering guarantee between
-  // them, a later push could land before an earlier one and silently drop
-  // whichever venue's push arrived last.
-  const byId = new Map(loadVenues().map(v => [v.id, v]));
-  const idByName = new Map(Array.from(byId.values()).map(v => [v.name.trim().toLowerCase(), v.id]));
-  let changed = false;
-
-  for (const p of properties) {
-    if (!p.name?.trim()) continue;
-    const key = p.name.trim().toLowerCase();
-    const existing = idByName.has(key) ? byId.get(idByName.get(key)!) : undefined;
-    if (existing) {
-      // Merge CRM fields onto the venue only where it's missing them.
-      const needsMerge =
-        (p.instagramHandle && !existing.instagramHandle) ||
-        (p.instagramFollowing && !existing.instagramFollowing) ||
-        (p.notes && !existing.notes);
-      if (needsMerge) {
-        byId.set(existing.id, {
-          ...existing,
-          instagramHandle: existing.instagramHandle || p.instagramHandle,
-          instagramFollowing: existing.instagramFollowing || p.instagramFollowing,
-          notes: existing.notes || p.notes,
-        });
-        changed = true;
-      }
-    } else {
-      const id = nameToVenueId(p.name);
-      byId.set(id, {
-        id,
-        name: p.name.trim(),
-        streetNumber: "",
-        streetName: "",
-        apt: "",
-        city: "Charlotte",
-        state: "NC",
-        zip: p.zipCode || "",
-        formattedAddress: p.address || "",
-        lat: 0,
-        lng: 0,
-        defaultStartTime: "09:00",
-        defaultCategory: "Pop Up",
-        logoMediaId: "",
-        logoUrl: "",
-        logoW: 1200,
-        logoH: 630,
-        instagramHandle: p.instagramHandle,
-        instagramFollowing: p.instagramFollowing,
-        notes: p.notes,
-      });
-      idByName.set(key, id);
-      changed = true;
-    }
-  }
-
-  if (changed) saveVenues(Array.from(byId.values()));
 }

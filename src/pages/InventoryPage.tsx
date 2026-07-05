@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Minus, Trash2, Package, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -15,26 +15,37 @@ const input =
   "w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm font-body focus:outline-none focus:ring-2 focus:ring-accent/50";
 
 export default function InventoryPage() {
-  const [items, setItems] = useState<InventoryItem[]>(() => loadInventory());
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
 
-  useCloudSync(() => setItems(loadInventory()));
+  const reload = useCallback(() => {
+    loadInventory().then(setItems);
+  }, []);
+
+  useEffect(() => {
+    loadInventory()
+      .then(setItems)
+      .finally(() => setLoading(false));
+  }, []);
+
+  useCloudSync(["inventory"], reload);
 
   const startEdit = (item: InventoryItem) => {
     setEditingId(item.id);
     setEditForm({ name: item.name, unit: item.unit, quantity: item.quantity, reorderLevel: item.reorderLevel });
   };
 
-  const saveEdit = (e: React.FormEvent, id: string) => {
+  const saveEdit = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     if (!editForm.name.trim()) {
       toast.error("Item name is required");
       return;
     }
-    setItems(updateItem(id, {
+    setItems(await updateItem(id, {
       name: editForm.name.trim(),
       unit: editForm.unit.trim() || "units",
       quantity: Math.max(0, editForm.quantity),
@@ -46,9 +57,9 @@ export default function InventoryPage() {
 
   const lowCount = items.filter(i => i.quantity <= i.reorderLevel).length;
 
-  const adjust = (item: InventoryItem, delta: number) => {
+  const adjust = async (item: InventoryItem, delta: number) => {
     const quantity = Math.max(0, item.quantity + delta);
-    const next = updateItem(item.id, {
+    const next = await updateItem(item.id, {
       quantity,
       ...(delta > 0 ? { lastRestocked: new Date().toISOString() } : {}),
     });
@@ -58,13 +69,13 @@ export default function InventoryPage() {
     }
   };
 
-  const handleAdd = (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error("Item name is required");
       return;
     }
-    setItems(addItem({ ...form, name: form.name.trim() }));
+    setItems(await addItem({ ...form, name: form.name.trim() }));
     setForm({ name: "", unit: "boxes", quantity: 0, reorderLevel: 2 });
     setShowForm(false);
     toast.success(`Added "${form.name}" to inventory`);
@@ -133,7 +144,9 @@ export default function InventoryPage() {
       )}
 
       <div className="space-y-3 sm:space-y-4">
-        {items.length === 0 ? (
+        {loading ? (
+          <p className="font-body text-sm text-muted-foreground py-8 text-center">Loading…</p>
+        ) : items.length === 0 ? (
           <div className="rounded-lg bg-muted/20 p-8 sm:p-12 text-center space-y-3">
             <Package size={32} className="mx-auto text-muted-foreground sm:w-[40px] sm:h-[40px]" />
             <p className="font-body text-xs sm:text-sm text-muted-foreground">
@@ -214,8 +227,8 @@ export default function InventoryPage() {
                     <Pencil size={14} strokeWidth={1.5} />
                   </button>
                   <button
-                    onClick={() => {
-                      setItems(removeItem(item.id));
+                    onClick={async () => {
+                      setItems(await removeItem(item.id));
                       toast(`Removed "${item.name}"`);
                     }}
                     className="p-2 sm:p-2.5 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"

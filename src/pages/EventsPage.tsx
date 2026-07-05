@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { Plus, Coffee, MapPin, Trash2, History, Sparkles, CheckCircle2, XCircle, Zap, TrendingUp, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
+import { Plus, Coffee, MapPin, Trash2, History, CheckCircle2, XCircle, Zap, ChevronDown, Filter, Loader, Pencil, Bell, Building2, Upload, AlertTriangle, RefreshCw } from "lucide-react";
 import LeadResponseAlert from "@/components/leads/LeadResponseAlert";
 import { toast } from "sonner";
 import {
@@ -17,15 +17,11 @@ import {
   type EventStatus,
   type DuplicatePair,
 } from "@/lib/eventStore";
-import { getCharlotteApartments } from "@/lib/propertyStore";
 import { syncEventsFromSupabase } from "@/services/eventService";
 import { syncBookingsFromWix } from "@/services/wixSyncService";
 import { getPredictedNeeds, type PredictedNeeds } from "@/services/logisticsService";
 import { createChecklistForEvent } from "@/lib/checklistStore";
-import { loadHistory, deleteFromHistory, type SavedSession } from "@/lib/drinkStore";
-import { savePost } from "@/lib/contentStore";
-import { generateEventRecap } from "@/lib/blogWriter";
-import { DrinkIcon, TulipLogo } from "@/components/drinks/DrinkIcon";
+import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { cn, formatCurrency, formatDate, daysUntil, timeAgo } from "@/lib/utils";
 import { loadSyncStatus, type SyncStatus } from "@/lib/syncStatus";
 import {
@@ -130,10 +126,10 @@ const EMPTY_FORM = {
 };
 
 export default function EventsPage() {
-  const [events, setEvents] = useState<TulipEvent[]>(() => loadEvents());
-  const [history, setHistory] = useState<SavedSession[]>(() => loadHistory());
+  const [events, setEvents] = useState<TulipEvent[]>([]);
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [expandedLogistics, setExpandedLogistics] = useState<Record<string, PredictedNeeds>>({});
@@ -146,7 +142,6 @@ export default function EventsPage() {
   const [publishNeedsLogo, setPublishNeedsLogo] = useState<Record<string, boolean>>({});
   const [uploadingLogo, setUploadingLogo] = useState<Record<string, boolean>>({});
   const [showVenueManager, setShowVenueManager] = useState(false);
-  const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
   const [venueForm, setVenueForm] = useState(EMPTY_VENUE_FORM);
   const [showAddVenue, setShowAddVenue] = useState(false);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
@@ -193,10 +188,11 @@ export default function EventsPage() {
   // a time (repeated delete calls, each firing its own async cloud push) let
   // the pushes race and land out of order, so the last one to arrive could
   // silently undo an earlier deletion — that's why counts weren't updating.
-  const applyDuplicateResolutions = (pairs: DuplicatePair[]) => {
+  const applyDuplicateResolutions = async (pairs: DuplicatePair[]) => {
     const removeIds = new Set(pairs.map(p => p.remove.id));
     const keepUpdates = new Map(pairs.map(p => [p.keep.id, p]));
-    const updated = loadEvents()
+    const current = await loadEvents();
+    const updated = current
       .filter(e => !removeIds.has(e.id))
       .map(e => {
         const pair = keepUpdates.get(e.id);
@@ -205,18 +201,18 @@ export default function EventsPage() {
         if (e.name === venueName) return e;
         return { ...e, name: venueName, contactName: e.contactName || pair.remove.name || pair.keep.name };
       });
-    saveEvents(updated);
+    await saveEvents(updated);
     setEvents(updated);
   };
 
-  const handleResolveDuplicate = (pair: DuplicatePair) => {
-    applyDuplicateResolutions([pair]);
+  const handleResolveDuplicate = async (pair: DuplicatePair) => {
+    await applyDuplicateResolutions([pair]);
     toast.success(`Kept "${resolvedNameFor(pair.keep)}" — removed the historical duplicate`);
   };
 
-  const handleResolveAllDuplicates = () => {
+  const handleResolveAllDuplicates = async () => {
     const count = bundledLiveDuplicates.length;
-    applyDuplicateResolutions(bundledLiveDuplicates);
+    await applyDuplicateResolutions(bundledLiveDuplicates);
     toast.success(`Resolved ${count} duplicate event${count === 1 ? "" : "s"}`);
   };
 
@@ -228,22 +224,32 @@ export default function EventsPage() {
     }
   }, [showVenueManager]);
 
+  const reload = useCallback(() => {
+    loadEvents().then(setEvents);
+    loadVenues().then(setVenues);
+    setSyncStatus(loadSyncStatus());
+  }, []);
+
+  useEffect(() => {
+    Promise.all([loadEvents(), loadVenues()])
+      .then(([e, v]) => {
+        setEvents(e);
+        setVenues(v);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
   // Re-read when a teammate's edit arrives (or tab refocuses). Also picks up
   // the outcome of the silent background Wix sync that runs on app load, so a
   // failure (or a hang that times out) surfaces here instead of going unseen.
-  useCloudSync(() => {
-    setEvents(loadEvents());
-    setVenues(loadVenues());
-    setHistory(loadHistory());
-    setSyncStatus(loadSyncStatus());
-  });
+  useCloudSync(["events", "venues"], reload);
 
   // On load, pull any events that arrived in Supabase (e.g. via the Wix
   // receiver) and merge them into the local store.
   useEffect(() => {
     syncEventsFromSupabase().then(result => {
       if (result) {
-        setEvents(loadEvents());
+        loadEvents().then(setEvents);
         if (result.created > 0 || result.updated > 0) {
           toast.success(`Synced: ${result.created} new, ${result.updated} updated`);
         }
@@ -254,8 +260,8 @@ export default function EventsPage() {
   const handleImportWix = async () => {
     setImporting(true);
     const result = await syncBookingsFromWix();
-    setEvents(loadEvents());
-    setVenues(loadVenues());
+    setEvents(await loadEvents());
+    setVenues(await loadVenues());
     setSyncStatus(loadSyncStatus());
     setImporting(false);
 
@@ -277,7 +283,7 @@ export default function EventsPage() {
       return;
     }
     const address = form.address.trim();
-    const event = createEvent({
+    const event = await createEvent({
       // Same mapping as the lead flow: the location/property is the event's
       // name (title + venue match); the Name field is the contact person.
       name: location,
@@ -305,33 +311,33 @@ export default function EventsPage() {
       const geo = await geocodeAddress(addrForVenue);
       setGeocoding(false);
       if (geo) {
-        venue = createVenueFromAddress({
+        venue = await createVenueFromAddress({
           name: location,
           formattedAddress: addrForVenue,
           lat: geo.lat,
           lng: geo.lng,
           defaultCategory: CATEGORY_BY_EVENT_TYPE[form.eventType],
         });
-        setVenues(loadVenues());
+        setVenues(await loadVenues());
         toast.success(`Added "${venue.name}" to the address book`);
       }
     }
     if (venue) {
-      updateEvent(event.id, { venueId: venue.id, address: event.address || venue.formattedAddress || undefined });
+      await updateEvent(event.id, { venueId: venue.id, address: event.address || venue.formattedAddress || undefined });
     }
 
     if (form.status === "confirmed") {
-      createChecklistForEvent(event.id, event.name, event.eventType);
+      await createChecklistForEvent(event.id, event.name, event.eventType);
     }
-    setEvents(loadEvents());
+    setEvents(await loadEvents());
     setForm(EMPTY_FORM);
     setShowForm(false);
     const statusLabel = form.status === "inquiry" ? "lead" : "event";
     toast.success(`"${event.name}" created as ${statusLabel}${form.status === "confirmed" ? " — packing list auto-generated" : ""}`);
   };
 
-  const handleDelete = (event: TulipEvent) => {
-    setEvents(deleteEvent(event.id));
+  const handleDelete = async (event: TulipEvent) => {
+    setEvents(await deleteEvent(event.id));
     toast(`Deleted "${event.name}"`);
   };
 
@@ -341,7 +347,7 @@ export default function EventsPage() {
   // Shared by both forms' Location field: when the typed value matches a known
   // venue, prefill the event start time with that venue's default.
   const handleLocationChange = (value: string) => {
-    const venue = findVenueByName(value);
+    const venue = findVenueByName(value, venues);
     setForm(f => ({
       ...f,
       location: value,
@@ -378,9 +384,9 @@ export default function EventsPage() {
     .filter(e => daysUntil(e.dateStart) < 0)
     .sort((a, b) => b.dateStart.localeCompare(a.dateStart));
 
-  const handleConvertLead = (lead: TulipEvent) => {
-    updateEvent(lead.id, { status: "confirmed" });
-    setEvents(loadEvents());
+  const handleConvertLead = async (lead: TulipEvent) => {
+    await updateEvent(lead.id, { status: "confirmed" });
+    setEvents(await loadEvents());
     toast.success(`"${lead.name}" moved to confirmed`);
   };
 
@@ -414,8 +420,8 @@ export default function EventsPage() {
         },
         venue,
       });
-      updateEvent(event.id, { wixPublishedEventId: wixEventId });
-      setEvents(loadEvents());
+      await updateEvent(event.id, { wixPublishedEventId: wixEventId });
+      setEvents(await loadEvents());
       toast.success(`"${event.name}" published to Wix!`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -430,7 +436,7 @@ export default function EventsPage() {
   //  - venue missing a logo → reveal an inline photo picker (upload then publish)
   //  - venue ready → publish straight away
   const handlePublishToWix = (event: TulipEvent) => {
-    const venue = resolveVenue(event);
+    const venue = resolveVenue(event, venues);
     if (!venue) {
       toast.error(`No venue found for "${event.location}". Add it below to publish.`);
       setShowVenueManager(true);
@@ -456,7 +462,7 @@ export default function EventsPage() {
   // Photo picked for a venue with no logo: upload to Wix, save the URL onto the
   // venue, then publish the event in the same step.
   const handleLogoPicked = async (event: TulipEvent, file: File) => {
-    const venue = resolveVenue(event);
+    const venue = resolveVenue(event, venues);
     if (!venue) {
       toast.error("Venue disappeared — re-add it below.");
       return;
@@ -464,8 +470,8 @@ export default function EventsPage() {
     setUploadingLogo(prev => ({ ...prev, [event.id]: true }));
     try {
       const logo = await uploadLogoToWix(file);
-      const updatedVenue = upsertVenue({ ...venue, ...logo });
-      setVenues(loadVenues());
+      const updatedVenue = await upsertVenue({ ...venue, ...logo });
+      setVenues(await loadVenues());
       setPublishNeedsLogo(prev => ({ ...prev, [event.id]: false }));
       toast.success(`Photo uploaded for "${venue.name}"`);
       await doPublish(event, updatedVenue);
@@ -510,7 +516,7 @@ export default function EventsPage() {
       mediaId = venueForm.logoUrl.split("/media/")[1]?.split("?")[0] ?? "";
     }
 
-    const venue = upsertVenue({
+    const venue = await upsertVenue({
       // When editing, keep the original id so we update in place even if the
       // name changes; otherwise a new id is derived from the name.
       ...(editingVenueId ? { id: editingVenueId } : {}),
@@ -532,7 +538,7 @@ export default function EventsPage() {
       logoH: venueForm.logoH,
     });
 
-    setVenues(loadVenues());
+    setVenues(await loadVenues());
     setVenueForm(EMPTY_VENUE_FORM);
     setShowAddVenue(false);
     setEditingVenueId(null);
@@ -595,9 +601,9 @@ export default function EventsPage() {
     });
   };
 
-  const handleSaveEdit = (e: React.FormEvent, eventId: string) => {
+  const handleSaveEdit = async (e: React.FormEvent, eventId: string) => {
     e.preventDefault();
-    updateEvent(eventId, {
+    await updateEvent(eventId, {
       name: editForm.name.trim(),
       eventType: editForm.eventType,
       dateStart: editForm.dateStart ? new Date(editForm.dateStart).toISOString() : undefined,
@@ -620,7 +626,7 @@ export default function EventsPage() {
       dayOfOtherNotes: editForm.dayOfOtherNotes.trim() || undefined,
       venueId: editForm.venueId || undefined,
     });
-    setEvents(loadEvents());
+    setEvents(await loadEvents());
     setEditingId(null);
     toast.success("Event updated");
   };
@@ -659,7 +665,7 @@ export default function EventsPage() {
               list="venue-options-edit"
               value={editForm.location}
               onChange={e => {
-                const venue = findVenueByName(e.target.value);
+                const venue = findVenueByName(e.target.value, venues);
                 setEditForm({ ...editForm, location: e.target.value, ...(venue ? { address: venue.formattedAddress } : {}) });
               }}
               autoFocus
@@ -764,11 +770,6 @@ export default function EventsPage() {
                 </span>
                 {event.address && (
                   <span className="block text-muted-foreground/70 pl-4">{event.address}</span>
-                )}
-                {event.propertyId && (
-                  <span className="block text-accent/70">
-                    📍 Property: {getCharlotteApartments().find(p => p.id === event.propertyId)?.name || "Unknown"}
-                  </span>
                 )}
                 {bookedBy && (
                   <span className="block text-muted-foreground/70">Booked by {bookedBy}</span>
@@ -964,8 +965,6 @@ export default function EventsPage() {
             )}
           </div>
         )}
-
-        {/* Day-of logistics expanded panel */}
       </div>
     );
   };
@@ -1101,13 +1100,13 @@ export default function EventsPage() {
       {showLeadForm && (
         <div className="rounded-lg bg-accent/8 border border-accent/20 p-5 space-y-3 overflow-hidden">
           <h3 className="font-body font-semibold text-foreground">Add New Lead</h3>
-          <form onSubmit={(e) => {
+          <form onSubmit={async (e) => {
             e.preventDefault();
             if (!form.location.trim()) {
               toast.error("Location (the lead) is required");
               return;
             }
-            const event = createEvent({
+            const event = await createEvent({
               // The location/property IS the lead's name (card title + venue match);
               // the "Name" field is the contact person at that property.
               name: form.location.trim(),
@@ -1127,7 +1126,7 @@ export default function EventsPage() {
               followUpDate: form.followUpDate || undefined,
               followUpNote: form.followUpNote.trim() || undefined,
             });
-            setEvents(loadEvents());
+            setEvents(await loadEvents());
             setForm(EMPTY_FORM);
             setShowLeadForm(false);
             toast.success(`Lead "${event.name}" created`);
@@ -1239,8 +1238,7 @@ export default function EventsPage() {
                 type="submit"
                 className="rounded-lg bg-accent text-accent-foreground px-4 py-2 font-body font-semibold text-sm hover-scale active:scale-95 transition-all"
               >
-                Add Lead
-              </button>
+                Add Lead</button>
               <button
                 type="button"
                 onClick={() => {
@@ -1393,6 +1391,9 @@ export default function EventsPage() {
       )}
 
       {/* Events and past sessions */}
+      {loading ? (
+        <p className="font-body text-sm text-muted-foreground py-12 text-center">Loading…</p>
+      ) : (
       <div className="space-y-12">
         {/* Event list */}
         <div className="space-y-6">
@@ -1424,6 +1425,7 @@ export default function EventsPage() {
             {filter === "all" && events.length > 0 && (
               <div className="space-y-4">
                 {events
+                  .slice()
                   .sort((a, b) => {
                     // Sort by: leads first, then upcoming, then past
                     const aIsLead = a.status === "inquiry" ? 0 : 1;
@@ -1505,6 +1507,7 @@ export default function EventsPage() {
           </section>
         )}
       </div>
+      )}
 
       {/* Venue Manager */}
       {showVenueManager && (
@@ -1586,9 +1589,9 @@ export default function EventsPage() {
                       <Pencil size={13} strokeWidth={1.5} />
                     </button>
                     <button
-                      onClick={() => {
-                        deleteVenue(v.id);
-                        setVenues(loadVenues());
+                      onClick={async () => {
+                        await deleteVenue(v.id);
+                        setVenues(await loadVenues());
                         toast(`Removed "${v.name}"`);
                       }}
                       className="p-1 rounded text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"

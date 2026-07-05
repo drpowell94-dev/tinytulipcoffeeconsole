@@ -1,4 +1,5 @@
-import { loadJSON, saveJSON, uid } from "./storage";
+import { uid } from "./storage";
+import { supabase } from "@/services/supabase";
 
 export type EventType = "catering" | "popup" | "farmers_market" | "other";
 export type EventStatus = "inquiry" | "confirmed" | "completed" | "cancelled";
@@ -64,65 +65,176 @@ export const STATUS_LABELS: Record<EventStatus, string> = {
   cancelled: "Cancelled",
 };
 
-const EVENTS_KEY = "tt-events";
-
-export function loadEvents(): TulipEvent[] {
-  return loadJSON<TulipEvent[]>(EVENTS_KEY, []);
+interface EventRow {
+  id: string;
+  name: string;
+  venue_id: string | null;
+  event_type: string | null;
+  date_start: string | null;
+  date_end: string | null;
+  status: string | null;
+  contact_name: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  pre_orders: number | null;
+  estimated_revenue: number | null;
+  deposit_status: string | null;
+  wix_event_id: string | null;
+  wix_published_event_id: string | null;
+  address: string | null;
+  location: string | null;
+  guest_count: number | null;
+  notes: string | null;
+  property_id: string | null;
+  follow_up_date: string | null;
+  follow_up_note: string | null;
+  day_of_parking: string | null;
+  day_of_entry: string | null;
+  day_of_setup_location: string | null;
+  day_of_arrival_time: string | null;
+  day_of_other_notes: string | null;
+  created_at: string;
 }
 
-export function saveEvents(events: TulipEvent[]) {
-  saveJSON(EVENTS_KEY, events);
+function rowToEvent(row: EventRow): TulipEvent {
+  return {
+    id: row.id,
+    name: row.name,
+    eventType: (row.event_type as EventType) ?? "other",
+    dateStart: row.date_start ?? new Date().toISOString(),
+    dateEnd: row.date_end ?? undefined,
+    location: row.location ?? "",
+    address: row.address ?? undefined,
+    guestCount: row.guest_count ?? undefined,
+    preOrders: row.pre_orders ?? 0,
+    estimatedRevenue: row.estimated_revenue ?? undefined,
+    status: (row.status as EventStatus) ?? "inquiry",
+    depositStatus: (row.deposit_status as DepositStatus) ?? "pending",
+    contactName: row.contact_name ?? undefined,
+    contactEmail: row.contact_email ?? undefined,
+    contactPhone: row.contact_phone ?? undefined,
+    notes: row.notes ?? undefined,
+    wixEventId: row.wix_event_id ?? undefined,
+    wixPublishedEventId: row.wix_published_event_id ?? undefined,
+    venueId: row.venue_id ?? undefined,
+    propertyId: row.property_id ?? undefined,
+    followUpDate: row.follow_up_date ?? undefined,
+    followUpNote: row.follow_up_note ?? undefined,
+    dayOfParking: row.day_of_parking ?? undefined,
+    dayOfEntry: row.day_of_entry ?? undefined,
+    dayOfSetupLocation: row.day_of_setup_location ?? undefined,
+    dayOfArrivalTime: row.day_of_arrival_time ?? undefined,
+    dayOfOtherNotes: row.day_of_other_notes ?? undefined,
+    createdAt: row.created_at ?? new Date().toISOString(),
+  };
 }
 
-export function createEvent(data: Omit<TulipEvent, "id" | "createdAt">): TulipEvent {
+/** Partial TulipEvent -> row payload, only including fields actually present. */
+function eventToRow(e: Partial<TulipEvent>): Record<string, unknown> {
+  const row: Record<string, unknown> = {};
+  if (e.name !== undefined) row.name = e.name;
+  if (e.eventType !== undefined) row.event_type = e.eventType;
+  if (e.dateStart !== undefined) row.date_start = e.dateStart;
+  if (e.dateEnd !== undefined) row.date_end = e.dateEnd ?? null;
+  if (e.location !== undefined) row.location = e.location;
+  if (e.address !== undefined) row.address = e.address ?? null;
+  if (e.guestCount !== undefined) row.guest_count = e.guestCount ?? null;
+  if (e.preOrders !== undefined) row.pre_orders = e.preOrders;
+  if (e.estimatedRevenue !== undefined) row.estimated_revenue = e.estimatedRevenue ?? null;
+  if (e.status !== undefined) row.status = e.status;
+  if (e.depositStatus !== undefined) row.deposit_status = e.depositStatus;
+  if (e.contactName !== undefined) row.contact_name = e.contactName ?? null;
+  if (e.contactEmail !== undefined) row.contact_email = e.contactEmail ?? null;
+  if (e.contactPhone !== undefined) row.contact_phone = e.contactPhone ?? null;
+  if (e.notes !== undefined) row.notes = e.notes ?? null;
+  if (e.wixEventId !== undefined) row.wix_event_id = e.wixEventId ?? null;
+  if (e.wixPublishedEventId !== undefined) row.wix_published_event_id = e.wixPublishedEventId ?? null;
+  if (e.venueId !== undefined) row.venue_id = e.venueId ?? null;
+  if (e.propertyId !== undefined) row.property_id = e.propertyId ?? null;
+  if (e.followUpDate !== undefined) row.follow_up_date = e.followUpDate ?? null;
+  if (e.followUpNote !== undefined) row.follow_up_note = e.followUpNote ?? null;
+  if (e.dayOfParking !== undefined) row.day_of_parking = e.dayOfParking ?? null;
+  if (e.dayOfEntry !== undefined) row.day_of_entry = e.dayOfEntry ?? null;
+  if (e.dayOfSetupLocation !== undefined) row.day_of_setup_location = e.dayOfSetupLocation ?? null;
+  if (e.dayOfArrivalTime !== undefined) row.day_of_arrival_time = e.dayOfArrivalTime ?? null;
+  if (e.dayOfOtherNotes !== undefined) row.day_of_other_notes = e.dayOfOtherNotes ?? null;
+  if (e.createdAt !== undefined) row.created_at = e.createdAt;
+  return row;
+}
+
+export async function loadEvents(): Promise<TulipEvent[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .schema("coffee")
+    .from("events")
+    .select("*")
+    .order("date_start", { ascending: false });
+  if (error) {
+    console.warn("[eventStore] load failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map(rowToEvent);
+}
+
+/** Bulk upsert — used by importEvents() and multi-record duplicate resolution. */
+export async function saveEvents(events: TulipEvent[]): Promise<void> {
+  if (!supabase || events.length === 0) return;
+  const rows = events.map(e => ({ id: e.id, ...eventToRow(e) }));
+  const { error } = await supabase.schema("coffee").from("events").upsert(rows, { onConflict: "id" });
+  if (error) console.warn("[eventStore] saveEvents failed:", error.message);
+}
+
+export async function createEvent(data: Omit<TulipEvent, "id" | "createdAt">): Promise<TulipEvent> {
   const event: TulipEvent = { ...data, id: uid(), createdAt: new Date().toISOString() };
-  const events = loadEvents();
-  events.unshift(event);
-  saveEvents(events);
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("events").insert({ id: event.id, ...eventToRow(event) });
+    if (error) console.warn("[eventStore] createEvent failed:", error.message);
+  }
   return event;
 }
 
-export function updateEvent(id: string, patch: Partial<TulipEvent>): TulipEvent[] {
-  const events = loadEvents().map(e => (e.id === id ? { ...e, ...patch } : e));
-  saveEvents(events);
-  return events;
+export async function updateEvent(id: string, patch: Partial<TulipEvent>): Promise<TulipEvent[]> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("events").update(eventToRow(patch)).eq("id", id);
+    if (error) console.warn("[eventStore] updateEvent failed:", error.message);
+  }
+  return loadEvents();
 }
 
-export function deleteEvent(id: string): TulipEvent[] {
-  const events = loadEvents().filter(e => e.id !== id);
-  saveEvents(events);
-  return events;
+export async function deleteEvent(id: string): Promise<TulipEvent[]> {
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("events").delete().eq("id", id);
+    if (error) console.warn("[eventStore] deleteEvent failed:", error.message);
+  }
+  return loadEvents();
 }
 
 /**
  * Merge a batch of events into the store, keyed by wixEventId when present
  * (falling back to id). Existing rows are updated in place; new rows are added.
- * Persists sorted by most recent date. Returns the number of events created vs. updated.
+ * Returns the number of events created vs. updated.
  */
-export function importEvents(incoming: TulipEvent[]): { created: number; updated: number } {
-  const existing = loadEvents();
-  const byKey = new Map<string, number>();
-  existing.forEach((e, i) => byKey.set(e.wixEventId ?? e.id, i));
+export async function importEvents(incoming: TulipEvent[]): Promise<{ created: number; updated: number }> {
+  const existing = await loadEvents();
+  const byKey = new Map(existing.map(e => [e.wixEventId ?? e.id, e]));
 
   let created = 0;
   let updated = 0;
+  const toSave: TulipEvent[] = [];
   for (const ev of incoming) {
     const key = ev.wixEventId ?? ev.id;
-    const idx = byKey.get(key);
-    if (idx === undefined) {
-      existing.push(ev);
-      byKey.set(key, existing.length - 1);
+    const match = byKey.get(key);
+    if (!match) {
+      toSave.push(ev);
       created++;
     } else {
       // Preserve the local id and any counting data already attached.
-      existing[idx] = { ...existing[idx], ...ev, id: existing[idx].id };
+      toSave.push({ ...match, ...ev, id: match.id });
       updated++;
     }
   }
 
-  // Sort by most recent date (descending) for consistent storage
-  existing.sort((a, b) => b.dateStart.localeCompare(a.dateStart));
-  saveEvents(existing);
+  await saveEvents(toSave);
   return { created, updated };
 }
 
@@ -166,10 +278,11 @@ export function findBundledLiveDuplicates(events: TulipEvent[]): DuplicatePair[]
   return pairs;
 }
 
-export function upcomingEvents(withinDays = 7): TulipEvent[] {
+/** Pure filter over an already-loaded events array (was: loaded internally). */
+export function upcomingEvents(events: TulipEvent[], withinDays = 7): TulipEvent[] {
   const now = new Date();
   const cutoff = new Date(now.getTime() + withinDays * 86400000);
-  return loadEvents()
+  return events
     .filter(e => {
       const d = new Date(e.dateStart);
       return d >= new Date(now.toDateString()) && d <= cutoff && e.status !== "cancelled";

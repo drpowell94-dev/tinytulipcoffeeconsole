@@ -1,8 +1,10 @@
 /**
- * Typed localStorage helpers. Every module store builds on these.
+ * Typed localStorage helpers. Used only by the one store that stays
+ * local-only under the `coffee` schema migration: the live per-event drink
+ * order log (drinkStore's loadSession/saveSession/clearSession). Every
+ * shared-team collection now talks to Supabase's `coffee` schema directly
+ * instead of mirroring through this layer.
  */
-
-import { pushState } from "@/services/cloudSync";
 
 export function loadJSON<T>(key: string, fallback: T): T {
   try {
@@ -16,9 +18,6 @@ export function loadJSON<T>(key: string, fallback: T): T {
 
 export function saveJSON<T>(key: string, value: T) {
   localStorage.setItem(key, JSON.stringify(value));
-  // Mirror shared collections to the team backend (no-op when Supabase isn't
-  // configured or when the key isn't a synced collection).
-  pushState(key, value);
 }
 
 export function removeKey(key: string) {

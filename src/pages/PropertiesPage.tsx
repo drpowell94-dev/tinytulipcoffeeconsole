@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, MapPin, Instagram, Zap, Pencil, Coffee, User, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -8,7 +8,7 @@ import {
   getVenueStats,
   type Venue,
 } from "@/lib/venueStore";
-import { loadEvents } from "@/lib/eventStore";
+import { loadEvents, type TulipEvent } from "@/lib/eventStore";
 import { formatCurrency } from "@/lib/utils";
 import { useCloudSync } from "@/hooks/useCloudSync";
 
@@ -41,16 +41,28 @@ const EMPTY_FORM = {
 };
 
 export default function PropertiesPage() {
-  const [venues, setVenues] = useState<Venue[]>(() => loadVenues());
-  const [events, setEvents] = useState(() => loadEvents());
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [events, setEvents] = useState<TulipEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
-  useCloudSync(() => {
-    setVenues(loadVenues());
-    setEvents(loadEvents());
-  });
+  const reload = useCallback(() => {
+    loadVenues().then(setVenues);
+    loadEvents().then(setEvents);
+  }, []);
+
+  useEffect(() => {
+    Promise.all([loadVenues(), loadEvents()])
+      .then(([v, e]) => {
+        setVenues(v);
+        setEvents(e);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  useCloudSync(["venues", "events"], reload);
 
   const statsFor = (venue: Venue) => getVenueStats(venue, events);
 
@@ -96,7 +108,7 @@ export default function PropertiesPage() {
     setShowForm(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name.trim()) {
       toast.error("Venue name is required");
@@ -106,7 +118,7 @@ export default function PropertiesPage() {
     if (!mediaId && form.logoUrl.includes("wixstatic.com/media/")) {
       mediaId = form.logoUrl.split("/media/")[1]?.split("?")[0] ?? "";
     }
-    const venue = upsertVenue({
+    const venue = await upsertVenue({
       ...(editingId ? { id: editingId } : {}),
       name: form.name.trim(),
       streetNumber: form.streetNumber.trim(),
@@ -131,22 +143,22 @@ export default function PropertiesPage() {
       contactEmail: form.contactEmail.trim() || undefined,
       contactPhone: form.contactPhone.trim() || undefined,
     });
-    setVenues(loadVenues());
+    setVenues(await loadVenues());
     setShowForm(false);
     setEditingId(null);
     setForm(EMPTY_FORM);
     toast.success(`Venue "${venue.name}" saved`);
   };
 
-  const handleDelete = (v: Venue) => {
-    deleteVenue(v.id);
-    setVenues(loadVenues());
+  const handleDelete = async (v: Venue) => {
+    await deleteVenue(v.id);
+    setVenues(await loadVenues());
     toast(`Deleted "${v.name}"`);
   };
 
-  const toggleInstagram = (v: Venue) => {
-    upsertVenue({ ...v, instagramFollowing: !v.instagramFollowing });
-    setVenues(loadVenues());
+  const toggleInstagram = async (v: Venue) => {
+    await upsertVenue({ ...v, instagramFollowing: !v.instagramFollowing });
+    setVenues(await loadVenues());
   };
 
   return (
@@ -221,7 +233,9 @@ export default function PropertiesPage() {
         </form>
       )}
 
-      {sorted.length === 0 ? (
+      {loading ? (
+        <p className="font-body text-sm text-muted-foreground py-8 text-center">Loading…</p>
+      ) : sorted.length === 0 ? (
         <div className="rounded-lg bg-muted/20 p-8 text-center">
           <p className="font-body text-muted-foreground">No venues yet. Add your first to start tracking.</p>
         </div>

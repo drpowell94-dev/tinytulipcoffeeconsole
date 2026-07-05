@@ -1,4 +1,5 @@
-import { loadJSON, saveJSON, uid } from "./storage";
+import { uid } from "./storage";
+import { supabase } from "@/services/supabase";
 import type { EventType } from "./eventStore";
 
 export interface ChecklistTemplateItem {
@@ -62,21 +63,69 @@ export const TEMPLATES: Record<EventType, ChecklistTemplateItem[]> = {
   ],
 };
 
-const KEY = "tt-checklists";
-
-export function loadChecklists(): Checklist[] {
-  return loadJSON<Checklist[]>(KEY, []);
+interface ChecklistItemRow {
+  id: string;
+  name: string;
+  category: string;
+  checked: boolean | null;
+  checked_at: string | null;
+  checked_by: string | null;
+  created_at: string;
 }
 
-export function saveChecklists(lists: Checklist[]) {
-  saveJSON(KEY, lists);
+interface ChecklistRow {
+  id: string;
+  event_id: string | null;
+  event_name: string;
+  event_type: string;
+  created_at: string;
+  checklist_items: ChecklistItemRow[] | null;
 }
 
-export function createChecklistForEvent(
+function rowToItem(row: ChecklistItemRow): ChecklistItem {
+  return {
+    id: row.id,
+    name: row.name,
+    category: row.category,
+    checked: row.checked ?? false,
+    checkedAt: row.checked_at ?? undefined,
+    checkedBy: row.checked_by ?? undefined,
+  };
+}
+
+function rowToChecklist(row: ChecklistRow): Checklist {
+  return {
+    id: row.id,
+    eventId: row.event_id ?? "",
+    eventName: row.event_name,
+    eventType: (row.event_type as EventType) ?? "other",
+    createdAt: row.created_at,
+    items: (row.checklist_items ?? [])
+      .slice()
+      .sort((a, b) => a.created_at.localeCompare(b.created_at))
+      .map(rowToItem),
+  };
+}
+
+export async function loadChecklists(): Promise<Checklist[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .schema("coffee")
+    .from("checklists")
+    .select("*, checklist_items(*)")
+    .order("created_at", { ascending: false });
+  if (error) {
+    console.warn("[checklistStore] loadChecklists failed:", error.message);
+    return [];
+  }
+  return (data ?? []).map(rowToChecklist);
+}
+
+export async function createChecklistForEvent(
   eventId: string,
   eventName: string,
   eventType: EventType
-): Checklist {
+): Promise<Checklist> {
   const checklist: Checklist = {
     id: uid(),
     eventId,
@@ -85,35 +134,58 @@ export function createChecklistForEvent(
     items: TEMPLATES[eventType].map(t => ({ ...t, id: uid(), checked: false })),
     createdAt: new Date().toISOString(),
   };
-  const lists = loadChecklists();
-  lists.unshift(checklist);
-  saveChecklists(lists);
+
+  if (supabase) {
+    const { error } = await supabase.schema("coffee").from("checklists").insert({
+      id: checklist.id,
+      event_id: eventId,
+      event_name: eventName,
+      event_type: eventType,
+    });
+    if (error) {
+      console.warn("[checklistStore] createChecklistForEvent failed:", error.message);
+    } else {
+      const rows = checklist.items.map(item => ({
+        id: item.id,
+        checklist_id: checklist.id,
+        name: item.name,
+        category: item.category,
+        checked: false,
+      }));
+      const { error: itemsError } = await supabase.schema("coffee").from("checklist_items").insert(rows);
+      if (itemsError) console.warn("[checklistStore] createChecklistForEvent items failed:", itemsError.message);
+    }
+  }
+
   return checklist;
 }
 
-export function toggleItem(checklistId: string, itemId: string, user = "Staff"): Checklist[] {
-  const lists = loadChecklists().map(list => {
-    if (list.id !== checklistId) return list;
-    return {
-      ...list,
-      items: list.items.map(item =>
-        item.id === itemId
-          ? {
-              ...item,
-              checked: !item.checked,
-              checkedAt: !item.checked ? new Date().toISOString() : undefined,
-              checkedBy: !item.checked ? user : undefined,
-            }
-          : item
-      ),
-    };
-  });
-  saveChecklists(lists);
-  return lists;
+export async function toggleItem(checklistId: string, itemId: string, user = "Staff"): Promise<Checklist[]> {
+  if (supabase) {
+    const lists = await loadChecklists();
+    const item = lists.find(l => l.id === checklistId)?.items.find(i => i.id === itemId);
+    const nextChecked = !(item?.checked ?? false);
+    const { error } = await supabase
+      .schema("coffee")
+      .from("checklist_items")
+      .update({
+        checked: nextChecked,
+        checked_at: nextChecked ? new Date().toISOString() : null,
+        checked_by: nextChecked ? user : null,
+      })
+      .eq("id", itemId);
+    if (error) console.warn("[checklistStore] toggleItem failed:", error.message);
+  }
+  return loadChecklists();
 }
 
-export function deleteChecklist(id: string): Checklist[] {
-  const lists = loadChecklists().filter(l => l.id !== id);
-  saveChecklists(lists);
-  return lists;
+export async function deleteChecklist(id: string): Promise<Checklist[]> {
+  if (supabase) {
+    // checklist_items has ON DELETE CASCADE on checklist_id, but delete
+    // explicitly first in case that constraint changes.
+    await supabase.schema("coffee").from("checklist_items").delete().eq("checklist_id", id);
+    const { error } = await supabase.schema("coffee").from("checklists").delete().eq("id", id);
+    if (error) console.warn("[checklistStore] deleteChecklist failed:", error.message);
+  }
+  return loadChecklists();
 }
