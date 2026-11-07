@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase, isSupabaseEnabled } from "@/services/supabase";
+import { isDemoMode, exitDemo } from "@/demo/demoMode";
 
 // One shared Supabase Auth account gates the whole team's access — there's no
 // per-person identity yet, just a single passcode. Signing in with it issues a
@@ -14,10 +15,10 @@ export type AuthStatus = "checking" | "authed" | "anon";
  * is immediately "authed" so offline/local development still works.
  */
 export function useAuth() {
-  const [status, setStatus] = useState<AuthStatus>(isSupabaseEnabled ? "checking" : "authed");
+  const [status, setStatus] = useState<AuthStatus>(isSupabaseEnabled && !isDemoMode ? "checking" : "authed");
 
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase || isDemoMode) return;
     let active = true;
 
     supabase.auth.getSession().then(({ data }) => {
@@ -46,5 +47,6 @@ export async function signIn(pin: string): Promise<string | null> {
 
 /** Lock the app again (e.g. on a shared device at the end of an event). */
 export async function signOut(): Promise<void> {
+  if (isDemoMode) return exitDemo();
   await supabase?.auth.signOut();
 }

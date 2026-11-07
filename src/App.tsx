@@ -13,6 +13,7 @@ import RevenuePage from "@/pages/RevenuePage";
 import EmailCampaignsPage from "@/pages/EmailCampaignsPage";
 import { syncBookingsFromWix } from "@/services/wixSyncService";
 import { useAuth } from "@/hooks/useAuth";
+import { isDemoMode } from "@/demo/demoMode";
 import LoginGate from "@/components/auth/LoginGate";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
 
@@ -29,7 +30,7 @@ export default function App() {
     // hydrate, no venue/property seeding). The only remaining bootstrap work
     // is a best-effort pull of newly confirmed Wix bookings into events —
     // pages themselves now load their own data straight from Supabase.
-    syncBookingsFromWix().catch(() => undefined);
+    if (!isDemoMode) syncBookingsFromWix().catch(() => undefined);
   }, [status]);
 
   if (status === "checking") {

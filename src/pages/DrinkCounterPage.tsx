@@ -19,6 +19,7 @@ import {
 } from "@/lib/drinkStore";
 import { scheduleSync, archiveSessionRemote } from "@/services/drinkSync";
 import { isSupabaseEnabled } from "@/services/supabase";
+import { isDemoMode } from "@/demo/demoMode";
 import { savePost } from "@/lib/contentStore";
 import { generateEventRecap } from "@/lib/blogWriter";
 import { TapButton } from "@/components/drinks/TapButton";
@@ -189,7 +190,7 @@ export default function DrinkCounterPage() {
             <h1 className="font-display text-lg sm:text-2xl text-foreground truncate leading-tight">{event.name}</h1>
             <p className="text-[11px] text-muted-foreground font-body mt-0.5">
               {event.location}
-              {isSupabaseEnabled ? " • syncing" : " • local"}
+              {isDemoMode ? " • demo" : isSupabaseEnabled ? " • syncing" : " • local"}
             </p>
           </div>
         </div>

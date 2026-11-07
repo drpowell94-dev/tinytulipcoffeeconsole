@@ -6,6 +6,7 @@ import BottomNav from "@/components/layout/BottomNav";
 import { cn } from "@/lib/utils";
 import { signOut } from "@/hooks/useAuth";
 import { isSupabaseEnabled } from "@/services/supabase";
+import { isDemoMode } from "@/demo/demoMode";
 
 // Ordered by actual usage: daily operational flow first (dashboard check-in,
 // event tracking + drink counter, packing lists, inventory checks), then
@@ -73,7 +74,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
               className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-body font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
             >
               <LogOut size={14} strokeWidth={1.5} />
-              Log out
+              {isDemoMode ? "Exit demo" : "Log out"}
             </button>
           )}
           <p className="text-xs text-muted-foreground font-body leading-relaxed">
@@ -84,6 +85,20 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
+        {isDemoMode && (
+          <div className="flex items-center justify-between gap-3 bg-accent text-accent-foreground px-4 py-2 text-xs sm:text-sm font-body">
+            <span>
+              <strong className="font-semibold">Demo mode</strong>
+              <span className="hidden sm:inline"> · sample data only. Changes reset when you exit.</span>
+            </span>
+            <button
+              onClick={() => signOut()}
+              className="shrink-0 rounded-md bg-accent-foreground/15 px-3 py-1 font-semibold hover:bg-accent-foreground/25 transition-colors"
+            >
+              Exit demo
+            </button>
+          </div>
+        )}
         {/* Mobile header */}
         <header
           className="md:hidden flex items-center gap-3 px-4 py-4 bg-card/50 backdrop-blur-sm sticky top-0 z-30"
@@ -138,7 +153,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
                     className="flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs font-body font-semibold text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
                   >
                     <LogOut size={14} strokeWidth={1.5} />
-                    Log out
+                    {isDemoMode ? "Exit demo" : "Log out"}
                   </button>
                 )}
                 <p className="text-xs text-muted-foreground font-body leading-relaxed">

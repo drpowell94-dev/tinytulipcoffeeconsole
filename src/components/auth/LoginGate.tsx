@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { TulipLogo } from "@/components/drinks/DrinkIcon";
 import { signIn } from "@/hooks/useAuth";
+import { enterDemo } from "@/demo/demoMode";
 
 export default function LoginGate() {
   const [pin, setPin] = useState("");
@@ -47,6 +48,20 @@ export default function LoginGate() {
         >
           {submitting ? "Checking…" : "Unlock"}
         </button>
+
+        <div className="pt-4 border-t border-border space-y-2">
+          <p className="text-sm text-muted-foreground font-body">Just looking around?</p>
+          <button
+            type="button"
+            onClick={enterDemo}
+            className="w-full rounded-lg border border-border bg-background px-4 py-3 font-body font-semibold text-foreground hover:bg-muted/30 active:scale-95 transition-all"
+          >
+            Explore the demo
+          </button>
+          <p className="text-xs text-muted-foreground font-body">
+            Sample data only. Nothing you do affects the real app.
+          </p>
+        </div>
       </form>
     </div>
   );
